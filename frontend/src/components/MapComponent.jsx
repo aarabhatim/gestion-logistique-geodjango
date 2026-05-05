@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
 import { getCommandes, getClients } from '../services/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -88,23 +88,45 @@ const MapComponent = () => {
         );
       })}
 
-      {/* Commandes (Points de départ) */}
+      {/* Commandes (Points de départ) et Itinéraires */}
       {commandes.map(cmd => {
-        // Here we assume point_depart is stored in GeoJSON geometry if serialized properly
-        // GeoFeatureModelSerializer uses point_destination by default based on our config.
-        // Let's use the main geometry.
         if (!cmd.geometry || !cmd.geometry.coordinates) return null;
         const [lon, lat] = cmd.geometry.coordinates;
+        const itineraire = cmd.properties.itineraire;
+        
         return (
-          <Marker key={`cmd-${cmd.id}`} position={[lat, lon]} icon={truckIcon}>
-            <Popup>
-              <div style={{ color: '#000' }}>
-                <strong>Commande: {cmd.properties.reference}</strong><br/>
-                Statut: {cmd.properties.statut}<br/>
-                Marchandise: {cmd.properties.type_marchandise}
-              </div>
-            </Popup>
-          </Marker>
+          <React.Fragment key={`cmd-${cmd.id}`}>
+            <Marker position={[lat, lon]} icon={truckIcon}>
+              <Popup>
+                <div style={{ color: '#000' }}>
+                  <strong>Commande: {cmd.properties.reference}</strong><br/>
+                  Statut: {cmd.properties.statut}<br/>
+                  Marchandise: {cmd.properties.type_marchandise}<br/>
+                  {cmd.properties.distance_km && (
+                    <>
+                      <hr style={{ margin: '5px 0' }}/>
+                      Distance: <strong>{cmd.properties.distance_km} km</strong><br/>
+                      Durée estimée: <strong>{cmd.properties.duree_estimee_min} min</strong>
+                    </>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+            
+            {/* Tracé de l'itinéraire OSRM */}
+            {itineraire && (
+              <GeoJSON 
+                data={itineraire} 
+                style={() => ({
+                  color: '#3b82f6',
+                  weight: 4,
+                  opacity: 0.7,
+                  dashArray: '10, 10',
+                  lineJoin: 'round'
+                })} 
+              />
+            )}
+          </React.Fragment>
         );
       })}
     </MapContainer>

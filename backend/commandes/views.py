@@ -27,6 +27,8 @@ class CommandeViewSet(viewsets.ModelViewSet):
         
         success, message = CommandeService.affecter_transporteur_automatique(commande)
         if success:
+            # Calculer l'itinéraire juste après l'affectation réussie
+            CommandeService.calculer_itineraire(commande)
             return Response({'status': message})
         else:
             return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)

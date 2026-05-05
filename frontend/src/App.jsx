@@ -2,7 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Truck, Package, Map as MapIcon, Settings } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
+import Commandes from './pages/Commandes';
+import Clients from './pages/Clients';
+import Transporteurs from './pages/Transporteurs';
 import './App.css';
+import './pages/Pages.css';
 
 const SidebarItem = ({ icon: Icon, label, path }) => {
   const location = useLocation();
@@ -80,9 +84,9 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/map" element={<div className="animate-fade-in"><h2 className="text-gradient">Carte (À venir)</h2></div>} />
-              <Route path="/commandes" element={<div className="animate-fade-in"><h2 className="text-gradient">Commandes (À venir)</h2></div>} />
-              <Route path="/clients" element={<div className="animate-fade-in"><h2 className="text-gradient">Clients (À venir)</h2></div>} />
-              <Route path="/transporteurs" element={<div className="animate-fade-in"><h2 className="text-gradient">Transporteurs (À venir)</h2></div>} />
+              <Route path="/commandes" element={<Commandes />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/transporteurs" element={<Transporteurs />} />
               <Route path="/settings" element={<div className="animate-fade-in"><h2 className="text-gradient">Paramètres (À venir)</h2></div>} />
             </Routes>
           </main>

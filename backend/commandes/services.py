@@ -1,3 +1,6 @@
+import json
+import urllib.request
+from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.db.models.functions import Distance
 from transporteurs.models import Vehicule
 
@@ -48,3 +51,46 @@ class CommandeService:
             return True, f"Véhicule {meilleur_vehicule.immatriculation} affecté avec succès."
         
         return False, "Erreur lors de l'affectation."
+
+    @staticmethod
+    def calculer_itineraire(commande):
+        """
+        Appelle l'API OSRM pour récupérer le tracé routier entre le point de départ et le point de destination.
+        """
+        if not commande.point_depart or not commande.point_destination:
+            return False, "Points de départ et de destination requis pour le calcul de l'itinéraire."
+
+        lon1, lat1 = commande.point_depart.coords
+        lon2, lat2 = commande.point_destination.coords
+
+        osrm_url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=full&geometries=geojson"
+        
+        try:
+            req = urllib.request.Request(osrm_url, headers={'User-Agent': 'LogistiqueApp/1.0'})
+            with urllib.request.urlopen(req) as response:
+                data = json.loads(response.read().decode())
+                
+                if data.get('code') == 'Ok' and len(data.get('routes', [])) > 0:
+                    route = data['routes'][0]
+                    # Extraction des infos
+                    distance_km = route.get('distance', 0) / 1000.0
+                    duree_min = route.get('duration', 0) / 60.0
+                    
+                    # Geometry GeoJSON
+                    geojson_geom = route.get('geometry')
+                    geom_str = json.dumps(geojson_geom)
+                    
+                    # Convertir en objet GEOS et assigner
+                    line_string = GEOSGeometry(geom_str)
+                    
+                    commande.distance_km = round(distance_km, 2)
+                    commande.duree_estimee_min = int(duree_min)
+                    commande.itineraire = line_string
+                    commande.save()
+                    
+                    return True, "Itinéraire calculé avec succès."
+                else:
+                    return False, "Impossible de trouver une route via OSRM."
+        except Exception as e:
+            return False, f"Erreur de connexion à OSRM: {str(e)}"
+
