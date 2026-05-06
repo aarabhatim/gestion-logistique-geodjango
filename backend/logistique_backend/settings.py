@@ -1,14 +1,24 @@
 import os
 from pathlib import Path
+from datetime import timedelta
+from dotenv import load_dotenv
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 
 if os.name == 'nt':
     import ctypes
-    # Workaround for Python >= 3.8 to find DLL dependencies from PostGIS bin folder
-    os.add_dll_directory(r'C:\Program Files\PostgreSQL\16\bin')
-    GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgeos_c.dll'
-    GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgdal-35.dll'
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+    try:
+        os.add_dll_directory(r'C:\Program Files\PostgreSQL\16\bin')
+        GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgeos_c.dll'
+        GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgdal-35.dll'
+    except:
+        pass
+
 
 SECRET_KEY = 'django-insecure-logistique-secret-key-change-in-production'
 
@@ -28,11 +38,16 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_gis',
     'corsheaders',
+    # JWT Token Blacklist
+    'rest_framework_simplejwt.token_blacklist',
     # Local apps
+    'accounts',
     'clients',
     'transporteurs',
     'commandes',
     'tracking',
+    'notifications.apps.NotificationsConfig',
+    'incidents',
 ]
 
 MIDDLEWARE = [
@@ -70,29 +85,44 @@ WSGI_APPLICATION = 'logistique_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'logistique_db',
-        'USER': 'postgres',
-        'PASSWORD': 'Hatim2005@',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'logistique_db'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASS', 'Hatim2005@'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
 # ─── Django REST Framework ────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }
 
+# ─── JWT Configuration ────────────────────────────────────────────────────────
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
 # ─── CORS (React dev server) ──────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
     'http://localhost:3000',
 ]
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # ─── Auth Password Validators ─────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      - POSTGRES_DB=logistique_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    image: hatim0007/logistrack-backend:latest
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=logistique_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_PORT=5432
+    depends_on:
+      - db
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  frontend:
+    image: hatim0007/logistrack-frontend:latest
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # prevent local node_modules from overriding container's
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Helps with hot-reload in some OS environments (Windows)
+      - VITE_API_URL=http://localhost:8000/api/
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

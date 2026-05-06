@@ -1,0 +1,203 @@
+/* ─── Auth pages global styles ────────────────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.auth-logo .logo-text {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.auth-card {
+  padding: 2.5rem;
+}
+
+.auth-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  margin: 0 0 2rem;
+  font-size: 0.95rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-form.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.btn-full {
+  width: 100%;
+  justify-content: center;
+  padding: 0.9rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.auth-footer {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 1.5rem;
+}
+
+.auth-link {
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-link:hover { text-decoration: underline; }
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.2s;
+}
+.btn-back:hover { color: var(--text-primary); }
+
+/* ─── Role Selection ──────────────────────────────────────────────────────── */
+.role-selection {
+  text-align: center;
+}
+.role-selection .auth-title,
+.role-selection .auth-subtitle {
+  text-align: center;
+}
+
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.role-card {
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s;
+  color: var(--text-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.role-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.role-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--primary-color);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.2);
+}
+
+.role-card h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.role-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.role-card-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-client {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.role-chauffeur {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+.role-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .role-cards { grid-template-columns: 1fr; }
+  .auth-form.form-grid { grid-template-columns: 1fr; }
+}

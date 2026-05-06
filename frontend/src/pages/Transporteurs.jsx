@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, MapPin, Phone, Hash } from 'lucide-react';
-import { getVehicules } from '../services/api';
+import { getVehicules, getChauffeurs } from '../services/api';
 
 const Transporteurs = () => {
   const [vehicules, setVehicules] = useState([]);
+  const [chauffeurs, setChauffeurs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchVehicules = async () => {
+  const fetchData = async () => {
     try {
-      const res = await getVehicules();
-      // vehicules is not a GeoFeature endpoint, just a regular list from our API
-      setVehicules(res.data.results || res.data || []);
+      const [vehRes, chaufRes] = await Promise.all([
+        getVehicules(),
+        getChauffeurs()
+      ]);
+      setVehicules(vehRes.data.results || vehRes.data || []);
+      setChauffeurs(chaufRes.data.results || chaufRes.data || []);
     } catch (error) {
       console.error("Erreur de chargement", error);
     } finally {
@@ -19,8 +23,16 @@ const Transporteurs = () => {
   };
 
   useEffect(() => {
-    fetchVehicules();
+    fetchData();
   }, []);
+
+  // Helper to find chauffeur name by ID (since vehicule only has chauffeur ID)
+  // Actually in our models, Chauffeur has OneToOne with Vehicule, so vehicule.chauffeur might be the chauffeur ID.
+  const getChauffeurName = (chauffeurId) => {
+    if (!chauffeurId) return "Non assigné";
+    const chauf = chauffeurs.find(c => c.id === chauffeurId);
+    return chauf ? `${chauf.prenom} ${chauf.nom}` : `Chauffeur #${chauffeurId}`;
+  };
 
   return (
     <div className="dashboard-container">
@@ -53,19 +65,21 @@ const Transporteurs = () => {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Truck size={16} className="icon-primary" />
-                      <strong>LogistiquePro</strong> {/* Placeholder, on pourrait fetcher le nom du transporteur si serialisé */}
+                      <strong>{vehicule.transporteur_nom || 'LogistiquePro'}</strong>
                     </div>
                   </td>
                   <td>
                     <div>
                       <div><strong>{vehicule.immatriculation}</strong></div>
-                      <small style={{ color: 'var(--text-secondary)' }}>{vehicule.type_vehicule}</small>
+                      <small style={{ color: 'var(--text-secondary)' }}>
+                        {vehicule.type_vehicule} {vehicule.couleur ? `(${vehicule.couleur})` : ''}
+                      </small>
                     </div>
                   </td>
                   <td>{vehicule.capacite_kg} kg</td>
                   <td>
                     {vehicule.chauffeur ? (
-                       <div>Chauffeur #{vehicule.chauffeur}</div>
+                       <div>{getChauffeurName(vehicule.chauffeur)}</div>
                     ) : (
                       <span style={{ color: 'var(--text-secondary)' }}>Non assigné</span>
                     )}

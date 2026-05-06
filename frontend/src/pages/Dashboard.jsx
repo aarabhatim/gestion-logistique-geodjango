@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Truck, Users, AlertCircle, TrendingUp, Clock, MapPin } from 'lucide-react';
+import { Package, Truck, Users, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import MapComponent from '../components/MapComponent';
-import { getCommandes, getVehicules, getClients } from '../services/api';
+import { getStats, getCommandes } from '../services/api';
 import './Dashboard.css';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendValue, colorClass }) => (
@@ -45,37 +45,33 @@ const Dashboard = () => {
     commandes: null,
     vehicules: null,
     clients: null,
+    incidents: null,
   });
   const [commandesRecentes, setCommandesRecentes] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cmdRes, vehRes, cliRes] = await Promise.all([
-          getCommandes(), getVehicules(), getClients()
+        const [statsRes, cmdRes] = await Promise.all([
+          getStats(),
+          getCommandes()
         ]);
         
+        const kpis = statsRes.data.kpis;
+        setStats({
+          commandes: kpis.total_commandes,
+          vehicules: kpis.vehicules_disponibles,
+          clients: kpis.total_clients,
+          incidents: kpis.incidents_ouverts,
+        });
+
         const getFeatures = (res) => {
           if (res.data.features) return res.data.features;
           if (res.data.results && res.data.results.features) return res.data.results.features;
           return [];
         };
 
-        const getCount = (res) => {
-          if (res.data.count !== undefined) return res.data.count;
-          if (res.data.length !== undefined) return res.data.length;
-          const features = getFeatures(res);
-          return features ? features.length : 0;
-        };
-
         const commandesFeat = getFeatures(cmdRes);
-        
-        setStats({
-          commandes: getCount(cmdRes),
-          vehicules: getCount(vehRes),
-          clients: getCount(cliRes),
-        });
-
         if (commandesFeat.length > 0) {
           setCommandesRecentes(commandesFeat.slice(0, 4));
         }
@@ -85,6 +81,7 @@ const Dashboard = () => {
     };
     fetchData();
   }, []);
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header animate-fade-in">
@@ -113,7 +110,7 @@ const Dashboard = () => {
           value={stats.vehicules} 
           icon={Truck} 
           trend="up" 
-          trendValue="Total" 
+          trendValue="Disponibles" 
           colorClass="icon-success" 
         />
         <StatCard 
@@ -126,11 +123,11 @@ const Dashboard = () => {
         />
         <StatCard 
           title="Incidents" 
-          value="2" 
+          value={stats.incidents} 
           icon={AlertCircle} 
-          trend="down" 
-          trendValue="-50%" 
-          colorClass="icon-danger" 
+          trend={stats.incidents > 0 ? "up" : "down"} 
+          trendValue="Ouverts" 
+          colorClass={stats.incidents > 0 ? "icon-danger" : "icon-success"} 
         />
       </div>
 
@@ -138,7 +135,7 @@ const Dashboard = () => {
         <div className="glass-card map-preview-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <div className="card-header">
             <h3 className="card-title">Carte des Opérations</h3>
-            <button className="btn btn-secondary btn-sm">Ouvrir la carte</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => window.location.href='/map'}>Ouvrir la carte</button>
           </div>
           <div className="map-placeholder" style={{ padding: 0 }}>
             <MapComponent />

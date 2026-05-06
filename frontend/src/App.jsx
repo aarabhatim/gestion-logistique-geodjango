@@ -1,17 +1,57 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Truck, Package, Map as MapIcon, Settings } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { LayoutDashboard, Users, Truck, Package, Map as MapIcon, Settings, BarChart2, AlertTriangle, LogOut } from 'lucide-react';
+
+// Auth
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+
+// Admin pages
 import Dashboard from './pages/Dashboard';
 import Commandes from './pages/Commandes';
 import Clients from './pages/Clients';
 import Transporteurs from './pages/Transporteurs';
+import MapPage from './pages/MapPage';
+import Rapports from './pages/Rapports';
+import Incidents from './pages/Incidents';
+import Header from './components/Header';
+
+// Role-specific pages
+import ClientDashboard from './pages/client/ClientDashboard';
+import ChauffeurDashboard from './pages/chauffeur/ChauffeurDashboard';
+
 import './App.css';
 import './pages/Pages.css';
 
+// ─── Protected Route ─────────────────────────────────────────────────────────
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="logo-icon" style={{ margin: '0 auto 1rem' }}><Truck size={28} color="white" /></div>
+          <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Redirect to the user's own space
+    if (user.role === 'client') return <Navigate to="/client" replace />;
+    if (user.role === 'chauffeur') return <Navigate to="/chauffeur" replace />;
+  }
+  return children;
+};
+
+// ─── Admin Layout ─────────────────────────────────────────────────────────────
 const SidebarItem = ({ icon: Icon, label, path }) => {
   const location = useLocation();
   const isActive = location.pathname === path;
-  
   return (
     <Link to={path} className={`sidebar-item ${isActive ? 'active' : ''}`}>
       <Icon className="sidebar-icon" size={20} />
@@ -21,78 +61,139 @@ const SidebarItem = ({ icon: Icon, label, path }) => {
   );
 };
 
-const Sidebar = () => {
+const AdminSidebar = () => {
+  const { user, logout } = useAuth();
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-container">
-          <div className="logo-icon">
-            <Truck size={24} color="white" />
-          </div>
+          <div className="logo-icon"><Truck size={24} color="white" /></div>
           <h1 className="logo-text text-gradient">LogisTrack</h1>
         </div>
       </div>
-      
       <nav className="sidebar-nav">
         <div className="nav-section">MENU PRINCIPAL</div>
         <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" />
         <SidebarItem icon={MapIcon} label="Carte & Suivi" path="/map" />
         <SidebarItem icon={Package} label="Commandes" path="/commandes" />
-        
+        <SidebarItem icon={AlertTriangle} label="Incidents" path="/incidents" />
         <div className="nav-section mt-4">GESTION</div>
         <SidebarItem icon={Users} label="Clients" path="/clients" />
-        <SidebarItem icon={Truck} label="Transporteurs" path="/transporteurs" />
-        
-        <div className="nav-section mt-4">SYSTÈME</div>
+        <SidebarItem icon={Truck} label="Flotte" path="/transporteurs" />
+        <div className="nav-section mt-4">ANALYSE</div>
+        <SidebarItem icon={BarChart2} label="Rapports" path="/rapports" />
         <SidebarItem icon={Settings} label="Paramètres" path="/settings" />
       </nav>
-      
       <div className="sidebar-footer">
-        <div className="user-profile">
-          <div className="avatar">A</div>
-          <div className="user-info">
-            <div className="user-name">Admin</div>
-            <div className="user-role">Super Utilisateur</div>
+        <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="avatar">A</div>
+            <div className="user-info">
+              <div className="user-name">{user?.first_name || 'Admin'}</div>
+              <div className="user-role">Administrateur</div>
+            </div>
           </div>
+          <button 
+            onClick={logout} 
+            className="btn btn-icon" 
+            style={{ background: 'transparent', color: 'var(--danger-color)' }}
+            title="Se déconnecter"
+          >
+            <LogOut size={20} />
+          </button>
         </div>
       </div>
     </aside>
   );
 };
 
-const Header = () => {
+const AdminLayout = ({ children }) => (
+  <div className="app-layout">
+    <AdminSidebar />
+    <div className="main-wrapper">
+      <Header />
+      <main className="main-content">{children}</main>
+    </div>
+  </div>
+);
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function AppRoutes() {
   return (
-    <header className="top-header glass-card">
-      <div className="header-search">
-        <input type="text" className="glass-input" placeholder="Rechercher une commande, un client..." />
-      </div>
-      <div className="header-actions">
-        <button className="btn btn-primary">Nouvelle Commande</button>
-      </div>
-    </header>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Client routes */}
+      <Route path="/client" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientDashboard />
+        </ProtectedRoute>
+      } />
+
+      {/* Chauffeur routes */}
+      <Route path="/chauffeur" element={
+        <ProtectedRoute allowedRoles={['chauffeur']}>
+          <ChauffeurDashboard />
+        </ProtectedRoute>
+      } />
+
+      {/* Admin routes */}
+      <Route path="/" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Dashboard /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/map" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><MapPage /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/commandes" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Commandes /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/incidents" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Incidents /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/clients" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Clients /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/transporteurs" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Transporteurs /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/rapports" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><Rapports /></AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout><div className="animate-fade-in dashboard-container"><h2 className="text-gradient">Paramètres (À venir)</h2></div></AdminLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
-};
+}
 
 function App() {
   return (
-    <Router>
-      <div className="app-layout">
-        <Sidebar />
-        <div className="main-wrapper">
-          <Header />
-          <main className="main-content">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/map" element={<div className="animate-fade-in"><h2 className="text-gradient">Carte (À venir)</h2></div>} />
-              <Route path="/commandes" element={<Commandes />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/transporteurs" element={<Transporteurs />} />
-              <Route path="/settings" element={<div className="animate-fade-in"><h2 className="text-gradient">Paramètres (À venir)</h2></div>} />
-            </Routes>
-          </main>
-        </div>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

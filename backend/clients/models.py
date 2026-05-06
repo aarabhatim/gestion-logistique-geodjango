@@ -6,6 +6,8 @@ class Client(models.Model):
     email = models.EmailField(unique=True)
     telephone = models.CharField(max_length=20)
     adresse = models.TextField()
+    entreprise = models.CharField(max_length=150, blank=True, default='')
+    note_fidelite = models.IntegerField(default=3, help_text="Note de fidélité de 1 à 5")
     # Point géographique (longitude, latitude)
     localisation = models.PointField(null=True, blank=True, srid=4326)
     date_inscription = models.DateTimeField(auto_now_add=True)

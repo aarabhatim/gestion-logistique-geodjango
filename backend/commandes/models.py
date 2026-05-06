@@ -36,6 +36,7 @@ class Commande(models.Model):
     type_marchandise = models.CharField(max_length=30, choices=TYPE_MARCHANDISE_CHOICES, default='autre')
     poids_kg = models.FloatField()
     description = models.TextField(blank=True)
+    notes_client = models.TextField(blank=True, default='', help_text="Notes ou instructions spéciales du client")
 
     # Logistique
     date_souhaitee = models.DateField()
@@ -61,6 +62,7 @@ class Commande(models.Model):
     itineraire = models.LineStringField(srid=4326, null=True, blank=True)
     distance_km = models.FloatField(null=True, blank=True)
     duree_estimee_min = models.IntegerField(null=True, blank=True)
+    prix_estime = models.FloatField(null=True, blank=True, help_text="Prix estimé en MAD")
 
     class Meta:
         verbose_name = "Commande"
