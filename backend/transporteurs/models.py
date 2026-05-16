@@ -44,6 +44,13 @@ class Transporteur(models.Model):
     nombre_livraisons = models.IntegerField(default=0)
     revenus_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
+    # Suivi du temps de travail (basé sur disponibilité)
+    heure_debut_disponibilite = models.DateTimeField(null=True, blank=True)
+    minutes_travaillees_aujourd_hui = models.IntegerField(default=0)
+    minutes_travaillees_semaine = models.IntegerField(default=0)
+    minutes_travaillees_mois = models.IntegerField(default=0)
+    date_derniere_session = models.DateField(null=True, blank=True)
+
     date_inscription = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -68,3 +75,34 @@ class Transporteur(models.Model):
             return False
         delta = timezone.now() - self.derniere_maj_position
         return delta.total_seconds() < 300  # actif si position < 5 min
+
+    @property
+    def minutes_session_courante(self):
+        """Minutes écoulées depuis le début de la session de disponibilité en cours."""
+        if not self.heure_debut_disponibilite or not self.is_available:
+            return 0
+        delta = timezone.now() - self.heure_debut_disponibilite
+        return int(delta.total_seconds() / 60)
+
+    def cumuler_temps_travail(self):
+        """Ajoute la durée de la session courante aux totaux et réinitialise."""
+        import datetime
+        if not self.heure_debut_disponibilite:
+            return
+        now = timezone.now()
+        today = now.date()
+
+        # Reset si nouveau jour
+        if self.date_derniere_session and self.date_derniere_session != today:
+            if self.date_derniere_session < today - datetime.timedelta(days=today.weekday()):
+                self.minutes_travaillees_semaine = 0
+            if self.date_derniere_session.month != today.month:
+                self.minutes_travaillees_mois = 0
+            self.minutes_travaillees_aujourd_hui = 0
+
+        delta_min = int((now - self.heure_debut_disponibilite).total_seconds() / 60)
+        self.minutes_travaillees_aujourd_hui += delta_min
+        self.minutes_travaillees_semaine += delta_min
+        self.minutes_travaillees_mois += delta_min
+        self.date_derniere_session = today
+        self.heure_debut_disponibilite = None
