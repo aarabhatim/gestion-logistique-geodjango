@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { fondateursApi, commandesApi } from '../../services/api';
 import useCartStore from '../../stores/cartStore';
+import ChatbotWidget from '../../components/ChatbotWidget';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -1374,6 +1375,9 @@ const ClientDashboard = () => {
           onSuccess={handleOrderSuccess}
         />
       )}
+
+      {/* Assistant conversationnel (UX client) */}
+      <ChatbotWidget onOpenCart={() => setCartOpen(true)} />
     </div>
   );
 };
