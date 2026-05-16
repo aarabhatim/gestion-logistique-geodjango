@@ -116,8 +116,21 @@ class CommandeCreateSerializer(serializers.Serializer):
         lon = validated_data.get('longitude')
         location = Point(float(lon), float(lat), srid=4326) if lat and lon else None
 
-        # Frais de livraison
-        frais = float(fondateur.frais_livraison_base)
+        # Frais de livraison — calculé dynamiquement selon la distance
+        frais_base = float(fondateur.frais_livraison_base)
+        frais = frais_base
+        if location and fondateur.location:
+            from math import radians, cos, sin, asin, sqrt
+            # Haversine
+            lon1, lat1 = float(fondateur.location.x), float(fondateur.location.y)
+            lon2, lat2 = float(lon), float(lat)
+            dlon = radians(lon2 - lon1)
+            dlat = radians(lat2 - lat1)
+            a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+            distance_km = 6371 * 2 * asin(sqrt(a))
+            if distance_km > 2:
+                frais = round(frais_base + (distance_km - 2) * 2, 2)
+
         sous_total = validated_data['sous_total']
         reduction = validated_data['reduction']
         total = sous_total + frais - reduction

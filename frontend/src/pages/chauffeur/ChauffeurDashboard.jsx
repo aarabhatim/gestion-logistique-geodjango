@@ -5,7 +5,7 @@ import {
   DollarSign, Award, AlertTriangle, Map, List, User, Zap,
   ArrowRight, Phone, RefreshCw,
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,8 +29,9 @@ const makeIcon = (color, emoji, size = 36) => L.divIcon({
 });
 
 const MY_ICON       = makeIcon('#8b5cf6', '🚗', 40);
-const DELIVERY_ICON = makeIcon('#ef4444', '📦', 32);
-const BOUTIQUE_ICON = makeIcon('#3b82f6', '🏪', 28);
+const DELIVERY_ICON = makeIcon('#ef4444', '📦', 36);
+const BOUTIQUE_ICON = makeIcon('#3b82f6', '🏪', 36);
+const CLIENT_ICON   = makeIcon('#10b981', '🏠', 36);
 
 // ─── Statut colors ────────────────────────────────────────────────────────────
 const STATUT_STYLE = {
@@ -108,6 +109,269 @@ const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
   );
 };
 
+// ─── OSRM routing helper ─────────────────────────────────────────────────────
+const fetchRoute = async (from, to) => {
+  if (!from || !to) return null;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+      return {
+        coords,
+        distance_km: (data.routes[0].distance / 1000).toFixed(1),
+        duration_min: Math.round(data.routes[0].duration / 60),
+      };
+    }
+  } catch (e) { console.warn('OSRM failed:', e); }
+  return null;
+};
+
+// ─── Active Mission Card with route + actions ────────────────────────────────
+const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel }) => {
+  const [route, setRoute] = useState(null);
+  const [loadingRoute, setLoadingRoute] = useState(false);
+
+  // Determine destination based on status
+  // EN_PREPARATION/VALIDEE → go to BOUTIQUE
+  // EN_ROUTE → go to CLIENT
+  const isEnRoute = mission.statut === 'EN_ROUTE';
+  const destination = isEnRoute
+    ? (mission.latitude_livraison && mission.longitude_livraison
+        ? [mission.latitude_livraison, mission.longitude_livraison]
+        : null)
+    : (mission.fondateur_detail?.latitude && mission.fondateur_detail?.longitude
+        ? [mission.fondateur_detail.latitude, mission.fondateur_detail.longitude]
+        : null);
+
+  useEffect(() => {
+    if (myPosition && destination) {
+      setLoadingRoute(true);
+      fetchRoute(myPosition, destination)
+        .then(setRoute)
+        .finally(() => setLoadingRoute(false));
+    }
+  }, [myPosition?.[0], myPosition?.[1], destination?.[0], destination?.[1]]);
+
+  const statusConfig = {
+    VALIDEE:        { color: '#3b82f6', label: '✅ Mission assignée', emoji: '📋', dest: 'boutique' },
+    EN_PREPARATION: { color: '#f59e0b', label: '👨‍🍳 En préparation',   emoji: '🏪', dest: 'boutique' },
+    EN_ROUTE:       { color: '#06b6d4', label: '🚚 En route vers client', emoji: '🏠', dest: 'client' },
+  }[mission.statut] || { color: '#64748b', label: mission.statut, emoji: '📦' };
+
+  const nextAction = isEnRoute
+    ? { label: '✓ Confirmer livraison', color: '#22c55e', icon: CheckCircle }
+    : { label: '🚗 Commande prise — En route', color: '#3b82f6', icon: ArrowRight };
+
+  return (
+    <div className="glass-card animate-fade-in" style={{
+      borderLeft: `4px solid ${statusConfig.color}`,
+      background: `linear-gradient(135deg, rgba(15,23,42,0.6), ${statusConfig.color}08)`,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 22 }}>{statusConfig.emoji}</span>
+            <strong style={{ fontSize: 16 }}>{mission.reference}</strong>
+            <span style={{ fontSize: 11, background: statusConfig.color + '20', color: statusConfig.color, padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+              {statusConfig.label}
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {mission.fondateur_detail?.nom_boutique} → {mission.client_detail?.first_name}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>
+            +{(parseFloat(mission.frais_livraison || 0) + parseFloat(mission.sous_total || 0) * 0.05).toFixed(0)} MAD
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>votre gain</div>
+        </div>
+      </div>
+
+      {/* Route info */}
+      {route && (
+        <div style={{
+          background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 12px', marginBottom: 12,
+          display: 'flex', justifyContent: 'space-around', gap: 8,
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Distance</div>
+            <div style={{ fontWeight: 700, color: '#3b82f6' }}>{route.distance_km} km</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Temps</div>
+            <div style={{ fontWeight: 700, color: '#f59e0b' }}>{route.duration_min} min</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Direction</div>
+            <div style={{ fontWeight: 700, color: statusConfig.color }}>
+              {statusConfig.dest === 'boutique' ? '🏪 Boutique' : '🏠 Client'}
+            </div>
+          </div>
+        </div>
+      )}
+      {loadingRoute && (
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', padding: '6px 0' }}>
+          <RefreshCw size={11} className="spin" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+          Calcul de l'itinéraire...
+        </div>
+      )}
+
+      {/* Mini map */}
+      {myPosition && destination && (
+        <div style={{ height: 200, borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+          <MapContainer center={myPosition} zoom={12} style={{ height: '100%', width: '100%' }}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="© CARTO" />
+            <Marker position={myPosition} icon={MY_ICON}><Popup>📍 Moi</Popup></Marker>
+            <Marker position={destination} icon={statusConfig.dest === 'boutique' ? BOUTIQUE_ICON : CLIENT_ICON}>
+              <Popup>
+                {statusConfig.dest === 'boutique'
+                  ? <><strong>🏪 {mission.fondateur_detail?.nom_boutique}</strong><br />{mission.fondateur_detail?.adresse}</>
+                  : <><strong>🏠 {mission.client_detail?.first_name}</strong><br />{mission.adresse_livraison}</>
+                }
+              </Popup>
+            </Marker>
+            {route && route.coords.length > 0 && (
+              <Polyline
+                positions={route.coords}
+                pathOptions={{ color: statusConfig.color, weight: 4, opacity: 0.85, dashArray: isEnRoute ? null : '8 6' }}
+              />
+            )}
+          </MapContainer>
+        </div>
+      )}
+
+      {/* Adresse de destination */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 12 }}>
+        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em', marginBottom: 4 }}>
+          {statusConfig.dest === 'boutique' ? '📍 RÉCUPÉRER À' : '📍 LIVRER À'}
+        </div>
+        <div style={{ fontWeight: 600 }}>
+          {statusConfig.dest === 'boutique' ? mission.fondateur_detail?.nom_boutique : mission.client_detail?.first_name + ' ' + (mission.client_detail?.last_name || '')}
+        </div>
+        <div style={{ color: 'var(--text-secondary)', marginTop: 2 }}>
+          {statusConfig.dest === 'boutique' ? mission.fondateur_detail?.adresse : mission.adresse_livraison}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => onAdvance(mission)}
+          style={{
+            flex: 1, padding: '12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: nextAction.color, color: 'white', fontWeight: 700, fontSize: 13,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            boxShadow: `0 4px 14px ${nextAction.color}40`,
+          }}>
+          <nextAction.icon size={15} /> {nextAction.label}
+        </button>
+        {destination && (
+          <a href={`https://www.google.com/maps/dir/${myPosition ? myPosition.join(',') : ''}/${destination.join(',')}`}
+            target="_blank" rel="noreferrer"
+            style={{
+              padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.04)', color: 'white', fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none',
+            }} title="Ouvrir dans Google Maps">
+            <Navigation size={15} />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Working Hours Card ──────────────────────────────────────────────────────
+const formatDuration = (minutes) => {
+  if (!minutes || minutes < 0) return '0h00';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h${String(m).padStart(2, '0')}`;
+};
+
+const WorkingHoursCard = ({ profile }) => {
+  const [tick, setTick] = useState(0);
+
+  // Live tick every minute when available
+  useEffect(() => {
+    if (!profile?.is_available) return;
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, [profile?.is_available]);
+
+  // Compute session minutes from heure_debut_disponibilite if active
+  let sessionMin = profile?.minutes_session_courante || 0;
+  if (profile?.is_available && profile?.heure_debut_disponibilite) {
+    const start = new Date(profile.heure_debut_disponibilite);
+    sessionMin = Math.floor((Date.now() - start.getTime()) / 60000);
+  }
+
+  const todayMin = (profile?.minutes_travaillees_aujourd_hui || 0) + (profile?.is_available ? sessionMin : 0);
+  const weekMin  = profile?.minutes_travaillees_semaine || 0;
+  const monthMin = profile?.minutes_travaillees_mois || 0;
+
+  // Daily goal: 8h = 480 min
+  const goalMin = 480;
+  const goalPct = Math.min(100, Math.round((todayMin / goalMin) * 100));
+
+  return (
+    <div className="glass-card animate-fade-in" style={{ borderLeft: '4px solid #a78bfa' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+          <Clock size={16} color="#a78bfa" /> Mes heures de travail
+        </h4>
+        {profile?.is_available && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#10b981', fontWeight: 600 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
+            En activité depuis {formatDuration(sessionMin)}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+        {[
+          { label: "Aujourd'hui", value: formatDuration(todayMin), color: '#a78bfa', big: true },
+          { label: 'Cette semaine', value: formatDuration(weekMin), color: '#3b82f6' },
+          { label: 'Ce mois', value: formatDuration(monthMin), color: '#10b981' },
+        ].map(({ label, value, color, big }) => (
+          <div key={label} style={{
+            background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 12px',
+            textAlign: 'center', border: big ? `1px solid ${color}30` : '1px solid transparent',
+          }}>
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.03em', marginBottom: 4 }}>
+              {label.toUpperCase()}
+            </div>
+            <div style={{ fontWeight: 800, fontSize: big ? 20 : 16, color, fontFamily: 'monospace' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Objectif quotidien */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+          <span style={{ color: 'var(--text-secondary)' }}>🎯 Objectif quotidien (8h)</span>
+          <span style={{ fontWeight: 700, color: goalPct >= 100 ? '#10b981' : '#a78bfa' }}>{goalPct}%</span>
+        </div>
+        <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{
+            width: `${Math.min(100, goalPct)}%`, height: '100%',
+            background: goalPct >= 100 ? 'linear-gradient(90deg, #10b981, #22c55e)' : 'linear-gradient(90deg, #8b5cf6, #a78bfa)',
+            transition: 'width 0.6s ease',
+          }} />
+        </div>
+        {goalPct >= 100 && (
+          <div style={{ fontSize: 11, color: '#10b981', marginTop: 6, textAlign: 'center', fontWeight: 600 }}>
+            🏆 Objectif atteint ! Bravo
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Tab Nav ──────────────────────────────────────────────────────────────────
 const TabNav = ({ tabs, active, onChange }) => (
   <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
@@ -158,12 +422,15 @@ const ChauffeurDashboard = () => {
     try {
       const [profRes, missionRes, propRes, notifRes] = await Promise.all([
         transporteursApi.monProfil(),
-        commandesApi.list({ statut: 'EN_ROUTE' }),
+        commandesApi.list(),                                     // toutes mes commandes (filtrées par backend)
         commandesApi.proposees().catch(() => ({ data: [] })),
         notificationsApi.nonLues().catch(() => ({ data: [] })),
       ]);
       setProfile(profRes.data);
-      setMissions(missionRes.data.results || missionRes.data || []);
+      // Garde uniquement les missions actives (assignées à moi)
+      const all = missionRes.data.results || missionRes.data || [];
+      const actives = all.filter(c => ['VALIDEE', 'EN_PREPARATION', 'EN_ROUTE'].includes(c.statut));
+      setMissions(actives);
       setProposees(Array.isArray(propRes.data) ? propRes.data : propRes.data.results || []);
       setNotifications(Array.isArray(notifRes.data) ? notifRes.data : notifRes.data.results || []);
     } catch (e) {
@@ -174,6 +441,23 @@ const ChauffeurDashboard = () => {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Get initial GPS on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setMyPosition([pos.coords.latitude, pos.coords.longitude]),
+        () => {},
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+  }, []);
+
+  // Auto-refresh missions every 30s
+  useEffect(() => {
+    const id = setInterval(fetchData, 30000);
+    return () => clearInterval(id);
+  }, [fetchData]);
 
   // Auto-update GPS every 60s while on map tab
   useEffect(() => {
@@ -241,6 +525,19 @@ const ChauffeurDashboard = () => {
       fetchData();
     } catch {
       showToast('Erreur', 'error');
+    }
+  };
+
+  const handleAdvance = async (mission) => {
+    try {
+      await commandesApi.avancer(mission.id);
+      const msg = mission.statut === 'EN_ROUTE'
+        ? `✅ Livraison confirmée ! Vous avez gagné ${(parseFloat(mission.frais_livraison || 0) + parseFloat(mission.sous_total || 0) * 0.05).toFixed(0)} MAD`
+        : '🚗 Mission acceptée — Direction client !';
+      showToast(msg);
+      fetchData();
+    } catch (e) {
+      showToast(e.response?.data?.error || 'Erreur lors de la mise à jour', 'error');
     }
   };
 
@@ -368,6 +665,9 @@ const ChauffeurDashboard = () => {
               <MiniStat icon={Star}      label="Ma note"    value={profile?.note_moyenne?.toFixed(1) || '–'}           color={noteColor} sub={`${profile?.nombre_avis || 0} avis`} />
             </div>
 
+            {/* Heures de travail */}
+            <WorkingHoursCard profile={profile} />
+
             {/* Missions proposées alert */}
             {proposees.length > 0 && (
               <div style={{
@@ -467,11 +767,32 @@ const ChauffeurDashboard = () => {
         {tab === 'missions' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontWeight: 700 }}>Mes missions</h3>
-              <button className="btn btn-secondary btn-sm" onClick={fetchData}>
-                <RefreshCw size={14} /> Actualiser
-              </button>
+              <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Package size={18} /> Mes missions
+                {missions.length > 0 && <span style={{ background: '#10b98120', color: '#10b981', fontSize: 11, padding: '2px 10px', borderRadius: 20, fontWeight: 700 }}>{missions.length} active{missions.length > 1 ? 's' : ''}</span>}
+              </h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!myPosition && (
+                  <button className="btn btn-sm btn-primary" onClick={handleUpdatePosition} style={{ fontSize: 12 }}>
+                    <Navigation size={13} /> Activer GPS
+                  </button>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={fetchData}>
+                  <RefreshCw size={14} /> Actualiser
+                </button>
+              </div>
             </div>
+
+            {/* GPS warning */}
+            {!myPosition && missions.length > 0 && (
+              <div style={{
+                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12,
+                padding: '12px 16px', fontSize: 13, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <AlertTriangle size={16} />
+                Activez votre GPS pour voir les itinéraires et calculer les trajets
+              </div>
+            )}
 
             {/* Missions proposées */}
             {proposees.length > 0 && (
@@ -486,15 +807,18 @@ const ChauffeurDashboard = () => {
               </div>
             )}
 
-            {/* Missions en cours */}
+            {/* Missions actives avec itinéraires */}
             {missions.length > 0 && (
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', letterSpacing: '0.08em', marginBottom: 10, marginTop: 8 }}>
                   🚚 EN COURS ({missions.length})
                 </div>
-                {missions.map(cmd => (
-                  <MissionCard key={cmd.id} commande={cmd} />
-                ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {missions.map(cmd => (
+                    <ActiveMissionCard key={cmd.id} mission={cmd}
+                      myPosition={myPosition} onAdvance={handleAdvance} />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -503,9 +827,11 @@ const ChauffeurDashboard = () => {
                 <Package size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
                 <div style={{ fontWeight: 600 }}>Aucune mission pour le moment</div>
                 <div style={{ fontSize: 13, marginTop: 6 }}>Passez en disponible pour recevoir des missions</div>
-                <button className="btn btn-primary btn-sm" onClick={handleToggleDispo} style={{ marginTop: 16 }}>
-                  <CheckCircle size={14} /> Me rendre disponible
-                </button>
+                {!profile?.is_available && (
+                  <button className="btn btn-primary btn-sm" onClick={handleToggleDispo} style={{ marginTop: 16 }}>
+                    <CheckCircle size={14} /> Me rendre disponible
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -615,6 +941,9 @@ const ChauffeurDashboard = () => {
               <MiniStat icon={Star}       label="Note moy."   value={profile?.note_moyenne?.toFixed(1) || '–'} color={noteColor} sub={`${profile?.nombre_avis || 0} avis`} />
               <MiniStat icon={DollarSign} label="Revenus tot." value={`${Math.round(profile?.revenus_total || 0)} MAD`} color="#10b981" />
             </div>
+
+            {/* Working hours breakdown */}
+            <WorkingHoursCard profile={profile} />
 
             {/* Revenus breakdown */}
             <div className="glass-card">

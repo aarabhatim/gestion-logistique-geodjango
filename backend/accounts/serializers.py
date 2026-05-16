@@ -54,18 +54,28 @@ class UserMeSerializer(serializers.ModelSerializer):
 
 
 class UserPublicSerializer(serializers.ModelSerializer):
-    """Infos publiques minimales."""
+    """Infos publiques minimales + position GPS pour transporteurs."""
     avatar_url = serializers.SerializerMethodField()
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
+    phone = serializers.CharField(read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'avatar_url']
+        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'avatar_url',
+                  'phone', 'latitude', 'longitude']
 
     def get_avatar_url(self, obj):
         request = self.context.get('request')
         if obj.avatar and request:
             return request.build_absolute_uri(obj.avatar.url)
         return None
+
+    def get_latitude(self, obj):
+        return obj.location.y if obj.location else None
+
+    def get_longitude(self, obj):
+        return obj.location.x if obj.location else None
 
 
 class RegisterSerializer(serializers.Serializer):

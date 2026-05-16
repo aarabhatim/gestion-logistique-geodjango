@@ -55,10 +55,25 @@ class ToggleDisponibiliteView(APIView):
             t = request.user.transporteur_profile
         except Transporteur.DoesNotExist:
             return Response({'error': 'Profil transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
-        t.is_available = not t.is_available
-        t.save(update_fields=['is_available'])
+
+        if t.is_available:
+            # Passe à indisponible : cumuler le temps de session
+            t.cumuler_temps_travail()
+            t.is_available = False
+            t.save(update_fields=[
+                'is_available', 'heure_debut_disponibilite', 'date_derniere_session',
+                'minutes_travaillees_aujourd_hui', 'minutes_travaillees_semaine', 'minutes_travaillees_mois',
+            ])
+        else:
+            # Passe à disponible : démarrer une session
+            t.is_available = True
+            t.heure_debut_disponibilite = timezone.now()
+            t.save(update_fields=['is_available', 'heure_debut_disponibilite'])
+
         return Response({
             'is_available': t.is_available,
+            'minutes_session_courante': t.minutes_session_courante,
+            'minutes_travaillees_aujourd_hui': t.minutes_travaillees_aujourd_hui,
             'message': 'Disponible' if t.is_available else 'Indisponible',
         })
 

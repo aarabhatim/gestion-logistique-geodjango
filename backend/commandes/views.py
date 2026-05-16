@@ -99,7 +99,18 @@ class CommandeStatutView(APIView):
         nouveau_statut = transitions.get(commande.statut)
 
         if action == 'annuler' and commande.statut not in ('LIVREE', 'ANNULEE'):
+            # Le CLIENT peut annuler tant que ce n'est pas livré
+            # L'ADMIN peut toujours annuler
+            # Le FONDATEUR peut annuler ses propres commandes
             if role in ('CLIENT', 'ADMIN') or (role == 'FONDATEUR' and commande.fondateur.user == request.user):
+                # Si EN_ROUTE et CLIENT veut annuler : autorisé mais on libère le transporteur
+                if commande.transporteur:
+                    try:
+                        t = commande.transporteur.transporteur_profile
+                        t.is_on_delivery = False
+                        t.save(update_fields=['is_on_delivery'])
+                    except Exception:
+                        pass
                 commande.statut = 'ANNULEE'
                 commande.save()
                 # Remettre le stock
@@ -114,12 +125,31 @@ class CommandeStatutView(APIView):
             commande.statut = nouveau_statut
             if nouveau_statut == 'LIVREE':
                 commande.livree_at = timezone.now()
-                # Libérer le transporteur
+                commande.est_paye = True
+                # Libérer le transporteur + ajouter revenus
                 try:
                     t = commande.transporteur.transporteur_profile
                     t.is_on_delivery = False
                     t.nombre_livraisons += 1
-                    t.save(update_fields=['is_on_delivery', 'nombre_livraisons'])
+                    # Le chauffeur perçoit la totalité des frais de livraison
+                    # + 5% du sous-total comme commission de service
+                    gain = float(commande.frais_livraison) + float(commande.sous_total) * 0.05
+                    t.revenus_total = float(t.revenus_total or 0) + gain
+                    t.save(update_fields=['is_on_delivery', 'nombre_livraisons', 'revenus_total'])
+                    # Créer une Livraison pour tracker le gain par période
+                    try:
+                        from livraisons.models import Livraison
+                        Livraison.objects.update_or_create(
+                            commande=commande,
+                            defaults={
+                                'transporteur': t,
+                                'statut_livraison': 'LIVREE',
+                                'date_livraison': commande.livree_at,
+                                'gain_transporteur': gain,
+                            },
+                        )
+                    except Exception:
+                        pass
                 except Exception:
                     pass
             commande.save()

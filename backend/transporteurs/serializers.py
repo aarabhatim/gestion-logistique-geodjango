@@ -4,20 +4,27 @@ from .models import Transporteur
 
 class TransporteurSerializer(serializers.ModelSerializer):
     nom_complet = serializers.SerializerMethodField()
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
     est_actif = serializers.ReadOnlyField()
+    minutes_session_courante = serializers.ReadOnlyField()
     latitude = serializers.SerializerMethodField()
     longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = Transporteur
         fields = [
-            'id', 'user', 'nom_complet', 'email', 'phone',
+            'id', 'user', 'nom_complet', 'user_first_name', 'user_last_name',
+            'user_email', 'email', 'phone',
             'vehicule_type', 'plaque', 'capacite_kg', 'couleur_vehicule', 'photo_vehicule',
             'is_verified', 'is_available', 'is_on_delivery', 'est_actif',
             'latitude', 'longitude', 'derniere_maj_position',
             'note_moyenne', 'nombre_avis', 'nombre_livraisons', 'revenus_total',
+            'heure_debut_disponibilite', 'minutes_session_courante',
+            'minutes_travaillees_aujourd_hui', 'minutes_travaillees_semaine', 'minutes_travaillees_mois',
             'date_inscription',
         ]
         read_only_fields = ['user', 'is_verified', 'note_moyenne', 'nombre_avis',
@@ -54,13 +61,17 @@ class TransporteurDashboardSerializer(serializers.ModelSerializer):
     revenus_semaine = serializers.SerializerMethodField()
     revenus_mois = serializers.SerializerMethodField()
 
+    minutes_session_courante = serializers.ReadOnlyField()
+
     class Meta:
         model = Transporteur
         fields = [
             'id', 'nom_complet', 'vehicule_type', 'plaque',
-            'is_available', 'is_on_delivery',
+            'is_available', 'is_on_delivery', 'is_verified',
             'note_moyenne', 'nombre_avis', 'nombre_livraisons',
             'revenus_total', 'revenus_jour', 'revenus_semaine', 'revenus_mois',
+            'heure_debut_disponibilite', 'minutes_session_courante',
+            'minutes_travaillees_aujourd_hui', 'minutes_travaillees_semaine', 'minutes_travaillees_mois',
         ]
 
     def get_nom_complet(self, obj):
