@@ -18,6 +18,7 @@ def api_root(request):
             'transporteurs': '/api/transporteurs/',
             'notifications': '/api/notifications/',
             'analytics': '/api/analytics/',
+            'chatbot': '/api/chatbot/',
         },
         'websockets': {
             'tracking': 'ws://localhost:8000/ws/livraison/{commande_id}/',
@@ -43,4 +44,6 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     # Analytics / KPIs
     path('api/analytics/', include('analytics.urls')),
+    # Chatbot d'assistance (LLM)
+    path('api/chatbot/', include('chatbot.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

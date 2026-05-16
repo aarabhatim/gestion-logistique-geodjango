@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'transporteurs',
     'notifications',
     'analytics',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -170,6 +171,11 @@ PLATFORM_COMMISSION_RATE = float(os.environ.get('COMMISSION_RATE', '0.15'))
 
 # ─── OSRM routing server ─────────────────────────────────────────────────────
 OSRM_BASE_URL = os.environ.get('OSRM_BASE_URL', 'http://router.project-osrm.org')
+
+# ─── Chatbot LLM (Mistral) ───────────────────────────────────────────────────
+# Clé gratuite : https://console.mistral.ai/  (laisser vide => fallback local)
+MISTRAL_API_KEY = os.environ.get('MISTRAL_API_KEY', '')
+MISTRAL_MODEL = os.environ.get('MISTRAL_MODEL', 'mistral-small-latest')
 
 # ─── Auth validators ─────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

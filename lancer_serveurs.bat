@@ -1,0 +1,6 @@
+@echo off
+echo Lancement du Backend...
+start cmd /k "cd backend && pip install -r requirements.txt && python manage.py migrate && python manage.py runserver --noreload"
+
+echo Lancement du Frontend...
+start cmd /k "cd frontend && npm install && npm run dev"
