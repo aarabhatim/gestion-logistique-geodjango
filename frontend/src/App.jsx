@@ -21,6 +21,13 @@ import Header from './components/Header';
 import ClientDashboard from './pages/client/ClientDashboard';
 import ChauffeurDashboard from './pages/chauffeur/ChauffeurDashboard';
 
+// Store (Fondateur) pages
+import StoreLayout from './layouts/StoreLayout';
+import StoreDash from './pages/store/StoreDash';
+import StoreProducts from './pages/store/Products';
+import StoreOrders from './pages/store/Orders';
+import StoreAnalytics from './pages/store/Analytics';
+
 import './App.css';
 import './pages/Pages.css';
 
@@ -42,8 +49,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to the user's own space
-    if (user.role === 'client') return <Navigate to="/client" replace />;
-    if (user.role === 'chauffeur') return <Navigate to="/chauffeur" replace />;
+    if (user.role === 'CLIENT') return <Navigate to="/client" replace />;
+    if (user.role === 'TRANSPORTEUR') return <Navigate to="/chauffeur" replace />;
+    if (user.role === 'FONDATEUR') return <Navigate to="/store" replace />;
+    if (user.role === 'ADMIN') return <Navigate to="/" replace />;
   }
   return children;
 };
@@ -127,56 +136,78 @@ function AppRoutes() {
 
       {/* Client routes */}
       <Route path="/client" element={
-        <ProtectedRoute allowedRoles={['client']}>
+        <ProtectedRoute allowedRoles={['CLIENT']}>
           <ClientDashboard />
         </ProtectedRoute>
       } />
 
       {/* Chauffeur routes */}
       <Route path="/chauffeur" element={
-        <ProtectedRoute allowedRoles={['chauffeur']}>
+        <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
           <ChauffeurDashboard />
+        </ProtectedRoute>
+      } />
+
+      {/* Store routes */}
+      <Route path="/store" element={
+        <ProtectedRoute allowedRoles={['FONDATEUR']}>
+          <StoreLayout><StoreDash /></StoreLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/store/products" element={
+        <ProtectedRoute allowedRoles={['FONDATEUR']}>
+          <StoreLayout><StoreProducts /></StoreLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/store/orders" element={
+        <ProtectedRoute allowedRoles={['FONDATEUR']}>
+          <StoreLayout><StoreOrders /></StoreLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/store/analytics" element={
+        <ProtectedRoute allowedRoles={['FONDATEUR']}>
+          <StoreLayout><StoreAnalytics /></StoreLayout>
         </ProtectedRoute>
       } />
 
       {/* Admin routes */}
       <Route path="/" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Dashboard /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/map" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><MapPage /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/commandes" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Commandes /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/incidents" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Incidents /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/clients" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Clients /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/transporteurs" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Transporteurs /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/rapports" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><Rapports /></AdminLayout>
         </ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['ADMIN']}>
           <AdminLayout><div className="animate-fade-in dashboard-container"><h2 className="text-gradient">Paramètres (À venir)</h2></div></AdminLayout>
         </ProtectedRoute>
       } />

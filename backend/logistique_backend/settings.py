@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'tracking',
     'notifications.apps.NotificationsConfig',
     'incidents',
+    'fondateurs',
+    'livraisons',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +62,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+AUTH_USER_MODEL = 'accounts.CustomUser'
 
 ROOT_URLCONF = 'logistique_backend.urls'
 

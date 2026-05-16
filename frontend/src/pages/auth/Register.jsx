@@ -30,12 +30,18 @@ const Register = () => {
     setLoading(true);
     try {
       const payload = { ...form, role };
+      // Map 'telephone' to 'phone' if needed for backend
+      if (payload.telephone) {
+        payload.phone = payload.telephone;
+        delete payload.telephone;
+      }
       if (!payload.date_naissance) {
         payload.date_naissance = null;
       }
       const user = await register(payload);
-      if (user.role === 'client') navigate('/client');
-      else if (user.role === 'chauffeur') navigate('/chauffeur');
+      if (user.role === 'CLIENT') navigate('/client');
+      else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
+      else if (user.role === 'FONDATEUR') navigate('/store');
     } catch (err) {
       const errors = err.response?.data;
       if (errors) {
@@ -64,7 +70,7 @@ const Register = () => {
             <p className="auth-subtitle">Choisissez votre profil pour commencer</p>
             <div className="role-cards">
 
-              <button className="role-card glass-card" onClick={() => handleRoleSelect('client')}>
+              <button className="role-card glass-card" onClick={() => handleRoleSelect('CLIENT')}>
                 <div className="role-card-icon role-client">
                   <Package size={40} />
                 </div>
@@ -73,12 +79,21 @@ const Register = () => {
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
               </button>
 
-              <button className="role-card glass-card" onClick={() => handleRoleSelect('chauffeur')}>
+              <button className="role-card glass-card" onClick={() => handleRoleSelect('TRANSPORTEUR')}>
                 <div className="role-card-icon role-chauffeur">
                   <Truck size={40} />
                 </div>
                 <h3>Je suis Chauffeur</h3>
                 <p>Je veux gérer mes missions de livraison et partager ma position en temps réel.</p>
+                <span className="role-cta">Choisir <ChevronRight size={18} /></span>
+              </button>
+
+              <button className="role-card glass-card" onClick={() => handleRoleSelect('FONDATEUR')}>
+                <div className="role-card-icon role-fondateur" style={{ background: 'var(--success-color)' }}>
+                  <Package size={40} />
+                </div>
+                <h3>Je suis une Boutique</h3>
+                <p>Je veux vendre mes produits et gérer mes livraisons locales.</p>
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
               </button>
 
@@ -94,7 +109,7 @@ const Register = () => {
           <div className="auth-card glass-card">
             <button className="btn-back" onClick={() => setStep(0)}>← Retour</button>
             <h2 className="auth-title">
-              {role === 'client' ? '📦 Inscription Client' : '🚛 Inscription Chauffeur'}
+              {role === 'CLIENT' ? '📦 Inscription Client' : role === 'TRANSPORTEUR' ? '🚛 Inscription Chauffeur' : '🏪 Inscription Boutique'}
             </h2>
 
             {error && <div className="auth-error"><AlertCircle size={16} /> {error}</div>}
@@ -132,7 +147,7 @@ const Register = () => {
               </div>
 
               {/* Champs spécifiques au rôle */}
-              {role === 'client' && (
+              {role === 'CLIENT' && (
                 <>
                   <div className="form-group full-width">
                     <label>Entreprise (optionnel)</label>
@@ -146,7 +161,7 @@ const Register = () => {
                   </div>
                 </>
               )}
-              {role === 'chauffeur' && (
+              {role === 'TRANSPORTEUR' && (
                 <>
                   <div className="form-group">
                     <label>Numéro de permis</label>
@@ -159,6 +174,13 @@ const Register = () => {
                       onChange={e => setForm({ ...form, date_naissance: e.target.value })} />
                   </div>
                 </>
+              )}
+              {role === 'FONDATEUR' && (
+                <div className="form-group full-width">
+                  <label>Nom de la boutique</label>
+                  <input required type="text" className="glass-input" value={form.entreprise}
+                    onChange={e => setForm({ ...form, entreprise: e.target.value })} />
+                </div>
               )}
 
               <div className="form-actions full-width">

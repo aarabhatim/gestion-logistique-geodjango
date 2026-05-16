@@ -1,79 +1,57 @@
 from django.contrib.gis.db import models
-from clients.models import Client
-from transporteurs.models import Transporteur, Vehicule, Chauffeur
-
+from django.conf import settings
+from fondateurs.models import Fondateur, Produit
+from transporteurs.models import Transporteur
+from django.utils.translation import gettext_lazy as _
 
 class Commande(models.Model):
-    STATUT_CHOICES = [
-        ('en_attente', 'En attente'),
-        ('validee', 'Validée'),
-        ('affectee', 'Affectée'),
-        ('en_cours', 'En cours de livraison'),
-        ('livree', 'Livrée'),
-        ('annulee', 'Annulée'),
-    ]
+    class Statut(models.TextChoices):
+        EN_ATTENTE = 'EN_ATTENTE', _('En attente')
+        VALIDEE = 'VALIDEE', _('Validée')
+        EN_PREPARATION = 'EN_PREPARATION', _('En préparation')
+        EN_ROUTE = 'EN_ROUTE', _('En route')
+        LIVREE = 'LIVREE', _('Livrée')
+        ANNULEE = 'ANNULEE', _('Annulée')
 
-    TYPE_MARCHANDISE_CHOICES = [
-        ('electronique', 'Électronique'),
-        ('alimentaire', 'Alimentaire'),
-        ('textile', 'Textile'),
-        ('chimique', 'Chimique'),
-        ('construction', 'Matériaux de construction'),
-        ('autre', 'Autre'),
-    ]
-
-    # Référence auto-générée
-    reference = models.CharField(max_length=20, unique=True, blank=True)
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='commandes')
-
-    # Lieu de départ et destination (géospatial)
-    adresse_depart = models.TextField()
-    point_depart = models.PointField(srid=4326, null=True, blank=True)
-    adresse_destination = models.TextField()
-    point_destination = models.PointField(srid=4326, null=True, blank=True)
-
-    # Marchandise
-    type_marchandise = models.CharField(max_length=30, choices=TYPE_MARCHANDISE_CHOICES, default='autre')
-    poids_kg = models.FloatField()
-    description = models.TextField(blank=True)
-    notes_client = models.TextField(blank=True, default='', help_text="Notes ou instructions spéciales du client")
-
-    # Logistique
-    date_souhaitee = models.DateField()
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_attente')
-
-    # Affectation
-    transporteur = models.ForeignKey(
-        Transporteur, on_delete=models.SET_NULL, null=True, blank=True, related_name='commandes'
-    )
-    vehicule = models.ForeignKey(
-        Vehicule, on_delete=models.SET_NULL, null=True, blank=True, related_name='commandes'
-    )
-    chauffeur = models.ForeignKey(
-        Chauffeur, on_delete=models.SET_NULL, null=True, blank=True, related_name='commandes'
-    )
-
-    # Dates
-    date_creation = models.DateTimeField(auto_now_add=True)
-    date_mise_a_jour = models.DateTimeField(auto_now=True)
-    date_livraison_reelle = models.DateTimeField(null=True, blank=True)
-
-    # Itinéraire GeoJSON (LineString)
-    itineraire = models.LineStringField(srid=4326, null=True, blank=True)
-    distance_km = models.FloatField(null=True, blank=True)
-    duree_estimee_min = models.IntegerField(null=True, blank=True)
-    prix_estime = models.FloatField(null=True, blank=True, help_text="Prix estimé en MAD")
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='commandes_client')
+    fondateur = models.ForeignKey(Fondateur, on_delete=models.CASCADE, related_name='commandes_fondateur')
+    transporteur = models.ForeignKey(Transporteur, on_delete=models.SET_NULL, null=True, blank=True, related_name='commandes_transporteur')
+    
+    statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    adresse_livraison = models.TextField()
+    location_livraison = models.PointField(srid=4326, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    estimated_delivery = models.DateTimeField(null=True, blank=True)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     class Meta:
-        verbose_name = "Commande"
-        verbose_name_plural = "Commandes"
-        ordering = ['-date_creation']
-
-    def save(self, *args, **kwargs):
-        if not self.reference:
-            import uuid
-            self.reference = f"CMD-{uuid.uuid4().hex[:8].upper()}"
-        super().save(*args, **kwargs)
+        verbose_name = 'Commande'
+        verbose_name_plural = 'Commandes'
 
     def __str__(self):
-        return f"{self.reference} - {self.client}"
+        return f"Commande {self.id} - {self.client.username}"
+
+class CommandeProduit(models.Model):
+    commande = models.ForeignKey(Commande, on_delete=models.CASCADE, related_name='produits_commande')
+    produit = models.ForeignKey(Produit, on_delete=models.SET_NULL, null=True)
+    quantite = models.PositiveIntegerField(default=1)
+    prix_unitaire = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.quantite}x {self.produit.nom if self.produit else 'Produit inconnu'}"
+
+class Avis(models.Model):
+    class CibleType(models.TextChoices):
+        TRANSPORTEUR = 'TRANSPORTEUR', _('Transporteur')
+        FONDATEUR = 'FONDATEUR', _('Fondateur')
+
+    commande = models.ForeignKey(Commande, on_delete=models.CASCADE, related_name='avis')
+    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='avis_laisses')
+    cible_type = models.CharField(max_length=20, choices=CibleType.choices)
+    note = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
+    commentaire = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Avis {self.note}/5 par {self.auteur.username}"

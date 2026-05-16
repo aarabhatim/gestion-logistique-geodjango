@@ -7,3 +7,7 @@ djangorestframework-simplejwt
 python-dotenv
 dj-database-url
 requests
+Pillow
+channels
+daphne
+django-filter

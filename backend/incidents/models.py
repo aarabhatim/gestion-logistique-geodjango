@@ -35,4 +35,4 @@ class Incident(models.Model):
         ordering = ['-date_signalement']
 
     def __str__(self):
-        return f"[{self.get_type_incident_display()}] {self.commande.reference} — {self.get_statut_display()}"
+        return f"[{self.get_type_incident_display()}] Commande {self.commande.id} — {self.get_statut_display()}"

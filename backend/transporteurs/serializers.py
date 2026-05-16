@@ -1,34 +1,8 @@
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from rest_framework import serializers
-from .models import Transporteur, Vehicule, Chauffeur, Entrepot
+from .models import Transporteur
 
-
-class TransporteurSerializer(GeoFeatureModelSerializer):
+class TransporteurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transporteur
-        geo_field = "localisation"
-        fields = '__all__'
-
-
-class EntrepotSerializer(GeoFeatureModelSerializer):
-    class Meta:
-        model = Entrepot
-        geo_field = "localisation"
-        fields = '__all__'
-
-
-class VehiculeSerializer(serializers.ModelSerializer):
-    transporteur_nom = serializers.CharField(source='transporteur.nom', read_only=True)
-
-    class Meta:
-        model = Vehicule
-        fields = '__all__'
-
-
-class ChauffeurSerializer(serializers.ModelSerializer):
-    transporteur_nom = serializers.CharField(source='transporteur.nom', read_only=True)
-    vehicule_immat = serializers.CharField(source='vehicule.immatriculation', read_only=True)
-
-    class Meta:
-        model = Chauffeur
-        fields = '__all__'
+        fields = ('id', 'vehicule_type', 'capacite_kg', 'plaque', 'is_available', 'position_actuelle', 'is_verified', 'note_moyenne')
+        read_only_fields = ('id', 'is_verified', 'note_moyenne')
