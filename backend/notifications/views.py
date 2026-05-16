@@ -1,31 +1,43 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Notification
 from .serializers import NotificationSerializer
 
 
-class NotificationViewSet(viewsets.ModelViewSet):
-    queryset = Notification.objects.all()
+class NotificationListView(generics.ListAPIView):
     serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
 
-    @action(detail=True, methods=['post'])
-    def lire(self, request, pk=None):
-        """Marquer une notification comme lue."""
-        notif = self.get_object()
+    def get_queryset(self):
+        return Notification.objects.filter(destinataire=self.request.user)
+
+
+class NonLuesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Notification.objects.filter(destinataire=request.user, lue=False)
+        return Response({'count': qs.count(), 'results': NotificationSerializer(qs[:10], many=True).data})
+
+
+class MarquerLueView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, destinataire=request.user)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         notif.lue = True
-        notif.save()
-        return Response({'status': 'notification marquée comme lue'})
+        notif.save(update_fields=['lue'])
+        return Response({'status': 'ok'})
 
-    @action(detail=False, methods=['post'])
-    def tout_lire(self, request):
-        """Marquer toutes les notifications comme lues."""
-        Notification.objects.filter(lue=False).update(lue=True)
-        return Response({'status': 'toutes les notifications marquées comme lues'})
 
-    @action(detail=False, methods=['get'])
-    def non_lues(self, request):
-        """Retourner uniquement les notifications non lues."""
-        qs = Notification.objects.filter(lue=False)
-        serializer = self.get_serializer(qs, many=True)
-        return Response({'count': qs.count(), 'results': serializer.data})
+class ToutMarquerLuView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(destinataire=request.user, lue=False).update(lue=True)
+        return Response({'status': 'Toutes les notifications marquées comme lues.'})

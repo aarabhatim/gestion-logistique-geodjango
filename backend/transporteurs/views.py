@@ -1,40 +1,124 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
+from django.utils import timezone
+from rest_framework import generics, status, filters
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django_filters.rest_framework import DjangoFilterBackend
+
+from accounts.permissions import IsAdminRole, IsTransporteurRole
 from .models import Transporteur
-from .serializers import TransporteurSerializer
+from .serializers import (
+    TransporteurSerializer, TransporteurOnboardingSerializer,
+    TransporteurDashboardSerializer, TransporteurDisponibleSerializer,
+)
 
-class TransporteurViewSet(viewsets.ModelViewSet):
-    queryset = Transporteur.objects.all()
+
+class MonProfilTransporteurView(APIView):
+    permission_classes = [IsTransporteurRole]
+
+    def get(self, request):
+        try:
+            t = request.user.transporteur_profile
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(TransporteurDashboardSerializer(t).data)
+
+    def post(self, request):
+        if hasattr(request.user, 'transporteur_profile'):
+            return Response({'error': 'Profil transporteur déjà créé.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = TransporteurOnboardingSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            t = serializer.save()
+            return Response(TransporteurSerializer(t).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        try:
+            t = request.user.transporteur_profile
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TransporteurOnboardingSerializer(t, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(TransporteurSerializer(t).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ToggleDisponibiliteView(APIView):
+    permission_classes = [IsTransporteurRole]
+
+    def post(self, request):
+        try:
+            t = request.user.transporteur_profile
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        t.is_available = not t.is_available
+        t.save(update_fields=['is_available'])
+        return Response({
+            'is_available': t.is_available,
+            'message': 'Disponible' if t.is_available else 'Indisponible',
+        })
+
+
+class TransporteurDisponiblesView(APIView):
+    """Transporteurs disponibles dans un rayon — utilisé par le matching."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        lat = request.query_params.get('lat')
+        lon = request.query_params.get('lon')
+        rayon = float(request.query_params.get('rayon', 5))
+        vehicule_type = request.query_params.get('vehicule_type')
+        poids = float(request.query_params.get('poids_kg', 0))
+
+        qs = Transporteur.objects.filter(is_available=True, is_verified=True, is_on_delivery=False)
+
+        if vehicule_type:
+            qs = qs.filter(vehicule_type=vehicule_type)
+        if poids:
+            qs = qs.filter(capacite_kg__gte=poids)
+
+        if lat and lon:
+            point = Point(float(lon), float(lat), srid=4326)
+            qs = (
+                qs.filter(position_actuelle__distance_lte=(point, D(km=rayon)))
+                  .annotate(distance=Distance('position_actuelle', point))
+                  .order_by('distance')
+            )
+
+        serializer = TransporteurDisponibleSerializer(qs[:20], many=True)
+        return Response(serializer.data)
+
+
+# ─── Admin ────────────────────────────────────────────────────────────────────
+
+class AdminTransporteurListView(generics.ListAPIView):
     serializer_class = TransporteurSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminRole]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['is_verified', 'is_available', 'vehicule_type']
+    search_fields = ['user__email', 'user__first_name', 'plaque']
+    queryset = Transporteur.objects.select_related('user').all()
 
-    def get_queryset(self):
-        # Admin sees all, driver sees only their profile
-        user = self.request.user
-        if user.role == 'ADMIN':
-            return Transporteur.objects.all()
-        return Transporteur.objects.filter(user=user)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+class AdminTransporteurValidateView(APIView):
+    permission_classes = [IsAdminRole]
 
-    @action(detail=True, methods=['patch'])
-    def update_location(self, request, pk=None):
-        transporteur = self.get_object()
-        position = request.data.get('position_actuelle')
-        if position:
-            transporteur.position_actuelle = position
-            transporteur.save()
-            return Response({'status': 'Location updated'})
-        return Response({'error': 'No position provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['patch'])
-    def toggle_availability(self, request, pk=None):
-        transporteur = self.get_object()
-        is_available = request.data.get('is_available')
-        if is_available is not None:
-            transporteur.is_available = is_available
-            transporteur.save()
-            return Response({'status': 'Availability updated', 'is_available': is_available})
-        return Response({'error': 'is_available flag not provided'}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, pk):
+        try:
+            t = Transporteur.objects.get(pk=pk)
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        action = request.data.get('action')
+        if action == 'approuver':
+            t.is_verified = True
+            t.save()
+            return Response({'message': f'{t.user.get_full_name()} approuvé.'})
+        elif action == 'rejeter':
+            t.is_verified = False
+            t.save()
+            return Response({'message': 'Rejeté.'})
+        return Response({'error': 'Action invalide.'}, status=status.HTTP_400_BAD_REQUEST)

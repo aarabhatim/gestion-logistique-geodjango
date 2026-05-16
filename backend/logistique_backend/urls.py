@@ -2,18 +2,45 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from logistique_backend.stats_views import StatsView
+from django.http import JsonResponse
+
+
+def api_root(request):
+    return JsonResponse({
+        'projet': 'DeliverMap',
+        'version': '1.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'auth': '/api/auth/',
+            'fondateurs': '/api/fondateurs/',
+            'commandes': '/api/commandes/',
+            'livraisons': '/api/livraisons/',
+            'transporteurs': '/api/transporteurs/',
+            'notifications': '/api/notifications/',
+            'analytics': '/api/analytics/',
+        },
+        'websockets': {
+            'tracking': 'ws://localhost:8000/ws/livraison/{commande_id}/',
+            'notifications': 'ws://localhost:8000/ws/notifications/',
+        }
+    })
+
 
 urlpatterns = [
+    path('', api_root),
     path('admin/', admin.site.urls),
+    # Auth & Utilisateurs
     path('api/auth/', include('accounts.urls')),
-    path('api/clients/', include('clients.urls')),
-    path('api/transporteurs/', include('transporteurs.urls')),
-    path('api/commandes/', include('commandes.urls')),
-    path('api/livraisons/', include('livraisons.urls')),
+    # Fondateurs & Produits
     path('api/fondateurs/', include('fondateurs.urls')),
-    path('api/tracking/', include('tracking.urls')),
+    # Commandes & Avis
+    path('api/commandes/', include('commandes.urls')),
+    # Livraisons & Tracking
+    path('api/livraisons/', include('livraisons.urls')),
+    # Transporteurs
+    path('api/transporteurs/', include('transporteurs.urls')),
+    # Notifications
     path('api/notifications/', include('notifications.urls')),
-    path('api/incidents/', include('incidents.urls')),
-    path('api/stats/', StatsView.as_view(), name='stats'),
+    # Analytics / KPIs
+    path('api/analytics/', include('analytics.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

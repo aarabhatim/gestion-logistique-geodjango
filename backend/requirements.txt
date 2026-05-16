@@ -1,13 +1,40 @@
-Django>=4.2,<5.0
-djangorestframework
-djangorestframework-gis
-django-cors-headers
-psycopg2-binary
-djangorestframework-simplejwt
-python-dotenv
-dj-database-url
-requests
-Pillow
-channels
-daphne
-django-filter
+# ─── Django Core ─────────────────────────────────────────────────────────────
+Django>=5.0,<5.2
+djangorestframework>=3.15
+djangorestframework-gis>=1.0
+django-cors-headers>=4.3
+django-filter>=23.5
+
+# ─── Database ────────────────────────────────────────────────────────────────
+psycopg2-binary>=2.9
+dj-database-url>=2.1
+
+# ─── Auth / JWT ──────────────────────────────────────────────────────────────
+djangorestframework-simplejwt>=5.3
+
+# ─── WebSocket / Realtime ────────────────────────────────────────────────────
+channels>=4.0
+channels-redis>=4.2
+daphne>=4.0
+
+# ─── Task Queue ──────────────────────────────────────────────────────────────
+celery>=5.3
+redis>=5.0
+django-celery-beat>=2.5
+django-celery-results>=2.5
+
+# ─── Storage / Files ─────────────────────────────────────────────────────────
+Pillow>=10.0
+django-storages>=1.14
+
+# ─── Paiement ────────────────────────────────────────────────────────────────
+stripe>=7.0
+
+# ─── Utilities ───────────────────────────────────────────────────────────────
+python-dotenv>=1.0
+requests>=2.31
+python-slugify>=8.0
+phonenumbers>=8.13
+
+# ─── Dev Tools ───────────────────────────────────────────────────────────────
+django-extensions>=3.2

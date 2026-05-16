@@ -17,12 +17,11 @@ const Login = () => {
     setLoading(true);
     try {
       const user = await login(form.username, form.password);
-      // Redirect based on role (backend roles are uppercase)
       if (user.role === 'ADMIN') navigate('/');
       else if (user.role === 'CLIENT') navigate('/client');
       else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
-      else if (user.role === 'FONDATEUR') navigate('/store');
-      else navigate('/'); // Fallback
+      else if (user.role === 'FONDATEUR') navigate('/');
+      else navigate('/');
     } catch (err) {
       setError(err.response?.data?.non_field_errors?.[0] || 'Identifiants incorrects.');
     } finally {

@@ -1,10 +1,15 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import TransporteurViewSet
-
-router = DefaultRouter()
-router.register(r'transporteurs', TransporteurViewSet)
+from django.urls import path
+from .views import (
+    MonProfilTransporteurView, ToggleDisponibiliteView,
+    TransporteurDisponiblesView,
+    AdminTransporteurListView, AdminTransporteurValidateView,
+)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('mon-profil/', MonProfilTransporteurView.as_view(), name='mon-profil-transporteur'),
+    path('disponibilite/', ToggleDisponibiliteView.as_view(), name='toggle-disponibilite'),
+    path('disponibles/', TransporteurDisponiblesView.as_view(), name='transporteurs-disponibles'),
+    # Admin
+    path('admin/', AdminTransporteurListView.as_view(), name='admin-transporteurs'),
+    path('admin/<int:pk>/valider/', AdminTransporteurValidateView.as_view(), name='admin-valider-transporteur'),
 ]

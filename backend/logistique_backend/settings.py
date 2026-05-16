@@ -3,28 +3,23 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env file
 load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 
+# ─── Windows GDAL/GEOS fix ────────────────────────────────────────────────────
 if os.name == 'nt':
-    import ctypes
-
     try:
         os.add_dll_directory(r'C:\Program Files\PostgreSQL\16\bin')
         GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgeos_c.dll'
         GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgdal-35.dll'
-    except:
+    except Exception:
         pass
 
-
-SECRET_KEY = 'django-insecure-logistique-secret-key-change-in-production'
-
-DEBUG = True
-
+SECRET_KEY = os.environ.get('SECRET_KEY', 'delivermap-secret-key-change-in-production-2025')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
+
+AUTH_USER_MODEL = 'accounts.CustomUser'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -37,19 +32,18 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'rest_framework_gis',
-    'corsheaders',
-    # JWT Token Blacklist
     'rest_framework_simplejwt.token_blacklist',
-    # Local apps
+    'corsheaders',
+    'django_filters',
+    'channels',
+    # DeliverMap apps
     'accounts',
-    'clients',
-    'transporteurs',
-    'commandes',
-    'tracking',
-    'notifications.apps.NotificationsConfig',
-    'incidents',
     'fondateurs',
+    'commandes',
     'livraisons',
+    'transporteurs',
+    'notifications',
+    'analytics',
 ]
 
 MIDDLEWARE = [
@@ -62,8 +56,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-AUTH_USER_MODEL = 'accounts.CustomUser'
 
 ROOT_URLCONF = 'logistique_backend.urls'
 
@@ -84,6 +76,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'logistique_backend.wsgi.application'
+ASGI_APPLICATION = 'logistique_backend.asgi.application'
 
 # ─── Database PostgreSQL + PostGIS ───────────────────────────────────────────
 DATABASES = {
@@ -97,27 +90,63 @@ DATABASES = {
     }
 }
 
+# ─── Channels / Redis ────────────────────────────────────────────────────────
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [REDIS_URL],
+        },
+    },
+}
+
+# Fallback en mémoire si Redis indisponible (dev uniquement)
+try:
+    import channels_redis  # noqa: F401
+except ImportError:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+
+# ─── Celery ──────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TIMEZONE = 'Africa/Casablanca'
+
 # ─── Django REST Framework ────────────────────────────────────────────────────
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
 }
 
-# ─── JWT Configuration ────────────────────────────────────────────────────────
+# ─── JWT ─────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.DeliverMapTokenObtainSerializer',
 }
 
-# ─── CORS (React dev server) ──────────────────────────────────────────────────
+# ─── CORS ────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://localhost:5174',
@@ -128,7 +157,21 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# ─── Auth Password Validators ─────────────────────────────────────────────────
+# ─── Stripe ──────────────────────────────────────────────────────────────────
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+
+# ─── Email ───────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@delivermap.ma'
+
+# ─── Commission plateforme (%) ────────────────────────────────────────────────
+PLATFORM_COMMISSION_RATE = float(os.environ.get('COMMISSION_RATE', '0.15'))
+
+# ─── OSRM routing server ─────────────────────────────────────────────────────
+OSRM_BASE_URL = os.environ.get('OSRM_BASE_URL', 'http://router.project-osrm.org')
+
+# ─── Auth validators ─────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -141,7 +184,8 @@ TIME_ZONE = 'Africa/Casablanca'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

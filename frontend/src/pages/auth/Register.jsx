@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Truck, Package, ChevronRight, AlertCircle } from 'lucide-react';
+import { Truck, Package, ChevronRight, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Auth.css';
 
-const STEPS = ['role', 'details'];
+const VEHICULE_TYPES = [
+  { value: 'MOTO',        label: 'Moto / Scooter',   emoji: '🛵' },
+  { value: 'VOITURE',     label: 'Voiture',           emoji: '🚗' },
+  { value: 'CAMIONNETTE', label: 'Camionnette / Van', emoji: '🚐' },
+  { value: 'CAMION',      label: 'Camion',            emoji: '🚚' },
+];
 
 const Register = () => {
   const { register } = useAuth();
@@ -13,14 +18,20 @@ const Register = () => {
   const [role, setRole] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState({
     username: '', email: '', password: '', first_name: '', last_name: '',
-    telephone: '', entreprise: '', adresse: '', permis: '', date_naissance: '',
+    phone: '', adresse: '',
+    // Chauffeur
+    vehicule_type: 'VOITURE', plaque: '', permis: '',
   });
 
-  const handleRoleSelect = (selectedRole) => {
-    setRole(selectedRole);
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const handleRoleSelect = (r) => {
+    setRole(r);
     setStep(1);
   };
 
@@ -29,53 +40,79 @@ const Register = () => {
     setError('');
     setLoading(true);
     try {
-      const payload = { ...form, role };
-      // Map 'telephone' to 'phone' if needed for backend
-      if (payload.telephone) {
-        payload.phone = payload.telephone;
-        delete payload.telephone;
+      const payload = {
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone,
+        role,                             // 'CLIENT' or 'TRANSPORTEUR'
+      };
+      if (role === 'TRANSPORTEUR') {
+        payload.vehicule_type = form.vehicule_type;
+        payload.plaque = form.plaque;
+        payload.permis = form.permis;
       }
-      if (!payload.date_naissance) {
-        payload.date_naissance = null;
-      }
+
       const user = await register(payload);
-      if (user.role === 'CLIENT') navigate('/client');
-      else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
-      else if (user.role === 'FONDATEUR') navigate('/store');
+      setSuccess(true);
+      setTimeout(() => {
+        if (user.role === 'CLIENT') navigate('/client');
+        else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
+        else navigate('/');
+      }, 1200);
     } catch (err) {
       const errors = err.response?.data;
-      if (errors) {
-        const firstError = Object.values(errors)[0];
-        setError(Array.isArray(firstError) ? firstError[0] : firstError);
+      if (errors && typeof errors === 'object') {
+        const msgs = Object.entries(errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`);
+        setError(msgs.join(' · '));
       } else {
-        setError("Erreur lors de l'inscription.");
+        setError("Erreur lors de l'inscription. Vérifiez vos informations.");
       }
     } finally {
       setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <div className="auth-page">
+        <div className="auth-container animate-fade-in" style={{ maxWidth: 480, textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+          <h2 className="auth-title text-gradient">Compte créé !</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>Redirection en cours...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-page">
-      <div className="auth-container animate-fade-in" style={{ maxWidth: step === 0 ? '640px' : '500px' }}>
+      <div className="auth-container animate-fade-in" style={{ maxWidth: step === 0 ? '680px' : '520px' }}>
         <div className="auth-logo">
           <div className="logo-icon"><Truck size={28} color="white" /></div>
-          <h1 className="logo-text text-gradient">LogisTrack</h1>
+          <h1 className="logo-text text-gradient">DeliverMap</h1>
         </div>
 
-        {/* ÉTAPE 1 : Choix du rôle */}
+        {/* ── STEP 0: Role selection ────────────────────────────────────── */}
         {step === 0 && (
           <div className="role-selection">
             <h2 className="auth-title">Bienvenue !</h2>
-            <p className="auth-subtitle">Choisissez votre profil pour commencer</p>
-            <div className="role-cards">
+            <p className="auth-subtitle">Choisissez votre profil pour créer votre compte</p>
 
+            <div className="role-cards">
               <button className="role-card glass-card" onClick={() => handleRoleSelect('CLIENT')}>
                 <div className="role-card-icon role-client">
                   <Package size={40} />
                 </div>
                 <h3>Je suis Client</h3>
-                <p>Je veux expédier des marchandises et suivre mes commandes en temps réel.</p>
+                <p>Je commande des produits et suis mes livraisons en temps réel.</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+                  {['🛒 Catalogue', '📍 Suivi live', '⭐ Avis'].map(t => (
+                    <span key={t} style={{ fontSize: 11, background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '2px 8px', borderRadius: 20 }}>{t}</span>
+                  ))}
+                </div>
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
               </button>
 
@@ -84,110 +121,154 @@ const Register = () => {
                   <Truck size={40} />
                 </div>
                 <h3>Je suis Chauffeur</h3>
-                <p>Je veux gérer mes missions de livraison et partager ma position en temps réel.</p>
-                <span className="role-cta">Choisir <ChevronRight size={18} /></span>
-              </button>
-
-              <button className="role-card glass-card" onClick={() => handleRoleSelect('FONDATEUR')}>
-                <div className="role-card-icon role-fondateur" style={{ background: 'var(--success-color)' }}>
-                  <Package size={40} />
+                <p>Je gère mes missions de livraison et partage ma position en direct.</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+                  {['🚗 Missions', '💰 Revenus', '🗺️ Navigation'].map(t => (
+                    <span key={t} style={{ fontSize: 11, background: 'rgba(59,130,246,0.12)', color: '#60a5fa', padding: '2px 8px', borderRadius: 20 }}>{t}</span>
+                  ))}
                 </div>
-                <h3>Je suis une Boutique</h3>
-                <p>Je veux vendre mes produits et gérer mes livraisons locales.</p>
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
               </button>
-
             </div>
-            <p className="auth-footer" style={{ textAlign: 'center', marginTop: '2rem' }}>
-              Déjà un compte ? <Link to="/login" className="auth-link">Se connecter</Link>
+
+            <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)', fontSize: 14 }}>
+              Déjà un compte ?{' '}
+              <Link to="/login" style={{ color: '#3b82f6', fontWeight: 600 }}>Se connecter</Link>
             </p>
           </div>
         )}
 
-        {/* ÉTAPE 2 : Formulaire d'inscription */}
+        {/* ── STEP 1: Registration form ─────────────────────────────────── */}
         {step === 1 && (
           <div className="auth-card glass-card">
-            <button className="btn-back" onClick={() => setStep(0)}>← Retour</button>
-            <h2 className="auth-title">
-              {role === 'CLIENT' ? '📦 Inscription Client' : role === 'TRANSPORTEUR' ? '🚛 Inscription Chauffeur' : '🏪 Inscription Boutique'}
-            </h2>
+            <button className="btn-back" onClick={() => { setStep(0); setError(''); }}>← Retour</button>
 
-            {error && <div className="auth-error"><AlertCircle size={16} /> {error}</div>}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 36, marginBottom: 6 }}>{role === 'CLIENT' ? '📦' : '🚗'}</div>
+              <h2 className="auth-title" style={{ fontSize: '1.4rem' }}>
+                {role === 'CLIENT' ? 'Inscription Client' : 'Inscription Chauffeur'}
+              </h2>
+              <span style={{
+                display: 'inline-block', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
+                background: role === 'CLIENT' ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)',
+                color: role === 'CLIENT' ? '#10b981' : '#60a5fa',
+                padding: '3px 12px', borderRadius: 20, marginTop: 4,
+              }}>
+                {role}
+              </span>
+            </div>
 
-            <form onSubmit={handleSubmit} className="auth-form form-grid">
-              <div className="form-group">
-                <label>Prénom</label>
-                <input required type="text" className="glass-input" value={form.first_name}
-                  onChange={e => setForm({ ...form, first_name: e.target.value })} />
+            {error && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: '1rem', fontSize: 13, color: '#fca5a5' }}>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{error}</span>
               </div>
-              <div className="form-group">
-                <label>Nom</label>
-                <input required type="text" className="glass-input" value={form.last_name}
-                  onChange={e => setForm({ ...form, last_name: e.target.value })} />
+            )}
+
+            <form onSubmit={handleSubmit}>
+              {/* Identité */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Prénom *</label>
+                  <input required className="glass-input" value={form.first_name}
+                    onChange={e => set('first_name', e.target.value)} placeholder="Mohamed" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Nom *</label>
+                  <input required className="glass-input" value={form.last_name}
+                    onChange={e => set('last_name', e.target.value)} placeholder="El Alami" />
+                </div>
               </div>
-              <div className="form-group full-width">
-                <label>Nom d'utilisateur</label>
-                <input required type="text" className="glass-input" value={form.username}
-                  onChange={e => setForm({ ...form, username: e.target.value })} />
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Nom d'utilisateur *</label>
+                <input required className="glass-input" value={form.username}
+                  onChange={e => set('username', e.target.value)} placeholder="mohalami" autoComplete="username" />
               </div>
-              <div className="form-group full-width">
-                <label>Email</label>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Email *</label>
                 <input required type="email" className="glass-input" value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div className="form-group full-width">
-                <label>Mot de passe</label>
-                <input required type="password" className="glass-input" minLength={6} value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })} />
-              </div>
-              <div className="form-group full-width">
-                <label>Téléphone</label>
-                <input type="text" className="glass-input" value={form.telephone}
-                  onChange={e => setForm({ ...form, telephone: e.target.value })} />
+                  onChange={e => set('email', e.target.value)} placeholder="m.alami@gmail.com" autoComplete="email" />
               </div>
 
-              {/* Champs spécifiques au rôle */}
-              {role === 'CLIENT' && (
-                <>
-                  <div className="form-group full-width">
-                    <label>Entreprise (optionnel)</label>
-                    <input type="text" className="glass-input" value={form.entreprise}
-                      onChange={e => setForm({ ...form, entreprise: e.target.value })} />
-                  </div>
-                  <div className="form-group full-width">
-                    <label>Adresse</label>
-                    <input type="text" className="glass-input" value={form.adresse}
-                      onChange={e => setForm({ ...form, adresse: e.target.value })} />
-                  </div>
-                </>
-              )}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Mot de passe * (min. 6 caractères)</label>
+                <div style={{ position: 'relative' }}>
+                  <input required type={showPwd ? 'text' : 'password'} className="glass-input"
+                    minLength={6} value={form.password}
+                    onChange={e => set('password', e.target.value)}
+                    placeholder="••••••••" autoComplete="new-password"
+                    style={{ paddingRight: '2.5rem' }} />
+                  <button type="button" onClick={() => setShowPwd(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Téléphone</label>
+                <input className="glass-input" value={form.phone}
+                  onChange={e => set('phone', e.target.value)} placeholder="+212 6XX XXX XXX" type="tel" />
+              </div>
+
+              {/* ── Champs spécifiques transporteur ───────────────────── */}
               {role === 'TRANSPORTEUR' && (
-                <>
-                  <div className="form-group">
-                    <label>Numéro de permis</label>
-                    <input type="text" className="glass-input" value={form.permis}
-                      onChange={e => setForm({ ...form, permis: e.target.value })} />
+                <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginBottom: '0.75rem', letterSpacing: '0.06em' }}>
+                    🚗 INFORMATIONS VÉHICULE
                   </div>
-                  <div className="form-group">
-                    <label>Date de naissance</label>
-                    <input type="date" className="glass-input" value={form.date_naissance}
-                      onChange={e => setForm({ ...form, date_naissance: e.target.value })} />
+
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Type de véhicule *</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {VEHICULE_TYPES.map(({ value, label, emoji }) => (
+                        <button key={value} type="button" onClick={() => set('vehicule_type', value)}
+                          style={{
+                            padding: '8px 10px', borderRadius: 10, border: `2px solid ${form.vehicule_type === value ? '#3b82f6' : 'rgba(255,255,255,0.08)'}`,
+                            background: form.vehicule_type === value ? 'rgba(59,130,246,0.15)' : 'transparent',
+                            cursor: 'pointer', color: 'white', fontSize: 13, textAlign: 'left',
+                            display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+                          }}>
+                          <span>{emoji}</span> {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </>
-              )}
-              {role === 'FONDATEUR' && (
-                <div className="form-group full-width">
-                  <label>Nom de la boutique</label>
-                  <input required type="text" className="glass-input" value={form.entreprise}
-                    onChange={e => setForm({ ...form, entreprise: e.target.value })} />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Plaque d'immatriculation *</label>
+                      <input required={role === 'TRANSPORTEUR'} className="glass-input" value={form.plaque}
+                        onChange={e => set('plaque', e.target.value)} placeholder="12345-A-1" />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>N° permis (optionnel)</label>
+                      <input className="glass-input" value={form.permis}
+                        onChange={e => set('permis', e.target.value)} placeholder="B-123456" />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '0.75rem', fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle size={12} color="#f59e0b" />
+                    Votre compte sera vérifié par l'admin avant activation
+                  </div>
                 </div>
               )}
 
-              <div className="form-actions full-width">
-                <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                  {loading ? 'Création en cours...' : "Créer mon compte"}
-                </button>
-              </div>
+              <button type="submit" className="btn btn-primary" disabled={loading}
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.875rem', fontSize: 15 }}>
+                {loading
+                  ? <><span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 8 }} />Création...</>
+                  : `Créer mon compte ${role === 'CLIENT' ? '📦' : '🚗'}`
+                }
+              </button>
+
+              <p style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: 13 }}>
+                Déjà un compte ?{' '}
+                <Link to="/login" style={{ color: '#3b82f6', fontWeight: 600 }}>Se connecter</Link>
+              </p>
             </form>
           </div>
         )}

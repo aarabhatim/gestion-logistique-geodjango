@@ -45,9 +45,8 @@ export const AuthProvider = ({ children }) => {
 
   const fetchMe = useCallback(async () => {
     try {
-      const res = await api.get('auth/profile/');
+      const res = await api.get('auth/me/');
       setUser(res.data);
-      return res.data;
     } catch {
       setUser(null);
       localStorage.removeItem('access_token');
@@ -71,14 +70,16 @@ export const AuthProvider = ({ children }) => {
     const res = await api.post('auth/login/', { username, password });
     localStorage.setItem('access_token', res.data.access);
     localStorage.setItem('refresh_token', res.data.refresh);
-    return await fetchMe();
+    setUser(res.data.user);
+    return res.data.user;
   };
 
   const register = async (data) => {
-    // API returns standard user data on register. We must login afterward or if token is returned.
     const res = await api.post('auth/register/', data);
-    // Since we don't return JWT from register directly, just return the user data.
-    return res.data;
+    localStorage.setItem('access_token', res.data.access);
+    localStorage.setItem('refresh_token', res.data.refresh);
+    setUser(res.data.user);
+    return res.data.user;
   };
 
   const logout = async () => {
@@ -93,11 +94,10 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => user?.role === 'ADMIN';
   const isClient = () => user?.role === 'CLIENT';
-  const isTransporteur = () => user?.role === 'TRANSPORTEUR';
-  const isFondateur = () => user?.role === 'FONDATEUR';
+  const isChauffeur = () => user?.role === 'TRANSPORTEUR';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isClient, isTransporteur, isFondateur }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isClient, isChauffeur }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,131 +1,139 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
-import { getCommandes, getClients } from '../services/api';
-import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { transporteursApi, commandesApi, fondateursApi } from '../services/api';
 
-// Fix for default Leaflet icon paths in React
+// ─── Fix default Leaflet icon paths ──────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Custom truck icon
-const truckIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+// ─── Custom marker icons ──────────────────────────────────────────────────────
+const makePin = (color, emoji) => L.divIcon({
+  className: '',
+  html: `<div style="
+    width:34px;height:34px;background:${color};
+    border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+    border:2px solid rgba(255,255,255,0.8);
+    box-shadow:0 2px 8px rgba(0,0,0,0.45);
+    display:flex;align-items:center;justify-content:center;
+  "><span style="transform:rotate(45deg);font-size:15px;line-height:1">${emoji}</span></div>`,
+  iconSize: [34, 34],
+  iconAnchor: [17, 34],
+  popupAnchor: [0, -36],
 });
 
-// Custom destination icon
-const destIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const ICONS = {
+  available:  makePin('#10b981', '🚗'),
+  delivering: makePin('#f59e0b', '🚚'),
+  offline:    makePin('#475569', '🚙'),
+  boutique:   makePin('#3b82f6', '🏪'),
+  delivery:   makePin('#ef4444', '📦'),
+};
 
+// ─── MapComponent (shared, used by admin layout) ──────────────────────────────
 const MapComponent = () => {
-  // Center on Morocco (Tanger region roughly)
-  const [position, setPosition] = useState([35.7595, -5.8340]);
-  const [commandes, setCommandes] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [transporteurs, setTransporteurs] = useState([]);
+  const [boutiques,     setBoutiques]     = useState([]);
+  const [livraisons,    setLivraisons]    = useState([]);
+  const [loading,       setLoading]       = useState(true);
 
   useEffect(() => {
-    const fetchMapData = async () => {
-      try {
-        const [cmdRes, cliRes] = await Promise.all([
-          getCommandes(), getClients()
-        ]);
-        const getFeatures = (res) => {
-          if (res.data.features) return res.data.features;
-          if (res.data.results && res.data.results.features) return res.data.results.features;
-          return [];
-        };
-
-        setCommandes(getFeatures(cmdRes));
-        setClients(getFeatures(cliRes));
-      } catch (error) {
-        console.error("Erreur chargement carte", error);
-      }
-    };
-    fetchMapData();
+    Promise.all([
+      transporteursApi.adminListe().catch(() => ({ data: [] })),
+      fondateursApi.list({ is_verified: true }).catch(() => ({ data: [] })),
+      commandesApi.list({ statut: 'EN_ROUTE' }).catch(() => ({ data: [] })),
+    ]).then(([tRes, bRes, cRes]) => {
+      setTransporteurs(tRes.data.results || tRes.data || []);
+      setBoutiques(bRes.data.results || bRes.data || []);
+      setLivraisons(cRes.data.results || cRes.data || []);
+    }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  if (loading) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+        Chargement de la carte…
+      </div>
+    );
+  }
+
   return (
-    <MapContainer 
-      center={position} 
-      zoom={11} 
+    <MapContainer
+      center={[33.5731, -7.5898]}
+      zoom={6}
       style={{ height: '100%', width: '100%', borderRadius: 'inherit', zIndex: 1 }}
+      zoomControl={true}
     >
-      {/* Premium dark map theme */}
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
       />
-      
-      {/* Clients (Destinations potentielles) */}
-      {clients.map(client => {
-        if (!client.geometry || !client.geometry.coordinates) return null;
-        // GeoJSON uses [lon, lat], Leaflet uses [lat, lon]
-        const [lon, lat] = client.geometry.coordinates;
+
+      {/* Transporteurs */}
+      {transporteurs.map(t => {
+        if (!t.latitude || !t.longitude) return null;
+        const icon = t.is_on_delivery ? ICONS.delivering : t.is_available ? ICONS.available : ICONS.offline;
         return (
-          <Marker key={`client-${client.id}`} position={[lat, lon]} icon={destIcon}>
+          <Marker key={`t-${t.id}`} position={[t.latitude, t.longitude]} icon={icon}>
             <Popup>
-              <div style={{ color: '#000' }}>
-                <strong>Client: {client.properties.prenom} {client.properties.nom}</strong><br/>
-                {client.properties.adresse}
+              <div style={{ minWidth: 160 }}>
+                <strong>{t.nom_complet || t.user_email}</strong><br />
+                <span style={{ fontSize: 12, color: '#64748b' }}>{t.vehicule_type} · {t.plaque}</span><br />
+                <span style={{ fontSize: 12, color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#64748b' }}>
+                  {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Disponible' : '⭕ Hors ligne'}
+                </span><br />
+                <span style={{ fontSize: 12, color: '#64748b' }}>⭐ {t.note_moyenne?.toFixed(1) || '–'} · {t.nombre_livraisons || 0} livraisons</span>
               </div>
             </Popup>
           </Marker>
         );
       })}
 
-      {/* Commandes (Points de départ) et Itinéraires */}
-      {commandes.map(cmd => {
-        if (!cmd.geometry || !cmd.geometry.coordinates) return null;
-        const [lon, lat] = cmd.geometry.coordinates;
-        const itineraire = cmd.properties.itineraire;
-        
+      {/* Boutiques */}
+      {boutiques.map(b => {
+        if (!b.latitude || !b.longitude) return null;
         return (
-          <React.Fragment key={`cmd-${cmd.id}`}>
-            <Marker position={[lat, lon]} icon={truckIcon}>
+          <Marker key={`b-${b.id}`} position={[b.latitude, b.longitude]} icon={ICONS.boutique}>
+            <Popup>
+              <div style={{ minWidth: 160 }}>
+                <strong>{b.nom_boutique}</strong><br />
+                <span style={{ fontSize: 12, color: '#64748b' }}>{b.categorie} · {b.ville}</span><br />
+                <span style={{ fontSize: 12, color: b.is_open ? '#10b981' : '#ef4444' }}>
+                  {b.is_open ? '🟢 Ouvert' : '🔴 Fermé'}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+
+      {/* Livraisons actives */}
+      {livraisons.map(cmd => {
+        const lat = cmd.latitude_livraison;
+        const lon = cmd.longitude_livraison;
+        if (!lat || !lon) return null;
+        return (
+          <React.Fragment key={`l-${cmd.id}`}>
+            <Marker position={[lat, lon]} icon={ICONS.delivery}>
               <Popup>
-                <div style={{ color: '#000' }}>
-                  <strong>Commande: {cmd.properties.reference}</strong><br/>
-                  Statut: {cmd.properties.statut}<br/>
-                  Marchandise: {cmd.properties.type_marchandise}<br/>
-                  {cmd.properties.distance_km && (
-                    <>
-                      <hr style={{ margin: '5px 0' }}/>
-                      Distance: <strong>{cmd.properties.distance_km} km</strong><br/>
-                      Durée estimée: <strong>{cmd.properties.duree_estimee_min} min</strong>
-                    </>
-                  )}
+                <div style={{ minWidth: 160 }}>
+                  <strong>📦 {cmd.reference}</strong><br />
+                  <span style={{ fontSize: 12, color: '#64748b' }}>{cmd.fondateur_detail?.nom_boutique}</span><br />
+                  <span style={{ fontSize: 12 }}>{cmd.adresse_livraison}</span><br />
+                  <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>{Math.round(cmd.total_price || 0)} MAD</span>
                 </div>
               </Popup>
             </Marker>
-            
-            {/* Tracé de l'itinéraire OSRM */}
-            {itineraire && (
-              <GeoJSON 
-                data={itineraire} 
-                style={() => ({
-                  color: '#3b82f6',
-                  weight: 4,
-                  opacity: 0.7,
-                  dashArray: '10, 10',
-                  lineJoin: 'round'
-                })} 
-              />
-            )}
+            <Circle
+              center={[lat, lon]}
+              radius={400}
+              pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.07, weight: 1, dashArray: '5 4' }}
+            />
           </React.Fragment>
         );
       })}
