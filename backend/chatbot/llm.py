@@ -239,12 +239,30 @@ def _run_fallback(message, history, user):
 
 # ─── Point d'entrée ───────────────────────────────────────────────────────────
 
+import logging as _logging
+_log = _logging.getLogger(__name__)
+
+_GREETING_FALLBACK = {
+    'reply': (
+        "Bonjour ! Je suis votre assistant DeliverMap. Posez-moi une "
+        "question simple comme 'un casque a moins de 300 dh' ou "
+        "'ou en est ma commande ?'."
+    ),
+    'products': [],
+    'order': None,
+    'action': None,
+}
+
+
 def run_conversation(message, history, user):
     history = history or []
     if getattr(settings, 'MISTRAL_API_KEY', ''):
         try:
             return _run_mistral(message, history, user)
-        except Exception:
-            # API indisponible / quota / réseau -> on bascule en local, la démo continue
-            pass
-    return _run_fallback(message, history, user)
+        except Exception as exc:
+            _log.warning("Mistral indisponible (%s), bascule fallback local", exc)
+    try:
+        return _run_fallback(message, history, user)
+    except Exception as exc:
+        _log.error("Fallback chatbot a echoue : %s", exc, exc_info=True)
+        return dict(_GREETING_FALLBACK)

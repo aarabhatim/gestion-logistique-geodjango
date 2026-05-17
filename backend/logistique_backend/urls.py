@@ -4,6 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 
+# Import direct du chatbot pour court-circuiter tout problème de include()
+from chatbot.views import ChatbotView
+
 
 def api_root(request):
     return JsonResponse({
@@ -44,6 +47,6 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     # Analytics / KPIs
     path('api/analytics/', include('analytics.urls')),
-    # Chatbot d'assistance (LLM)
-    path('api/chatbot/', include('chatbot.urls')),
+    # Chatbot d'assistance (LLM) — route directe pour eviter tout probleme include()
+    path('api/chatbot/', ChatbotView.as_view(), name='chatbot'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
