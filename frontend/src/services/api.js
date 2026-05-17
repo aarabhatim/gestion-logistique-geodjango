@@ -132,11 +132,6 @@ export const notificationsApi = {
   toutLire: () => api.post('notifications/tout-lire/'),
 };
 
-// ─── Chatbot ──────────────────────────────────────────────────────────────────
-export const chatbotApi = {
-  send: ({ message, history }) => api.post('chatbot/', { message, history }),
-};
-
 // ─── Analytics ────────────────────────────────────────────────────────────────
 export const analyticsApi = {
   adminDashboard: () => api.get('analytics/admin/'),
