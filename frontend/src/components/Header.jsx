@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { getNonLues, marquerLue, toutMarquerLu } from '../services/api';
+import { ThemeToggle } from '../contexts/ThemeContext';
 
 const Header = () => {
   const [notifications, setNotifications] = useState([]);
@@ -19,7 +20,6 @@ const Header = () => {
 
   useEffect(() => {
     fetchNotifications();
-    // Rafraîchissement toutes les 30s
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -37,23 +37,14 @@ const Header = () => {
   const handleMarquerLue = async (id, e) => {
     e.stopPropagation();
     setLoading(true);
-    try {
-      await marquerLue(id);
-      await fetchNotifications();
-    } finally {
-      setLoading(false);
-    }
+    try { await marquerLue(id); await fetchNotifications(); }
+    finally { setLoading(false); }
   };
 
   const handleToutMarquerLu = async () => {
     setLoading(true);
-    try {
-      await toutMarquerLu();
-      await fetchNotifications();
-      setShowDropdown(false);
-    } finally {
-      setLoading(false);
-    }
+    try { await toutMarquerLu(); await fetchNotifications(); setShowDropdown(false); }
+    finally { setLoading(false); }
   };
 
   const getIconColor = (type) => {
@@ -61,7 +52,7 @@ const Header = () => {
       case 'success': return 'var(--success-color)';
       case 'warning': return 'var(--warning-color)';
       case 'danger': return 'var(--danger-color)';
-      default: return 'var(--primary-color)';
+      default: return 'var(--accent-primary)';
     }
   };
 
@@ -70,25 +61,20 @@ const Header = () => {
       <div className="header-search">
         <input type="text" className="glass-input" placeholder="Rechercher une commande, un client..." />
       </div>
-      <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        
+      <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <ThemeToggle />
         <div className="notifications-wrapper" ref={dropdownRef} style={{ position: 'relative' }}>
-          <button 
-            className="btn btn-icon" 
-            onClick={() => setShowDropdown(!showDropdown)}
-            style={{ position: 'relative', background: 'transparent', border: '1px solid var(--glass-border)' }}
-          >
+          <button className="btn btn-icon" onClick={() => setShowDropdown(!showDropdown)}
+            style={{ position: 'relative', background: 'transparent', border: '1px solid var(--glass-border)' }}>
             <Bell size={20} />
             {notifications.length > 0 && (
               <span className="badge-pulse" style={{
-                position: 'absolute', top: '-5px', right: '-5px', 
-                background: 'var(--danger-color)', color: 'white', 
-                borderRadius: '50%', width: '18px', height: '18px', 
-                fontSize: '10px', display: 'flex', alignItems: 'center', 
+                position: 'absolute', top: '-5px', right: '-5px',
+                background: 'var(--danger-color)', color: 'white',
+                borderRadius: '50%', width: '18px', height: '18px',
+                fontSize: '10px', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontWeight: 'bold'
-              }}>
-                {notifications.length > 9 ? '9+' : notifications.length}
-              </span>
+              }}>{notifications.length > 9 ? '9+' : notifications.length}</span>
             )}
           </button>
 
@@ -104,7 +90,7 @@ const Header = () => {
                 <h4 style={{ margin: 0 }}>Notifications</h4>
                 {notifications.length > 0 && (
                   <button className="btn btn-sm" onClick={handleToutMarquerLu} disabled={loading}
-                    style={{ background: 'transparent', color: 'var(--primary-color)', fontSize: '12px' }}>
+                    style={{ background: 'transparent', color: 'var(--accent-primary)', fontSize: '12px' }}>
                     <Check size={14} style={{ marginRight: '4px' }}/> Tout lire
                   </button>
                 )}
@@ -118,9 +104,8 @@ const Header = () => {
                   notifications.map(n => (
                     <div key={n.id} className="notification-item" onClick={(e) => handleMarquerLue(n.id, e)} style={{
                       padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      cursor: 'pointer', transition: 'background 0.2s', display: 'flex', gap: '10px'
-                    }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      cursor: 'pointer', display: 'flex', gap: '10px'
+                    }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: getIconColor(n.type_notif), marginTop: '6px' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>{n.titre}</div>
@@ -136,8 +121,6 @@ const Header = () => {
             </div>
           )}
         </div>
-
-        <button className="btn btn-primary" onClick={() => window.location.href='/commandes'}>Nouvelle Commande</button>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Truck, Package, Map as MapIcon,
@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { I18nProvider } from './contexts/I18nContext';
+import SettingsPage from './pages/admin/SettingsPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 
@@ -25,10 +28,8 @@ import ChauffeurDashboard from './pages/chauffeur/ChauffeurDashboard';
 import './App.css';
 import './pages/Pages.css';
 
-// ─── Protected Route ──────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)' }}>
@@ -39,9 +40,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       </div>
     );
   }
-
   if (!user) return <Navigate to="/login" replace />;
-
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === 'CLIENT') return <Navigate to="/client" replace />;
     if (user.role === 'TRANSPORTEUR') return <Navigate to="/chauffeur" replace />;
@@ -50,7 +49,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-// ─── Sidebar Item ─────────────────────────────────────────────────────────────
 const SidebarItem = ({ icon: Icon, label, path }) => {
   const location = useLocation();
   const isActive = location.pathname === path;
@@ -63,7 +61,6 @@ const SidebarItem = ({ icon: Icon, label, path }) => {
   );
 };
 
-// ─── Admin Sidebar ────────────────────────────────────────────────────────────
 const AdminSidebar = () => {
   const { user, logout } = useAuth();
   const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'A' : 'A';
@@ -118,39 +115,40 @@ const AdminSidebar = () => {
   );
 };
 
-const AdminLayout = ({ children }) => (
-  <div className="app-layout">
-    <AdminSidebar />
-    <div className="main-wrapper">
-      <Header />
-      <main className="main-content">{children}</main>
+const AdminLayout = ({ children }) => {
+  const { setAdminRole, setDefaultRole } = useTheme();
+  useEffect(() => {
+    setAdminRole();
+    return () => setDefaultRole();
+  }, [setAdminRole, setDefaultRole]);
+  return (
+    <div className="app-layout">
+      <AdminSidebar />
+      <div className="main-wrapper">
+        <Header />
+        <main className="main-content">{children}</main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Client */}
       <Route path="/client" element={
         <ProtectedRoute allowedRoles={['CLIENT']}>
           <ClientDashboard />
         </ProtectedRoute>
       } />
-
-      {/* Transporteur */}
       <Route path="/chauffeur" element={
         <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
           <ChauffeurDashboard />
         </ProtectedRoute>
       } />
 
-      {/* Admin & Fondateur */}
       <Route path="/" element={
         <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
           <AdminLayout><Dashboard /></AdminLayout>
@@ -192,12 +190,8 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout>
-            <div className="dashboard-container animate-fade-in">
-              <h2 className="text-gradient page-title">Paramètres (Bientôt)</h2>
-            </div>
-          </AdminLayout>
+        <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
+          <AdminLayout><SettingsPage /></AdminLayout>
         </ProtectedRoute>
       } />
 
@@ -208,11 +202,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </AuthProvider>
+      </I18nProvider>
+    </ThemeProvider>
   );
 }
 

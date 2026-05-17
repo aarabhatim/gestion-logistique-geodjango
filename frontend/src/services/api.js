@@ -139,6 +139,11 @@ export const analyticsApi = {
   publiques: () => api.get('analytics/publiques/'),
 };
 
+// ─── Chatbot conversationnel ─────────────────────────────────────────────────
+export const chatbotApi = {
+  send: ({ message, history }) => api.post('chatbot/', { message, history }),
+};
+
 // ─── Exports nommés compatibles (anciens composants) ─────────────────────────
 
 export const getCommandes = (params) => commandesApi.list(params);
@@ -150,6 +155,15 @@ export const livrerCommande = (id) => commandesApi.avancer(id);
 
 export const getClients = (params) =>
   api.get('auth/admin/users/', { params: { role: 'CLIENT', ...params } });
+
+// ─── Admin user / boutique / transporteur management ─────────────────────────
+export const adminApi = {
+  listUsers:           (params) => api.get('auth/admin/users/', { params }),
+  banUser:             (id) => api.post(`auth/admin/users/${id}/ban/`),
+  resetPassword:       (id, password) => api.post(`auth/admin/users/${id}/reset-password/`, { password }),
+  validerBoutique:     (id, action, motif) => api.post(`fondateurs/admin/${id}/valider/`, { action, motif }),
+  validerTransporteur: (id, action) => api.post(`transporteurs/admin/${id}/valider/`, { action }),
+};
 
 export const getStats = () => analyticsApi.adminDashboard();
 

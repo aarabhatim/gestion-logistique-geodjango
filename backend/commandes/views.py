@@ -99,11 +99,14 @@ class CommandeStatutView(APIView):
         nouveau_statut = transitions.get(commande.statut)
 
         if action == 'annuler' and commande.statut not in ('LIVREE', 'ANNULEE'):
-            # Le CLIENT peut annuler tant que ce n'est pas livré
-            # L'ADMIN peut toujours annuler
-            # Le FONDATEUR peut annuler ses propres commandes
+            # Le CLIENT ne peut PAS annuler quand la commande est EN_ROUTE
+            if role == 'CLIENT' and commande.statut == 'EN_ROUTE':
+                return Response(
+                    {'error': "Vous ne pouvez plus annuler : votre commande est deja en cours de livraison. "
+                              "Contactez le support ou signalez un probleme si necessaire."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             if role in ('CLIENT', 'ADMIN') or (role == 'FONDATEUR' and commande.fondateur.user == request.user):
-                # Si EN_ROUTE et CLIENT veut annuler : autorisé mais on libère le transporteur
                 if commande.transporteur:
                     try:
                         t = commande.transporteur.transporteur_profile
