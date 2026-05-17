@@ -1,14 +1,15 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Truck, Package, Map as MapIcon,
-  Settings, BarChart2, AlertTriangle, LogOut, Store,
+  Settings, BarChart2, AlertTriangle, LogOut, Store, Activity,
 } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { I18nProvider } from './contexts/I18nContext';
+import { I18nProvider, useI18n } from './contexts/I18nContext';
 import SettingsPage from './pages/admin/SettingsPage';
+import HeatmapPage from './pages/admin/HeatmapPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 
@@ -21,6 +22,7 @@ import MapPage from './pages/MapPage';
 import Rapports from './pages/Rapports';
 import Incidents from './pages/Incidents';
 import Header from './components/Header';
+import ChatbotWidget from './components/ChatbotWidget';
 
 import ClientDashboard from './pages/client/ClientDashboard';
 import ChauffeurDashboard from './pages/chauffeur/ChauffeurDashboard';
@@ -63,6 +65,7 @@ const SidebarItem = ({ icon: Icon, label, path }) => {
 
 const AdminSidebar = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'A' : 'A';
   const roleLabel = { ADMIN: 'Administrateur', FONDATEUR: 'Fondateur', TRANSPORTEUR: 'Transporteur', CLIENT: 'Client' };
 
@@ -74,26 +77,22 @@ const AdminSidebar = () => {
           <h1 className="logo-text text-gradient">DeliverMap</h1>
         </div>
       </div>
-
       <nav className="sidebar-nav">
-        <div className="nav-section">TABLEAU DE BORD</div>
-        <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" />
-        <SidebarItem icon={MapIcon} label="Carte & Suivi" path="/map" />
-
-        <div className="nav-section mt-4">OPÉRATIONS</div>
-        <SidebarItem icon={Package} label="Commandes" path="/commandes" />
-        <SidebarItem icon={Store} label="Boutiques" path="/boutiques" />
-        <SidebarItem icon={AlertTriangle} label="Signalements" path="/incidents" />
-
-        <div className="nav-section mt-4">GESTION</div>
-        <SidebarItem icon={Users} label="Clients" path="/clients" />
-        <SidebarItem icon={Truck} label="Transporteurs" path="/transporteurs" />
-
-        <div className="nav-section mt-4">ANALYSE</div>
-        <SidebarItem icon={BarChart2} label="Rapports" path="/rapports" />
-        <SidebarItem icon={Settings} label="Paramètres" path="/settings" />
+        <div className="nav-section">{t('nav_overview')}</div>
+        <SidebarItem icon={LayoutDashboard} label={t('dashboard')} path="/" />
+        <SidebarItem icon={MapIcon} label={t('map_tracking')} path="/map" />
+        <div className="nav-section mt-4">{t('nav_operations')}</div>
+        <SidebarItem icon={Package} label={t('commandes')} path="/commandes" />
+        <SidebarItem icon={Store} label={t('boutiques')} path="/boutiques" />
+        <SidebarItem icon={AlertTriangle} label={t('incidents')} path="/incidents" />
+        <div className="nav-section mt-4">{t('nav_management')}</div>
+        <SidebarItem icon={Users} label={t('clients')} path="/clients" />
+        <SidebarItem icon={Truck} label={t('transporteurs')} path="/transporteurs" />
+        <div className="nav-section mt-4">{t('nav_analysis')}</div>
+        <SidebarItem icon={BarChart2} label={t('reports')} path="/rapports" />
+        <SidebarItem icon={Activity} label={t('heatmap')} path="/heatmap" />
+        <SidebarItem icon={Settings} label={t('settings')} path="/settings" />
       </nav>
-
       <div className="sidebar-footer">
         <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -117,6 +116,7 @@ const AdminSidebar = () => {
 
 const AdminLayout = ({ children }) => {
   const { setAdminRole, setDefaultRole } = useTheme();
+  const navigate = useNavigate();
   useEffect(() => {
     setAdminRole();
     return () => setDefaultRole();
@@ -128,6 +128,7 @@ const AdminLayout = ({ children }) => {
         <Header />
         <main className="main-content">{children}</main>
       </div>
+      <ChatbotWidget onNavigate={(path) => navigate(path)} />
     </div>
   );
 };
@@ -137,64 +138,18 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-
-      <Route path="/client" element={
-        <ProtectedRoute allowedRoles={['CLIENT']}>
-          <ClientDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/chauffeur" element={
-        <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
-          <ChauffeurDashboard />
-        </ProtectedRoute>
-      } />
-
-      <Route path="/" element={
-        <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
-          <AdminLayout><Dashboard /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/map" element={
-        <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
-          <AdminLayout><MapPage /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/commandes" element={
-        <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
-          <AdminLayout><Commandes /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/boutiques" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout><Boutiques /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/incidents" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout><Incidents /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/clients" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout><Clients /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/transporteurs" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout><Transporteurs /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/rapports" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <AdminLayout><Rapports /></AdminLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}>
-          <AdminLayout><SettingsPage /></AdminLayout>
-        </ProtectedRoute>
-      } />
-
+      <Route path="/client" element={<ProtectedRoute allowedRoles={['CLIENT']}><ClientDashboard /></ProtectedRoute>} />
+      <Route path="/chauffeur" element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
+      <Route path="/map" element={<ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}><AdminLayout><MapPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/commandes" element={<ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}><AdminLayout><Commandes /></AdminLayout></ProtectedRoute>} />
+      <Route path="/boutiques" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><Boutiques /></AdminLayout></ProtectedRoute>} />
+      <Route path="/incidents" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><Incidents /></AdminLayout></ProtectedRoute>} />
+      <Route path="/clients" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><Clients /></AdminLayout></ProtectedRoute>} />
+      <Route path="/transporteurs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><Transporteurs /></AdminLayout></ProtectedRoute>} />
+      <Route path="/rapports" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><Rapports /></AdminLayout></ProtectedRoute>} />
+      <Route path="/heatmap" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><HeatmapPage /></AdminLayout></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}><AdminLayout><SettingsPage /></AdminLayout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

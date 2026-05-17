@@ -137,6 +137,7 @@ export const analyticsApi = {
   adminDashboard: () => api.get('analytics/admin/'),
   fondateurAnalytics: () => api.get('analytics/fondateur/'),
   publiques: () => api.get('analytics/publiques/'),
+  heatmap: () => api.get('analytics/heatmap/'),
 };
 
 // ─── Chatbot conversationnel ─────────────────────────────────────────────────

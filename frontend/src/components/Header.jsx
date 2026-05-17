@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2 } from 'lucide-react';
+import { Bell, Check, Trash2, Globe } from 'lucide-react';
 import { getNonLues, marquerLue, toutMarquerLu } from '../services/api';
 import { ThemeToggle } from '../contexts/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
+
+const LANGS = [
+  { code: 'fr', flag: '🇫🇷', label: 'Français' },
+  { code: 'ar', flag: '🇲🇦', label: 'العربية' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'es', flag: '🇪🇸', label: 'Español' },
+];
 
 const Header = () => {
+  const { t, langue, setLangue } = useI18n();
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const langRef = useRef(null);
 
   const fetchNotifications = async () => {
     try {
@@ -28,6 +39,9 @@ const Header = () => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
+      }
+      if (langRef.current && !langRef.current.contains(event.target)) {
+        setShowLangMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -56,13 +70,45 @@ const Header = () => {
     }
   };
 
+  const currentLang = LANGS.find(l => l.code === langue) || LANGS[0];
+
   return (
     <header className="top-header glass-card">
       <div className="header-search">
-        <input type="text" className="glass-input" placeholder="Rechercher une commande, un client..." />
+        <input type="text" className="glass-input" placeholder={t('search_placeholder')} />
       </div>
       <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <ThemeToggle />
+
+        {/* Sélecteur de langue */}
+        <div ref={langRef} style={{ position: 'relative' }}>
+          <button className="btn btn-icon" onClick={() => setShowLangMenu(s => !s)}
+            style={{ background: 'transparent', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', minWidth: 'auto' }}>
+            <Globe size={16} />
+            <span style={{ fontSize: 14 }}>{currentLang.flag}</span>
+          </button>
+          {showLangMenu && (
+            <div className="glass-card animate-fade-in" style={{
+              position: 'absolute', top: '120%', right: 0, width: 180, padding: 6,
+              zIndex: 1000, boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+            }}>
+              {LANGS.map(l => (
+                <button key={l.code} onClick={() => { setLangue(l.code); setShowLangMenu(false); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: 8, border: 'none',
+                    background: l.code === langue ? 'var(--accent-primary)20' : 'transparent',
+                    color: l.code === langue ? 'var(--accent-primary)' : 'inherit',
+                    cursor: 'pointer', fontSize: 13, fontWeight: l.code === langue ? 700 : 500,
+                    textAlign: 'left',
+                  }}>
+                  <span style={{ fontSize: 18 }}>{l.flag}</span> {l.label}
+                  {l.code === langue && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="notifications-wrapper" ref={dropdownRef} style={{ position: 'relative' }}>
           <button className="btn btn-icon" onClick={() => setShowDropdown(!showDropdown)}
             style={{ position: 'relative', background: 'transparent', border: '1px solid var(--glass-border)' }}>
@@ -87,18 +133,18 @@ const Header = () => {
                 padding: '1rem', borderBottom: '1px solid var(--glass-border)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
-                <h4 style={{ margin: 0 }}>Notifications</h4>
+                <h4 style={{ margin: 0 }}>{t('notifications')}</h4>
                 {notifications.length > 0 && (
                   <button className="btn btn-sm" onClick={handleToutMarquerLu} disabled={loading}
                     style={{ background: 'transparent', color: 'var(--accent-primary)', fontSize: '12px' }}>
-                    <Check size={14} style={{ marginRight: '4px' }}/> Tout lire
+                    <Check size={14} style={{ marginRight: '4px' }}/> {t('mark_all_read')}
                   </button>
                 )}
               </div>
               <div className="dropdown-body" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                 {notifications.length === 0 ? (
                   <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    Aucune nouvelle notification
+                    {t('no_notifications')}
                   </div>
                 ) : (
                   notifications.map(n => (
