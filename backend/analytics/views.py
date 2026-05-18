@@ -20,7 +20,6 @@ class AdminDashboardView(APIView):
         today = timezone.now().date()
         debut_mois = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # KPIs globaux
         kpis = {
             'commandes_aujourd_hui': Commande.objects.filter(created_at__date=today).count(),
             'commandes_total': Commande.objects.count(),
@@ -36,7 +35,6 @@ class AdminDashboardView(APIView):
             'commandes_signalees': Commande.objects.filter(est_signale=True, statut__in=['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION']).count(),
         }
 
-        # Évolution commandes 7 derniers jours
         evolution_7j = list(
             Commande.objects.filter(created_at__gte=timezone.now() - timedelta(days=7))
             .annotate(jour=TruncDay('created_at'))
@@ -45,7 +43,6 @@ class AdminDashboardView(APIView):
             .order_by('jour')
         )
 
-        # Évolution 6 mois
         evolution_6m = list(
             Commande.objects.filter(created_at__gte=timezone.now() - timedelta(days=180))
             .annotate(mois=TruncMonth('created_at'))
@@ -54,12 +51,10 @@ class AdminDashboardView(APIView):
             .order_by('mois')
         )
 
-        # Répartition par statut
         par_statut = list(
             Commande.objects.values('statut').annotate(count=Count('id')).order_by('-count')
         )
 
-        # Top fondateurs par CA
         top_fondateurs = list(
             Commande.objects.filter(statut='LIVREE')
             .values('fondateur__nom_boutique', 'fondateur_id')
@@ -67,7 +62,6 @@ class AdminDashboardView(APIView):
             .order_by('-ca')[:10]
         )
 
-        # Top transporteurs par livraisons
         top_transporteurs = list(
             Transporteur.objects.filter(nombre_livraisons__gt=0)
             .values('user__first_name', 'user__last_name', 'vehicule_type', 'note_moyenne', 'nombre_livraisons')
@@ -102,11 +96,9 @@ class FondateurAnalyticsView(APIView):
 
         today = timezone.now().date()
         debut_mois = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
         commandes = Commande.objects.filter(fondateur=fondateur)
         commandes_livrees = commandes.filter(statut='LIVREE')
 
-        # KPIs boutique
         kpis = {
             'commandes_aujourd_hui': commandes.filter(created_at__date=today).count(),
             'commandes_en_attente': commandes.filter(statut='EN_ATTENTE').count(),
@@ -119,14 +111,12 @@ class FondateurAnalyticsView(APIView):
             'nombre_avis': fondateur.nombre_avis,
         }
 
-        # Produits les plus commandés
         top_produits = list(
             Produit.objects.filter(fondateur=fondateur)
             .order_by('-nombre_commandes')
             .values('nom', 'prix', 'nombre_commandes', 'stock')[:10]
         )
 
-        # Évolution CA 30j
         evolution_30j = list(
             commandes_livrees.filter(created_at__gte=timezone.now() - timedelta(days=30))
             .annotate(jour=TruncDay('created_at'))
@@ -135,7 +125,6 @@ class FondateurAnalyticsView(APIView):
             .order_by('jour')
         )
 
-        # Avis reçus
         avis = list(
             Avis.objects.filter(commande__fondateur=fondateur, cible_type='FONDATEUR')
             .values('note')
@@ -159,7 +148,6 @@ class FondateurAnalyticsView(APIView):
 
 
 class StatsPubliquesView(APIView):
-    """Statistiques légères pour la page d'accueil (non authentifié)."""
     permission_classes = []
 
     def get(self, request):
@@ -167,5 +155,73 @@ class StatsPubliquesView(APIView):
             'fondateurs_actifs': Fondateur.objects.filter(is_verified=True).count(),
             'commandes_livrees': Commande.objects.filter(statut='LIVREE').count(),
             'transporteurs': Transporteur.objects.filter(is_verified=True).count(),
-            'villes': ['Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger'],
+            'villes': ['Casablanca', 'Rabat', 'Marrakech', 'Fes', 'Tanger'],
+        })
+
+
+class HeatmapDataView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        points_commandes = []
+        qs1 = Commande.objects.exclude(location_livraison__isnull=True).only('id', 'statut', 'total_price', 'location_livraison')[:5000]
+        for cmd in qs1:
+            try:
+                points_commandes.append({
+                    'lat': cmd.location_livraison.y,
+                    'lon': cmd.location_livraison.x,
+                    'statut': cmd.statut,
+                    'weight': float(cmd.total_price or 1),
+                })
+            except Exception:
+                continue
+
+        points_boutiques = []
+        qs2 = Fondateur.objects.exclude(location__isnull=True).only('id', 'nom_boutique', 'ville', 'location', 'rayon_livraison_km', 'nombre_commandes', 'is_verified', 'is_open')
+        for f in qs2:
+            try:
+                points_boutiques.append({
+                    'id': f.id,
+                    'nom': f.nom_boutique,
+                    'ville': f.ville,
+                    'lat': f.location.y,
+                    'lon': f.location.x,
+                    'rayon_km': f.rayon_livraison_km,
+                    'nb_commandes': f.nombre_commandes,
+                    'is_verified': f.is_verified,
+                    'is_open': f.is_open,
+                })
+            except Exception:
+                continue
+
+        couverture_villes = list(
+            Fondateur.objects.filter(is_verified=True)
+            .values('ville')
+            .annotate(
+                nb_boutiques=Count('id'),
+                nb_commandes=Sum('nombre_commandes'),
+            ).order_by('-nb_boutiques')
+        )
+
+        clients_par_ville = {}
+        try:
+            for c in CustomUser.objects.filter(role='CLIENT').values('ville').annotate(n=Count('id')):
+                if c.get('ville'):
+                    clients_par_ville[c['ville']] = c['n']
+        except Exception:
+            pass
+
+        for v in couverture_villes:
+            v['nb_clients'] = clients_par_ville.get(v['ville'], 0)
+            if v['nb_clients']:
+                v['score_couverture'] = min(100, round((v['nb_commandes'] or 0) / max(v['nb_clients'], 1) * 20, 1))
+            else:
+                v['score_couverture'] = 0
+
+        return Response({
+            'commandes': points_commandes,
+            'boutiques': points_boutiques,
+            'couverture_villes': couverture_villes,
+            'total_commandes_geo': len(points_commandes),
+            'total_boutiques_geo': len(points_boutiques),
         })

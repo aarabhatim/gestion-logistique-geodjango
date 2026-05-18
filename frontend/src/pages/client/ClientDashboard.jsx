@@ -605,6 +605,9 @@ const CatalogueTab = ({ onCartOpen }) => {
   const [selectedBoutique, setSelectedBoutique] = useState(null);
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState('');
+  const [searchBoutique, setSearchBoutique] = useState('');
+  const [filtreVille, setFiltreVille] = useState('');
+  const [showOnlyOpen, setShowOnlyOpen] = useState(false);
   const [loadingBoutiques, setLoadingBoutiques] = useState(true);
   const [loadingProduits, setLoadingProduits] = useState(false);
   const { addItem, items, fondateur: cartFondateur } = useCartStore();
@@ -619,6 +622,27 @@ const CatalogueTab = ({ onCartOpen }) => {
       .then(r => setBoutiques(r.data.results || r.data || []))
       .finally(() => setLoadingBoutiques(false));
   }, [categorie]);
+
+  // Liste unique des villes disponibles
+  const villesDisponibles = React.useMemo(() => {
+    const set = new Set();
+    boutiques.forEach(b => { if (b.ville) set.add(b.ville); });
+    return Array.from(set).sort();
+  }, [boutiques]);
+
+  // Filtrage final : ville + recherche + status ouvert
+  const boutiquesFiltrees = React.useMemo(() => {
+    return boutiques.filter(b => {
+      if (filtreVille && b.ville !== filtreVille) return false;
+      if (showOnlyOpen && !b.is_open) return false;
+      if (searchBoutique) {
+        const q = searchBoutique.toLowerCase();
+        const hay = `${b.nom_boutique || ''} ${b.ville || ''} ${b.adresse || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [boutiques, filtreVille, searchBoutique, showOnlyOpen]);
 
   const selectBoutique = (b) => {
     setSelectedBoutique(b);
@@ -747,7 +771,7 @@ const CatalogueTab = ({ onCartOpen }) => {
   return (
     <div>
       {/* Filtres catégorie */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '4px' }}>
         {CATEGORIES.map(c => (
           <button key={c.key} onClick={() => setCategorie(c.key)}
             style={{ flexShrink: 0, padding: '0.5rem 1rem', borderRadius: '20px', border: `1.5px solid ${categorie === c.key ? '#3b82f6' : 'rgba(255,255,255,0.12)'}`, background: categorie === c.key ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', color: 'white', fontSize: '13px', fontWeight: categorie === c.key ? 700 : 400, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -756,14 +780,61 @@ const CatalogueTab = ({ onCartOpen }) => {
         ))}
       </div>
 
+      {/* ── Barre de filtres avancés (ville + recherche + statut) ──────── */}
+      <div className="glass-card animate-fade-in" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem', padding: '0.85rem 1rem' }}>
+        {/* Sélecteur de ville */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+          <MapPin size={16} style={{ color: '#3b82f6' }} />
+          <select className="glass-input" value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
+            style={{ minWidth: 170, padding: '6px 10px', fontSize: 13 }}>
+            <option value="">🌍 Toutes les villes ({boutiques.length})</option>
+            {villesDisponibles.map(v => {
+              const count = boutiques.filter(b => b.ville === v).length;
+              return <option key={v} value={v}>📍 {v} ({count})</option>;
+            })}
+          </select>
+        </div>
+
+        {/* Recherche boutique */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+          <input className="glass-input" placeholder="Rechercher une boutique..." value={searchBoutique}
+            onChange={e => setSearchBoutique(e.target.value)}
+            style={{ paddingLeft: 32, fontSize: 13 }} />
+        </div>
+
+        {/* Toggle ouvertes seulement */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+          <input type="checkbox" checked={showOnlyOpen} onChange={e => setShowOnlyOpen(e.target.checked)} />
+          🟢 Ouvertes uniquement
+        </label>
+
+        {/* Reset */}
+        {(filtreVille || searchBoutique || showOnlyOpen) && (
+          <button onClick={() => { setFiltreVille(''); setSearchBoutique(''); setShowOnlyOpen(false); }}
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <X size={12} /> Réinitialiser
+          </button>
+        )}
+
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+          {boutiquesFiltrees.length} / {boutiques.length} boutiques
+        </div>
+      </div>
+
       {/* Grille boutiques */}
       {loadingBoutiques ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
           {Array(4).fill(0).map((_, i) => <div key={i} className="glass-card" style={{ height: '160px', opacity: 0.4 }} />)}
         </div>
+      ) : boutiquesFiltrees.length === 0 ? (
+        <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          🔍 Aucune boutique ne correspond à vos critères
+          <div style={{ marginTop: 12, fontSize: 12 }}>Essayez de modifier la ville ou la recherche.</div>
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-          {boutiques.map(b => (
+          {boutiquesFiltrees.map(b => (
             <div key={b.id} className="glass-card animate-fade-in" onClick={() => selectBoutique(b)}
               style={{ cursor: 'pointer', transition: 'all 0.2s', padding: '1.25rem', borderLeft: `4px solid ${b.is_open ? '#10b981' : '#64748b'}` }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)'; }}
@@ -1335,26 +1406,22 @@ const ClientDashboard = () => {
         </div>
       </div>
 
-      {/* Notification succès */}
       {orderSuccess && (
         <div style={{ position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '1rem 2rem', borderRadius: '12px', fontWeight: 700, boxShadow: '0 8px 30px rgba(16,185,129,0.4)', animation: 'fadeIn 0.3s' }}>
           🎉 Commande passée avec succès !
         </div>
       )}
 
-      {/* Navigation tabs */}
       <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', padding: '0 2rem', background: 'rgba(255,255,255,0.02)' }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '1rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? '#3b82f6' : 'var(--text-secondary)', borderBottom: `2px solid ${tab === id ? '#3b82f6' : 'transparent'}`, fontWeight: tab === id ? 700 : 400, fontSize: '14px', transition: 'all 0.2s', position: 'relative' }}>
             <Icon size={16} />
             {label}
-            {id === 'commandes' && <span style={{ position: 'absolute', top: '8px', right: '4px', background: '#3b82f6', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
           </button>
         ))}
       </div>
 
-      {/* Contenu */}
       <div style={{ flex: 1, padding: '2rem', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
         {tab === 'catalogue' && <CatalogueTab onCartOpen={() => setCartOpen(true)} />}
         {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} />}
@@ -1362,7 +1429,6 @@ const ClientDashboard = () => {
         {tab === 'profil'    && <ProfilTab user={user} />}
       </div>
 
-      {/* Panier + Checkout */}
       {cartOpen && (
         <CartSidebar
           onClose={() => setCartOpen(false)}
@@ -1376,7 +1442,6 @@ const ClientDashboard = () => {
         />
       )}
 
-      {/* Assistant conversationnel */}
       <ChatbotWidget onOpenCart={() => setCartOpen(true)} />
     </div>
   );

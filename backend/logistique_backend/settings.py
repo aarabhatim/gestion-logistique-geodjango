@@ -8,12 +8,30 @@ load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 
 # ─── Windows GDAL/GEOS fix ────────────────────────────────────────────────────
 if os.name == 'nt':
-    try:
-        os.add_dll_directory(r'C:\Program Files\PostgreSQL\16\bin')
-        GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgeos_c.dll'
-        GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\16\bin\libgdal-35.dll'
-    except Exception:
-        pass
+    import glob
+    # Chemins possibles ou GDAL peut etre installe (PostgreSQL ou OSGeo4W)
+    _possible_dirs = [
+        r'C:\Program Files\PostgreSQL\17\bin',
+        r'C:\Program Files\PostgreSQL\16\bin',
+        r'C:\Program Files\PostgreSQL\15\bin',
+        r'C:\OSGeo4W\bin',
+        r'C:\OSGeo4W64\bin',
+    ]
+    for _dir in _possible_dirs:
+        if os.path.isdir(_dir):
+            try:
+                os.add_dll_directory(_dir)
+            except Exception:
+                pass
+            # Detection automatique de la version de libgdal-XX.dll
+            _gdal_dlls = glob.glob(os.path.join(_dir, 'libgdal-*.dll'))
+            if not _gdal_dlls:
+                _gdal_dlls = glob.glob(os.path.join(_dir, 'gdal*.dll'))
+            _geos_dll = os.path.join(_dir, 'libgeos_c.dll')
+            if _gdal_dlls and os.path.isfile(_geos_dll):
+                GDAL_LIBRARY_PATH = _gdal_dlls[0]
+                GEOS_LIBRARY_PATH = _geos_dll
+                break
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'delivermap-secret-key-change-in-production-2025')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
