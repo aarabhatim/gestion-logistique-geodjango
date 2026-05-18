@@ -159,12 +159,42 @@ class StatsPubliquesView(APIView):
         })
 
 
+
+
+def _periode_debut(periode):
+    """Renvoie la date de debut selon le parametre de periode."""
+    if periode and str(periode).isdigit():
+        periode = f'{periode}j'
+    mapping = {
+        '1h':  timedelta(hours=1),
+        '24h': timedelta(hours=24),
+        '7':   timedelta(days=7),
+        '7j':  timedelta(days=7),
+        '30':  timedelta(days=30),
+        '30j': timedelta(days=30),
+        '90':  timedelta(days=90),
+        '3m':  timedelta(days=90),
+        '6m':  timedelta(days=180),
+        '1an': timedelta(days=365),
+    }
+    delta = mapping.get(periode, timedelta(days=30))
+    return timezone.now() - delta
+
+
+def _point_geo(lat, lng, **extra):
+    """Normalise un point carte avec lat + lon (+ lng alias)."""
+    return {'lat': lat, 'lon': lng, 'lng': lng, **extra}
+
+
 class HeatmapDataView(APIView):
+    """Heatmap legacy - conserve pour compatibilite."""
     permission_classes = [IsAdminRole]
 
     def get(self, request):
         points_commandes = []
-        qs1 = Commande.objects.exclude(location_livraison__isnull=True).only('id', 'statut', 'total_price', 'location_livraison')[:5000]
+        qs1 = Commande.objects.exclude(location_livraison__isnull=True).only(
+            'id', 'statut', 'total_price', 'location_livraison'
+        )[:5000]
         for cmd in qs1:
             try:
                 points_commandes.append({
@@ -177,7 +207,10 @@ class HeatmapDataView(APIView):
                 continue
 
         points_boutiques = []
-        qs2 = Fondateur.objects.exclude(location__isnull=True).only('id', 'nom_boutique', 'ville', 'location', 'rayon_livraison_km', 'nombre_commandes', 'is_verified', 'is_open')
+        qs2 = Fondateur.objects.exclude(location__isnull=True).only(
+            'id', 'nom_boutique', 'ville', 'location',
+            'rayon_livraison_km', 'nombre_commandes', 'is_verified', 'is_open'
+        )
         for f in qs2:
             try:
                 points_boutiques.append({
@@ -197,12 +230,9 @@ class HeatmapDataView(APIView):
         couverture_villes = list(
             Fondateur.objects.filter(is_verified=True)
             .values('ville')
-            .annotate(
-                nb_boutiques=Count('id'),
-                nb_commandes=Sum('nombre_commandes'),
-            ).order_by('-nb_boutiques')
+            .annotate(nb_boutiques=Count('id'), nb_commandes=Sum('nombre_commandes'))
+            .order_by('-nb_boutiques')
         )
-
         clients_par_ville = {}
         try:
             for c in CustomUser.objects.filter(role='CLIENT').values('ville').annotate(n=Count('id')):
@@ -210,11 +240,12 @@ class HeatmapDataView(APIView):
                     clients_par_ville[c['ville']] = c['n']
         except Exception:
             pass
-
         for v in couverture_villes:
             v['nb_clients'] = clients_par_ville.get(v['ville'], 0)
             if v['nb_clients']:
-                v['score_couverture'] = min(100, round((v['nb_commandes'] or 0) / max(v['nb_clients'], 1) * 20, 1))
+                v['score_couverture'] = min(100, round(
+                    (v['nb_commandes'] or 0) / max(v['nb_clients'], 1) * 20, 1
+                ))
             else:
                 v['score_couverture'] = 0
 
@@ -225,3 +256,144 @@ class HeatmapDataView(APIView):
             'total_commandes_geo': len(points_commandes),
             'total_boutiques_geo': len(points_boutiques),
         })
+
+
+# --- Heatmap multi-types avec filtres temporels ---
+# GET /api/analytics/heatmap/{type}/?periode=7j|30j|3m|6m|1an
+# types: commandes | retards | incidents | profits | trafic
+
+
+class HeatmapCommandesView(APIView):
+    """Densite des commandes livrees par zone geographique."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        periode = request.query_params.get('periode', '30j')
+        debut = _periode_debut(periode)
+        points = []
+        qs = Commande.objects.filter(
+            statut='LIVREE', created_at__gte=debut,
+        ).exclude(location_livraison__isnull=True).only(
+            'location_livraison', 'total_price'
+        )[:8000]
+        for cmd in qs:
+            try:
+                lat = round(cmd.location_livraison.y, 6)
+                lng = round(cmd.location_livraison.x, 6)
+                points.append(_point_geo(lat, lng, weight=1))
+            except Exception:
+                continue
+        return Response({'type': 'commandes', 'periode': periode, 'points': points, 'count': len(points)})
+
+
+class HeatmapRetardsView(APIView):
+    """Zones de retard : commandes EN_ROUTE depassant leur delai estime."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        periode = request.query_params.get('periode', '30j')
+        debut = _periode_debut(periode)
+        now = timezone.now()
+        points = []
+        qs = Commande.objects.filter(
+            statut__in=['EN_ROUTE', 'LIVREE'],
+            created_at__gte=debut,
+            estimated_delivery__lt=now,
+            estimated_delivery__isnull=False,
+        ).exclude(location_livraison__isnull=True).only(
+            'location_livraison', 'estimated_delivery', 'livree_at'
+        )[:5000]
+        for cmd in qs:
+            try:
+                ref_time = cmd.livree_at or now
+                retard_min = max(0, (ref_time - cmd.estimated_delivery).total_seconds() / 60)
+                lat = round(cmd.location_livraison.y, 6)
+                lng = round(cmd.location_livraison.x, 6)
+                points.append(_point_geo(
+                    lat, lng,
+                    weight=min(retard_min / 60, 3),
+                    retard_min=int(retard_min),
+                ))
+            except Exception:
+                continue
+        return Response({'type': 'retards', 'periode': periode, 'points': points, 'count': len(points)})
+
+
+class HeatmapIncidentsView(APIView):
+    """Localisation des incidents signales."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        from incidents.models import Incident
+        periode = request.query_params.get('periode', '30j')
+        debut = _periode_debut(periode)
+        type_filtre = request.query_params.get('type_incident')
+        points = []
+        qs = Incident.objects.filter(
+            date_signalement__gte=debut,
+        ).exclude(position__isnull=True).select_related('commande')
+        if type_filtre:
+            qs = qs.filter(type_incident=type_filtre)
+        for inc in qs[:5000]:
+            try:
+                lat = round(inc.position.y, 6)
+                lng = round(inc.position.x, 6)
+                points.append(_point_geo(
+                    lat, lng, weight=1,
+                    type=inc.type_incident, statut=inc.statut,
+                ))
+            except Exception:
+                continue
+        return Response({'type': 'incidents', 'periode': periode, 'points': points, 'count': len(points)})
+
+
+class HeatmapProfitsView(APIView):
+    """Zones de profit ponderees par frais de livraison."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        periode = request.query_params.get('periode', '30j')
+        debut = _periode_debut(periode)
+        points = []
+        qs = Commande.objects.filter(
+            statut='LIVREE', created_at__gte=debut,
+        ).exclude(location_livraison__isnull=True).only(
+            'location_livraison', 'total_price', 'frais_livraison'
+        )[:8000]
+        for cmd in qs:
+            try:
+                profit = float(cmd.frais_livraison or 0)
+                lat = round(cmd.location_livraison.y, 6)
+                lng = round(cmd.location_livraison.x, 6)
+                points.append(_point_geo(
+                    lat, lng,
+                    weight=max(0.1, profit / 50),
+                    montant=float(cmd.total_price or 0),
+                ))
+            except Exception:
+                continue
+        return Response({'type': 'profits', 'periode': periode, 'points': points, 'count': len(points)})
+
+
+class HeatmapTraficView(APIView):
+    """Positions recentes des transporteurs (trafic actif)."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        periode = request.query_params.get('periode', '24h')
+        debut = _periode_debut(periode)
+        points = []
+        qs = Transporteur.objects.filter(
+            derniere_maj_position__gte=debut,
+        ).exclude(position_actuelle__isnull=True).select_related('user')
+        for t in qs:
+            try:
+                lat = round(t.position_actuelle.y, 6)
+                lng = round(t.position_actuelle.x, 6)
+                points.append(_point_geo(
+                    lat, lng, weight=1,
+                    disponible=t.is_available, en_livraison=t.is_on_delivery,
+                ))
+            except Exception:
+                continue
+        return Response({'type': 'trafic', 'periode': periode, 'points': points, 'count': len(points)})

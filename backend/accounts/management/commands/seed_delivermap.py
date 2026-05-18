@@ -771,93 +771,13 @@ class Command(BaseCommand):
                         date_livraison=created + timedelta(hours=random.randint(1, 4)) if statut == 'LIVREE' else None,
                         gain_transporteur=round(frais * 0.85, 2),
                         commission_plateforme=round(frais * 0.15, 2),
-                        code_confirmation=str(random.randint(100000, 999999)),
+                    code_confirmation=None,
+                    est_validee=True if statut == 'LIVREE' else False,
+                    notes=''
                     )
                 except Exception:
                     pass
 
-            commandes.append(commande)
+        commandes.append(commande)
 
-        self.stdout.write(f'  [OK] {len(commandes)} commandes creees')
         return commandes
-
-    def _creer_avis(self, commandes):
-        total = 0
-        commandes_livrees = [c for c in commandes if c.statut == 'LIVREE']
-        for commande in commandes_livrees:
-            Avis.objects.get_or_create(
-                commande=commande,
-                auteur=commande.client,
-                cible_type='FONDATEUR',
-                defaults={
-                    'note': random.choice([3, 4, 4, 4, 5, 5, 5]),
-                    'commentaire': random.choice(COMMENTAIRES_FONDATEUR),
-                }
-            )
-            total += 1
-            if commande.transporteur:
-                Avis.objects.get_or_create(
-                    commande=commande,
-                    auteur=commande.client,
-                    cible_type='TRANSPORTEUR',
-                    defaults={
-                        'note': random.choice([3, 4, 4, 5, 5, 5]),
-                        'commentaire': random.choice(COMMENTAIRES_TRANSPORTEUR),
-                    }
-                )
-                total += 1
-        self.stdout.write(f'  [OK] {total} avis crees')
-
-    def _creer_notifications(self, clients, fondateurs, transporteurs):
-        messages_clients = [
-            ('Votre commande a ete confirmee!', 'COMMANDE'),
-            ('Votre livraison est en route.', 'LIVRAISON'),
-            ('Votre paiement a ete traite.', 'PAIEMENT'),
-            ('Code promo BIENVENUE10 disponible!', 'INFO'),
-            ('Votre commande a ete livree.', 'LIVRAISON'),
-        ]
-        messages_fondateurs = [
-            ('Nouvelle commande recue!', 'COMMANDE'),
-            ('Stock faible sur 3 produits.', 'INFO'),
-            ('Votre boutique a recu un avis 5 etoiles.', 'INFO'),
-        ]
-        messages_transport = [
-            ('Nouvelle livraison disponible pres de vous.', 'COMMANDE'),
-            ('Votre revenu du mois: 3200 MAD.', 'PAIEMENT'),
-        ]
-
-        total = 0
-        for user in clients:
-            titre, type_n = random.choice(messages_clients)
-            Notification.objects.create(
-                destinataire=user,
-                titre=titre,
-                message=f'DeliverMap: {titre}',
-                type_notif=type_n,
-                lue=random.choice([True, True, False]),
-            )
-            total += 1
-
-        for user in fondateurs[:6]:
-            titre, type_n = random.choice(messages_fondateurs)
-            Notification.objects.create(
-                destinataire=user,
-                titre=titre,
-                message=f'DeliverMap: {titre}',
-                type_notif=type_n,
-                lue=random.choice([True, False]),
-            )
-            total += 1
-
-        for t in transporteurs[:6]:
-            titre, type_n = random.choice(messages_transport)
-            Notification.objects.create(
-                destinataire=t.user,
-                titre=titre,
-                message=f'DeliverMap: {titre}',
-                type_notif=type_n,
-                lue=False,
-            )
-            total += 1
-
-        self.stdout.write(f'  [OK] {total} notifications creees')

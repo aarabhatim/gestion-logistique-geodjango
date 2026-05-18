@@ -38,6 +38,7 @@ export const ThemeProvider = ({ children }) => {
     const root = document.documentElement;
     root.setAttribute('data-theme', mode);
     root.setAttribute('data-role', role);
+    root.classList.toggle('dark', mode === 'dark');
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, role })); } catch { /* ignore */ }
   }, [mode, role]);
 

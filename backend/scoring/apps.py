@@ -1,0 +1,10 @@
+from django.apps import AppConfig
+
+
+class ScoringConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'scoring'
+    verbose_name = 'Scoring Transporteurs'
+
+    def ready(self):
+        import scoring.signals  # noqa

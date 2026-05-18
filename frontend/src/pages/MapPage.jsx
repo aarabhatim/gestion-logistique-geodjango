@@ -446,7 +446,7 @@ const MapPage = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', gap: '1rem' }}>
+    <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Custom CSS for map pulse */}
       <style>{`
         @keyframes mapPulse {

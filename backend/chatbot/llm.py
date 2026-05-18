@@ -255,14 +255,14 @@ _GREETING_FALLBACK = {
 
 
 def run_conversation(message, history, user):
-    history = history or []
-    if getattr(settings, 'MISTRAL_API_KEY', ''):
+    """
+    Point d'entree principal du chatbot.
+    Essaie Mistral si la cle est configuree, sinon fallback local.
+    """
+    api_key = getattr(settings, 'MISTRAL_API_KEY', None)
+    if api_key:
         try:
             return _run_mistral(message, history, user)
         except Exception as exc:
-            _log.warning("Mistral indisponible (%s), bascule fallback local", exc)
-    try:
-        return _run_fallback(message, history, user)
-    except Exception as exc:
-        _log.error("Fallback chatbot a echoue : %s", exc, exc_info=True)
-        return dict(_GREETING_FALLBACK)
+            _log.warning("Mistral indisponible (%s), bascule sur fallback local.", exc)
+    return _run_fallback(message, history, user)

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 
-# ─── Windows GDAL/GEOS fix ────────────────────────────────────────────────────
+# --- Windows GDAL/GEOS fix ----------------------------------------------------
 if os.name == 'nt':
     import glob
     # Chemins possibles ou GDAL peut etre installe (PostgreSQL ou OSGeo4W)
@@ -62,6 +62,13 @@ INSTALLED_APPS = [
     'transporteurs',
     'notifications',
     'analytics',
+    'incidents',
+    'scoring',
+    'tickets',
+    'contrats',
+    'clients',
+    'tracking',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -96,7 +103,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'logistique_backend.wsgi.application'
 ASGI_APPLICATION = 'logistique_backend.asgi.application'
 
-# ─── Database PostgreSQL + PostGIS ───────────────────────────────────────────
+# --- Database PostgreSQL + PostGIS -------------------------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -108,7 +115,7 @@ DATABASES = {
     }
 }
 
-# ─── Channels / Redis ────────────────────────────────────────────────────────
+# --- Channels / Redis --------------------------------------------------------
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
 CHANNEL_LAYERS = {
@@ -130,12 +137,12 @@ except ImportError:
         },
     }
 
-# ─── Celery ──────────────────────────────────────────────────────────────────
+# --- Celery ------------------------------------------------------------------
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TIMEZONE = 'Africa/Casablanca'
 
-# ─── Django REST Framework ────────────────────────────────────────────────────
+# --- Django REST Framework ----------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -152,7 +159,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-# ─── JWT ─────────────────────────────────────────────────────────────────────
+# --- JWT ---------------------------------------------------------------------
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -164,7 +171,7 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.DeliverMapTokenObtainSerializer',
 }
 
-# ─── CORS ────────────────────────────────────────────────────────────────────
+# --- CORS --------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://localhost:5174',
@@ -175,21 +182,22 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# ─── Stripe ──────────────────────────────────────────────────────────────────
+# --- Stripe ------------------------------------------------------------------
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
-# ─── Email ───────────────────────────────────────────────────────────────────
+# --- Email -------------------------------------------------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@delivermap.ma'
 
-# ─── Commission plateforme (%) ────────────────────────────────────────────────
+# --- Commission plateforme (%) ------------------------------------------------
 PLATFORM_COMMISSION_RATE = float(os.environ.get('COMMISSION_RATE', '0.15'))
 
-# ─── OSRM routing server ─────────────────────────────────────────────────────
+# --- OSRM routing server -----------------------------------------------------
 OSRM_BASE_URL = os.environ.get('OSRM_BASE_URL', 'http://router.project-osrm.org')
 
-# ─── Auth validators ─────────────────────────────────────────────────────────
+# --- Auth validators ---------------------------------------------------------
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

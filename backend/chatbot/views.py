@@ -10,7 +10,6 @@ from .serializers import ChatRequestSerializer
 
 logger = logging.getLogger(__name__)
 
-
 SAFE_FALLBACK_REPLY = (
     "Je rencontre un souci technique pour le moment. Reessayez votre "
     "message dans un instant. Vous pouvez aussi me demander : "
@@ -19,7 +18,7 @@ SAFE_FALLBACK_REPLY = (
 
 
 class ChatbotView(APIView):
-    """Assistant conversationnel client : recherche produits, suivi commande, panier."""
+    """Assistant conversationnel client."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -39,17 +38,4 @@ class ChatbotView(APIView):
                 'action': None,
             }
 
-        reply_text = result.get('reply') or SAFE_FALLBACK_REPLY
-
-        nouvelle_history = (history + [
-            {'role': 'user', 'content': message},
-            {'role': 'assistant', 'content': reply_text},
-        ])[-20:]
-
-        return Response({
-            'reply': reply_text,
-            'products': result.get('products') or [],
-            'order': result.get('order'),
-            'action': result.get('action'),
-            'history': nouvelle_history,
-        })
+        return Response(result)

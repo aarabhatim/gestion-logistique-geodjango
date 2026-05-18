@@ -11,6 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { SignalerIncidentPanel } from './SignalerIncident';
 
 // ─── Leaflet icon fix ─────────────────────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
@@ -412,6 +413,7 @@ const ChauffeurDashboard = () => {
   const [togglingDispo, setTogglingDispo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -760,6 +762,28 @@ const ChauffeurDashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Signaler un incident */}
+            <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderLeft: '3px solid #ef4444' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangle size={15} color="#ef4444" /> Signaler un incident
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                  Accident, panne, vol, colis endommagé...
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIncidentModal(true)}
+                style={{
+                  background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+                  color: '#fca5a5', borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                <AlertTriangle size={13} /> Signaler
+              </button>
+            </div>
           </div>
         )}
 
@@ -990,6 +1014,18 @@ const ChauffeurDashboard = () => {
           </div>
         )}
       </div>
+
+      {showIncidentModal && (
+        <SignalerIncidentPanel
+          embedded
+          commandes={missions.filter(m => ['EN_PREPARATION', 'EN_ROUTE'].includes(m.statut))}
+          onClose={() => setShowIncidentModal(false)}
+          onSuccess={() => {
+            setShowIncidentModal(false);
+            showToast('Incident signalé avec succès');
+          }}
+        />
+      )}
     </div>
   );
 };

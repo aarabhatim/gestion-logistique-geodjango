@@ -3,25 +3,25 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Popup, LayersControl } f
 import 'leaflet/dist/leaflet.css';
 import {
   Activity, MapPin, Layers, RefreshCw, Store, Package, Target,
-  TrendingUp, AlertCircle, Eye, EyeOff, Printer, Download,
+  TrendingUp, AlertCircle, Eye, EyeOff, Download,
+  Clock, DollarSign, AlertTriangle, Truck,
 } from 'lucide-react';
 import { analyticsApi } from '../../services/api';
 import { useI18n } from '../../contexts/I18nContext';
 
-const { BaseLayer, Overlay } = LayersControl;
+const { BaseLayer } = LayersControl;
 
-// Coordonnées centre des principales villes marocaines (pour zoom rapide)
 const VILLES_COORDS = {
   'Casablanca':  [33.5731, -7.5898],
   'Rabat':       [34.0209, -6.8416],
   'Marrakech':   [31.6295, -7.9811],
-  'Fès':         [34.0181, -5.0078],
+  'Fes':         [34.0181, -5.0078],
   'Tanger':      [35.7595, -5.8340],
   'Agadir':      [30.4278, -9.5981],
-  'Meknès':      [33.8935, -5.5547],
+  'Meknes':      [33.8935, -5.5547],
   'Oujda':       [34.6814, -1.9086],
-  'Kénitra':     [34.2610, -6.5802],
-  'Tétouan':     [35.5785, -5.3683],
+  'Kenitra':     [34.2610, -6.5802],
+  'Tetouan':     [35.5785, -5.3683],
 };
 
 const STATUT_COLORS = {
@@ -29,20 +29,39 @@ const STATUT_COLORS = {
   EN_ROUTE: '#06b6d4', LIVREE: '#10b981', ANNULEE: '#ef4444',
 };
 
-// ─── Heat color : du bleu froid au rouge chaud ─────────────────────────────
-const heatColor = (intensity) => {
-  // intensity 0..1
-  const t = Math.max(0, Math.min(1, intensity));
-  if (t < 0.25) return '#3b82f6';   // bleu (froid)
-  if (t < 0.5)  return '#10b981';   // vert
-  if (t < 0.75) return '#f59e0b';   // orange
-  return '#ef4444';                  // rouge (très chaud)
+const HEATMAP_TYPES = [
+  { key: 'commandes', label: 'Commandes',  icon: Package,       color: '#3b82f6', desc: 'Densite des commandes' },
+  { key: 'retards',   label: 'Retards',    icon: Clock,         color: '#f59e0b', desc: 'Zones a fort taux de retard' },
+  { key: 'incidents', label: 'Incidents',  icon: AlertTriangle, color: '#ef4444', desc: 'Localisation des incidents' },
+  { key: 'profits',   label: 'Profits',    icon: DollarSign,    color: '#10b981', desc: 'Chiffre d\'affaires par zone' },
+  { key: 'trafic',    label: 'Trafic',     icon: Truck,         color: '#8b5cf6', desc: 'Passages de transporteurs' },
+];
+
+const PERIODES = [
+  { value: '7j',  label: '7 jours'  },
+  { value: '30j', label: '30 jours' },
+  { value: '90j', label: '90 jours' },
+];
+
+const normalizeGeoPoint = (p) => {
+  const lat = parseFloat(p?.lat ?? p?.latitude);
+  const lon = parseFloat(p?.lon ?? p?.lng ?? p?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { ...p, lat, lon, weight: p.weight ?? p.count ?? 1 };
 };
 
-// ─── Agrège les points en grille pour effet heatmap simulé ─────────────────
+const heatColor = (intensity, baseColor) => {
+  const t = Math.max(0, Math.min(1, intensity));
+  if (t < 0.25) return '#3b82f6';
+  if (t < 0.5)  return '#10b981';
+  if (t < 0.75) return '#f59e0b';
+  return '#ef4444';
+};
+
 const aggregateGrid = (points, gridSize = 0.02) => {
   const cells = {};
   points.forEach(p => {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return;
     const gx = Math.floor(p.lat / gridSize) * gridSize;
     const gy = Math.floor(p.lon / gridSize) * gridSize;
     const key = `${gx.toFixed(4)}_${gy.toFixed(4)}`;
@@ -55,7 +74,6 @@ const aggregateGrid = (points, gridSize = 0.02) => {
   return Object.values(cells);
 };
 
-// ─── KPI Compact card ──────────────────────────────────────────────────────
 const KPI = ({ icon: Icon, label, value, sub, color }) => (
   <div className="glass-card" style={{ padding: '0.85rem 1rem', borderLeft: `3px solid ${color}` }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -71,10 +89,12 @@ const KPI = ({ icon: Icon, label, value, sub, color }) => (
   </div>
 );
 
-// ─── Page principale ────────────────────────────────────────────────────────
 const HeatmapPage = () => {
   const { t } = useI18n();
+  const [heatmapType, setHeatmapType] = useState('commandes');
+  const [periode, setPeriode] = useState('30j');
   const [data, setData] = useState(null);
+  const [coverageData, setCoverageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filtreStatut, setFiltreStatut] = useState('');
   const [filtreVille, setFiltreVille] = useState('');
@@ -84,168 +104,209 @@ const HeatmapPage = () => {
   const [gridSize, setGridSize] = useState(0.015);
   const mapRef = useRef(null);
 
-  const fetch = () => {
+  const fetchHeatmap = async () => {
     setLoading(true);
-    analyticsApi.heatmap()
-      .then(r => setData(r.data))
-      .catch(err => {
-        console.error(err);
-        // Fallback : utilise les données admin si endpoint pas dispo
-        setData({ commandes: [], boutiques: [], couverture_villes: [] });
-      })
-      .finally(() => setLoading(false));
+    try {
+      const apiMap = {
+        commandes: analyticsApi.heatmapCommandes,
+        retards:   analyticsApi.heatmapRetards,
+        incidents: analyticsApi.heatmapIncidents,
+        profits:   analyticsApi.heatmapProfits,
+        trafic:    analyticsApi.heatmapTrafic,
+      };
+      const fn = apiMap[heatmapType];
+      const [heatRes, covRes] = await Promise.all([
+        fn(periode).catch(() => ({ data: { points: [] } })),
+        analyticsApi.heatmap().catch(() => ({ data: { commandes: [], boutiques: [], couverture_villes: [] } })),
+      ]);
+      setData(heatRes.data);
+      setCoverageData(covRes.data);
+    } catch (err) {
+      console.error(err);
+      setData({ points: [] });
+      setCoverageData({ commandes: [], boutiques: [], couverture_villes: [] });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetchHeatmap(); }, [heatmapType, periode]);
 
-  // Filtrage des points commandes
-  const commandesFiltrees = useMemo(() => {
-    if (!data?.commandes) return [];
-    return data.commandes.filter(c => !filtreStatut || c.statut === filtreStatut);
+  // Points de la heatmap typee
+  const typedPoints = useMemo(() => {
+    if (!data) return [];
+    const raw = data.points || data.commandes || [];
+    return raw
+      .map(normalizeGeoPoint)
+      .filter(Boolean)
+      .filter(p => !filtreStatut || p.statut === filtreStatut);
   }, [data, filtreStatut]);
 
-  // Boutiques filtrées par ville
+  // Boutiques de la couverture legacy
   const boutiquesFiltrees = useMemo(() => {
-    if (!data?.boutiques) return [];
-    return data.boutiques.filter(b => !filtreVille || b.ville === filtreVille);
-  }, [data, filtreVille]);
+    if (!coverageData?.boutiques) return [];
+    return coverageData.boutiques
+      .map(b => normalizeGeoPoint(b))
+      .filter(Boolean)
+      .filter(b => !filtreVille || b.ville === filtreVille);
+  }, [coverageData, filtreVille]);
 
-  // Grille de chaleur (agrégation des commandes)
   const heatGrid = useMemo(() => {
-    const cells = aggregateGrid(commandesFiltrees, gridSize);
+    const cells = aggregateGrid(typedPoints, gridSize);
     const maxWeight = Math.max(1, ...cells.map(c => c.weight));
     return cells.map(c => ({ ...c, intensity: c.weight / maxWeight }));
-  }, [commandesFiltrees, gridSize]);
+  }, [typedPoints, gridSize]);
 
-  const couverture = data?.couverture_villes || [];
+  const couverture = coverageData?.couverture_villes || [];
+  const currentTypeCfg = HEATMAP_TYPES.find(h => h.key === heatmapType);
 
-  // Statistiques globales
-  const totalCommandes = commandesFiltrees.length;
-  const totalBoutiques = boutiquesFiltrees.length;
-  const villesUniques = new Set(boutiquesFiltrees.map(b => b.ville).filter(Boolean)).size;
-  const moyenneCouverture = couverture.length
-    ? (couverture.reduce((s, v) => s + (v.score_couverture || 0), 0) / couverture.length).toFixed(1)
-    : 0;
+  const exportCSV = () => {
+    const rows = [['lat', 'lon', 'count', 'weight']];
+    typedPoints.forEach(p => rows.push([p.lat, p.lon, p.count || 1, p.weight || 1]));
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `heatmap_${heatmapType}_${periode}j_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
 
   const zoomToVille = (ville) => {
     const c = VILLES_COORDS[ville];
-    if (c && mapRef.current) {
-      mapRef.current.flyTo(c, 12, { duration: 1 });
-    }
+    if (c && mapRef.current) mapRef.current.flyTo(c, 12, { duration: 1 });
     setFiltreVille(ville);
   };
 
-  const exportCouvertureCSV = () => {
-    const rows = [['Ville', 'Boutiques', 'Commandes', 'Clients', 'Score couverture (%)']];
-    couverture.forEach(v => rows.push([v.ville, v.nb_boutiques, v.nb_commandes || 0, v.nb_clients || 0, v.score_couverture || 0]));
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `couverture_territoriale_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  };
+  const totalPoints = typedPoints.length;
+  const hotCells = heatGrid.filter(c => c.intensity > 0.5).length;
+  const moyenneWeight = totalPoints > 0 ? (typedPoints.reduce((s, p) => s + (p.weight || 1), 0) / totalPoints).toFixed(1) : 0;
 
   if (loading) {
     return (
       <div className="dashboard-container">
-        <div className="dashboard-header"><h2 className="page-title text-gradient">🌍 {t('heatmap')}</h2></div>
-        <div className="glass-card" style={{ height: '500px', opacity: 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <RefreshCw size={32} className="spin" />
+        <div className="dashboard-header">
+          <h2 className="page-title text-gradient">{t('heatmap')}</h2>
+        </div>
+        <div className="glass-card" style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <RefreshCw size={32} className="spin" style={{ opacity: 0.4 }} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="h-[calc(100vh-4rem)] overflow-auto p-4">
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Activity size={26} /> Heatmap & Couverture territoriale
+            <Activity size={26} /> Heatmap &amp; Couverture territoriale
           </h2>
-          <p className="page-subtitle">Visualisation géographique des commandes et analyse de la couverture par ville</p>
+          <p className="page-subtitle">Visualisation géographique avancée avec 5 types de données</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={fetch} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={fetchHeatmap} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} /> Actualiser
           </button>
-          <button onClick={exportCouvertureCSV} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Download size={14} /> Export couverture CSV
+          <button onClick={exportCSV} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={14} /> Export CSV
           </button>
         </div>
       </div>
 
-      {/* KPIs synthétiques */}
+      {/* Selecteur de type de heatmap */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
+        {HEATMAP_TYPES.map(ht => {
+          const Icon = ht.icon;
+          const active = heatmapType === ht.key;
+          return (
+            <button key={ht.key} onClick={() => setHeatmapType(ht.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 10, border: `1px solid ${active ? ht.color : 'rgba(255,255,255,0.1)'}`,
+                background: active ? `${ht.color}22` : 'rgba(255,255,255,0.03)',
+                color: active ? ht.color : 'var(--text-secondary)',
+                cursor: 'pointer', fontSize: 13, fontWeight: active ? 700 : 400,
+                transition: 'all 0.15s',
+              }}>
+              <Icon size={14} /> {ht.label}
+            </button>
+          );
+        })}
+        {/* Filtre periode */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          {PERIODES.map(p => (
+            <button key={p.value} onClick={() => setPeriode(p.value)}
+              style={{
+                padding: '8px 14px', borderRadius: 8, border: `1px solid ${periode === p.value ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                background: periode === p.value ? 'rgba(99,102,241,0.15)' : 'transparent',
+                color: periode === p.value ? '#a5b4fc' : 'var(--text-secondary)',
+                cursor: 'pointer', fontSize: 12,
+              }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-        <KPI icon={Package} label="Commandes affichées" value={totalCommandes} color="#3b82f6" />
-        <KPI icon={Store} label="Boutiques" value={totalBoutiques} sub={`${villesUniques} villes`} color="#10b981" />
-        <KPI icon={Target} label="Score moyen couverture" value={`${moyenneCouverture}%`} sub="0 → 100" color="#f59e0b" />
-        <KPI icon={TrendingUp} label="Zones chaudes" value={heatGrid.filter(c => c.intensity > 0.5).length} sub="cellules à forte densité" color="#ef4444" />
+        <KPI icon={currentTypeCfg?.icon || Package} label="Points de données" value={totalPoints} color={currentTypeCfg?.color || '#3b82f6'} />
+        <KPI icon={Store} label="Boutiques" value={boutiquesFiltrees.length} sub={`${new Set(boutiquesFiltrees.map(b => b.ville)).size} villes`} color="#10b981" />
+        <KPI icon={Target} label="Valeur moyenne" value={moyenneWeight} color="#f59e0b" />
+        <KPI icon={TrendingUp} label="Zones chaudes" value={hotCells} sub="intensite > 50%" color="#ef4444" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.25rem' }}>
-        {/* ── Carte ──────────────────────────────────────────────────── */}
+        {/* Carte */}
         <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden', height: 620 }}>
-          {/* Barre de filtres au-dessus de la carte */}
+          {/* Barre de filtres */}
           <div style={{ padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
-              style={{ width: 180, padding: '5px 10px', fontSize: 12 }}>
+              style={{ width: 170, padding: '5px 10px', fontSize: 12 }}>
               <option value="">Tous les statuts</option>
-              {Object.entries(STATUT_COLORS).map(([k]) => <option key={k} value={k}>{k}</option>)}
+              {Object.keys(STATUT_COLORS).map(k => <option key={k} value={k}>{k}</option>)}
             </select>
-
             <select className="glass-input" value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
-              style={{ width: 180, padding: '5px 10px', fontSize: 12 }}>
+              style={{ width: 160, padding: '5px 10px', fontSize: 12 }}>
               <option value="">Toutes villes</option>
               {Object.keys(VILLES_COORDS).map(v => <option key={v} value={v}>{v}</option>)}
             </select>
-
-            <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-              <button onClick={() => setShowHeatmap(s => !s)}
-                style={{ padding: '5px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
-                  background: showHeatmap ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
-                  color: showHeatmap ? '#fca5a5' : 'var(--text-secondary)' }}>
-                {showHeatmap ? <Eye size={11} /> : <EyeOff size={11} />} Heatmap
-              </button>
-              <button onClick={() => setShowBoutiques(s => !s)}
-                style={{ padding: '5px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
-                  background: showBoutiques ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)',
-                  color: showBoutiques ? '#86efac' : 'var(--text-secondary)' }}>
-                {showBoutiques ? <Eye size={11} /> : <EyeOff size={11} />} Boutiques
-              </button>
-              <button onClick={() => setShowRayons(s => !s)}
-                style={{ padding: '5px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer',
-                  background: showRayons ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)',
-                  color: showRayons ? '#93c5fd' : 'var(--text-secondary)' }}>
-                {showRayons ? <Eye size={11} /> : <EyeOff size={11} />} Rayons
-              </button>
+            <div style={{ display: 'flex', gap: 5, marginLeft: 'auto' }}>
+              {[
+                { state: showHeatmap, set: setShowHeatmap, label: 'Heatmap', color: 'rgba(239,68,68,0.2)', activeColor: '#fca5a5' },
+                { state: showBoutiques, set: setShowBoutiques, label: 'Boutiques', color: 'rgba(16,185,129,0.2)', activeColor: '#86efac' },
+                { state: showRayons, set: setShowRayons, label: 'Rayons', color: 'rgba(59,130,246,0.2)', activeColor: '#93c5fd' },
+              ].map(btn => (
+                <button key={btn.label} onClick={() => btn.set(s => !s)}
+                  style={{ padding: '5px 9px', fontSize: 10, borderRadius: 6, border: 'none', cursor: 'pointer',
+                    background: btn.state ? btn.color : 'rgba(255,255,255,0.06)',
+                    color: btn.state ? btn.activeColor : 'var(--text-secondary)',
+                    display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {btn.state ? <Eye size={10} /> : <EyeOff size={10} />} {btn.label}
+                </button>
+              ))}
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
-              Précision :
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-secondary)' }}>
+              Grille :
               <input type="range" min="0.005" max="0.05" step="0.005" value={gridSize}
-                onChange={e => setGridSize(parseFloat(e.target.value))}
-                style={{ width: 80 }} />
+                onChange={e => setGridSize(parseFloat(e.target.value))} style={{ width: 70 }} />
             </div>
           </div>
 
-          <MapContainer
-            center={[33.5731, -7.5898]} zoom={6}
+          <MapContainer center={[33.5731, -7.5898]} zoom={6}
             style={{ height: 'calc(100% - 50px)', width: '100%' }}
+            ref={mapRef}
             whenCreated={(m) => { mapRef.current = m; }}>
             <LayersControl position="topright">
-              <BaseLayer checked name="🗺️ OpenStreetMap">
-                <TileLayer attribution='&copy; OpenStreetMap'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <BaseLayer checked name="OpenStreetMap">
+                <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               </BaseLayer>
-              <BaseLayer name="🛰️ Satellite (Esri)">
-                <TileLayer attribution='&copy; Esri'
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+              <BaseLayer name="Satellite (Esri)">
+                <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
               </BaseLayer>
-              <BaseLayer name="🌙 Sombre (CartoDB)">
-                <TileLayer attribution='&copy; CartoDB'
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+              <BaseLayer name="Sombre (CartoDB)">
+                <TileLayer attribution='&copy; CartoDB' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
               </BaseLayer>
             </LayersControl>
 
@@ -253,13 +314,13 @@ const HeatmapPage = () => {
             {showHeatmap && heatGrid.map((cell, i) => (
               <CircleMarker key={`h-${i}`} center={[cell.lat, cell.lon]}
                 radius={5 + cell.intensity * 18}
-                fillColor={heatColor(cell.intensity)}
-                color={heatColor(cell.intensity)}
+                fillColor={heatColor(cell.intensity, currentTypeCfg?.color)}
+                color={heatColor(cell.intensity, currentTypeCfg?.color)}
                 fillOpacity={0.45} stroke={false}>
                 <Popup>
-                  <strong>Zone de chaleur</strong><br />
-                  {cell.count} commande{cell.count > 1 ? 's' : ''}<br />
-                  Poids cumulé : {Math.round(cell.weight)} MAD
+                  <strong>Zone {currentTypeCfg?.label}</strong><br />
+                  {cell.count} point{cell.count > 1 ? 's' : ''}<br />
+                  Valeur cumulée : {Math.round(cell.weight)}
                 </Popup>
               </CircleMarker>
             ))}
@@ -272,86 +333,70 @@ const HeatmapPage = () => {
                   color="#fff" weight={2} fillOpacity={0.9}>
                   <Popup>
                     <div style={{ minWidth: 180 }}>
-                      <strong>🏪 {b.nom}</strong><br />
-                      <span style={{ fontSize: 12 }}>📍 {b.ville}</span><br />
-                      <span style={{ fontSize: 12 }}>📦 {b.nb_commandes} commandes</span><br />
-                      <span style={{ fontSize: 12 }}>🎯 Rayon : {b.rayon_km} km</span><br />
-                      <span style={{ fontSize: 11, color: b.is_open ? 'green' : 'gray' }}>
-                        {b.is_open ? '● Ouvert' : '● Fermé'}
-                      </span>
+                      <strong>{b.nom}</strong><br />
+                      <span style={{ fontSize: 11 }}>{b.ville}</span><br />
+                      <span style={{ fontSize: 11 }}>{b.nb_commandes} commandes</span>
                     </div>
                   </Popup>
                 </CircleMarker>
                 {showRayons && (
                   <Circle center={[b.lat, b.lon]} radius={(b.rayon_km || 5) * 1000}
-                    pathOptions={{ color: b.is_open ? '#10b981' : '#64748b', fillOpacity: 0.05, weight: 1, dashArray: '4 4' }} />
+                    pathOptions={{ color: b.is_open ? '#10b981' : '#64748b', fillOpacity: 0.04, weight: 1, dashArray: '4 4' }} />
                 )}
               </React.Fragment>
             ))}
           </MapContainer>
         </div>
 
-        {/* ── Panneau de droite : couverture territoriale ──────────── */}
+        {/* Panneau couverture */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Légende */}
+          {/* Legende */}
           <div className="glass-card animate-fade-in">
             <h4 style={{ margin: '0 0 10px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Layers size={14} /> Légende
+              <Layers size={14} /> Légende — {currentTypeCfg?.label}
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11.5 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 14, height: 14, background: '#3b82f6', borderRadius: '50%' }} /> Zone froide (peu de commandes)
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 14, height: 14, background: '#10b981', borderRadius: '50%' }} /> Zone modérée
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 14, height: 14, background: '#f59e0b', borderRadius: '50%' }} /> Zone active
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 14, height: 14, background: '#ef4444', borderRadius: '50%' }} /> Zone très chaude
-              </div>
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8, marginTop: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, background: '#10b981', borderRadius: '50%', border: '2px solid white' }} /> Boutique ouverte
+            <div style={{ fontSize: 11.5, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {[
+                { color: '#3b82f6', label: 'Zone froide (faible activité)' },
+                { color: '#10b981', label: 'Zone modérée' },
+                { color: '#f59e0b', label: 'Zone active' },
+                { color: '#ef4444', label: 'Zone très chaude' },
+              ].map(l => (
+                <div key={l.color} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 14, height: 14, background: l.color, borderRadius: '50%', flexShrink: 0 }} />
+                  {l.label}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <span style={{ width: 10, height: 10, background: '#64748b', borderRadius: '50%', border: '2px solid white' }} /> Boutique fermée
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Couverture par ville */}
+          {/* Couverture territoriale */}
           <div className="glass-card animate-fade-in" style={{ flex: 1, overflowY: 'auto', maxHeight: 460 }}>
             <h4 style={{ margin: '0 0 12px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Target size={14} /> Analyse de couverture territoriale
+              <Target size={14} /> Couverture territoriale
             </h4>
             {couverture.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', fontSize: 12 }}>
-                <AlertCircle size={24} style={{ opacity: 0.4 }} />
-                <div style={{ marginTop: 8 }}>Aucune donnée de couverture disponible</div>
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)', fontSize: 12 }}>
+                <AlertCircle size={20} style={{ opacity: 0.4 }} />
+                <div style={{ marginTop: 8 }}>Aucune donnée de couverture</div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {couverture.map((v, i) => {
                   const score = v.score_couverture || 0;
                   const scoreColor = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444';
-                  const niveau = score >= 70 ? 'Excellent' : score >= 40 ? 'Modéré' : 'Faible';
                   return (
                     <div key={i} onClick={() => zoomToVille(v.ville)}
-                      style={{
-                        padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                      style={{ padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
                         background: filtreVille === v.ville ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
                         border: `1px solid ${filtreVille === v.ville ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.05)'}`,
-                        transition: 'all 0.15s',
-                      }}
+                        transition: 'all 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                       onMouseLeave={e => e.currentTarget.style.background = filtreVille === v.ville ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)'}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <strong style={{ fontSize: 13 }}>📍 {v.ville || 'Non renseignée'}</strong>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <strong style={{ fontSize: 13 }}>📍 {v.ville || 'Autre'}</strong>
                         <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: `${scoreColor}22`, padding: '2px 8px', borderRadius: 6 }}>
-                          {score}% · {niveau}
+                          {score}%
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -359,13 +404,8 @@ const HeatmapPage = () => {
                         <span>📦 {v.nb_commandes || 0}</span>
                         <span>👥 {v.nb_clients || 0}</span>
                       </div>
-                      {/* Barre de score */}
-                      <div style={{ marginTop: 6, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{
-                          width: `${score}%`, height: '100%',
-                          background: `linear-gradient(90deg, ${scoreColor}99, ${scoreColor})`,
-                          transition: 'width 0.4s',
-                        }} />
+                      <div style={{ marginTop: 5, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${score}%`, height: '100%', background: `linear-gradient(90deg, ${scoreColor}99, ${scoreColor})`, transition: 'width 0.4s' }} />
                       </div>
                     </div>
                   );
@@ -374,17 +414,6 @@ const HeatmapPage = () => {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Légende explicative en bas */}
-      <div className="glass-card animate-fade-in" style={{ marginTop: '1rem', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-        <strong style={{ color: 'var(--text-primary)' }}>📖 Comment lire cette carte :</strong>
-        <ul style={{ marginTop: 6, paddingLeft: 20 }}>
-          <li>La <strong>heatmap</strong> agrège les commandes en cellules. Plus la couleur tire vers le rouge, plus la zone est dense en activité.</li>
-          <li>Le <strong>score de couverture</strong> compare le nombre de commandes à la population de clients connue dans la ville (0 = sous-desservie, 100 = excellente).</li>
-          <li>Activez les <strong>rayons de livraison</strong> pour visualiser les zones théoriquement desservies par chaque boutique et détecter les <em>"zones blanches"</em>.</li>
-          <li>Cliquez sur une ville dans le panneau de droite pour zoomer dessus et filtrer la carte.</li>
-        </ul>
       </div>
     </div>
   );

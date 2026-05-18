@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Truck, Users, AlertCircle, TrendingUp, Store, Star, CheckCircle } from 'lucide-react';
-import { analyticsApi } from '../services/api';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Package, Truck, Users, AlertCircle, TrendingUp, Store, Star, CheckCircle,
+} from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
 } from 'recharts';
-import './Dashboard.css';
+import { analyticsApi } from '@/services/api';
+import { PageHeader } from '@/components/dashboard/PageHeader';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const STATUT_COLORS = {
   EN_ATTENTE: '#f59e0b',
@@ -16,22 +22,14 @@ const STATUT_COLORS = {
   ANNULEE: '#ef4444',
 };
 
-const StatCard = ({ title, value, icon: Icon, sub, colorClass, loading }) => (
-  <div className="glass-card stat-card animate-fade-in">
-    <div className="stat-header">
-      <div>
-        <h3 className="stat-title">{title}</h3>
-        <div className="stat-value">{loading ? '...' : (value ?? 0)}</div>
-        {sub && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{sub}</div>}
-      </div>
-      <div className={`stat-icon-wrapper ${colorClass}`}>
-        <Icon size={24} />
-      </div>
-    </div>
-  </div>
-);
+const chartTooltipStyle = {
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '8px',
+  color: 'hsl(var(--foreground))',
+};
 
-const Dashboard = () => {
+export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,124 +55,119 @@ const Dashboard = () => {
   const topTransporteurs = data?.top_transporteurs || [];
 
   return (
-    <div className="dashboard-container">
-      {/* Header */}
-      <div className="dashboard-header animate-fade-in">
-        <div>
-          <h2 className="page-title text-gradient">Vue d'ensemble</h2>
-          <p className="page-subtitle">Tableau de bord DeliverMap — données en temps réel</p>
-        </div>
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader
+        title="Vue d'ensemble"
+        description="Tableau de bord DeliverMap — indicateurs en temps réel"
+        badge="Live"
+      />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard index={0} loading={loading} title="Commandes totales" value={kpis.commandes_total} icon={Package}
+          sub={`${kpis.commandes_aujourd_hui || 0} aujourd'hui`} accent="blue" />
+        <KpiCard index={1} loading={loading} title="En cours" value={kpis.commandes_en_cours} icon={Truck}
+          sub={`Taux livraison ${kpis.taux_livraison || 0}%`} accent="cyan" />
+        <KpiCard index={2} loading={loading} title="Clients" value={kpis.clients_total} icon={Users}
+          sub="Inscrits" accent="emerald" />
+        <KpiCard index={3} loading={loading} title="Boutiques actives" value={kpis.fondateurs_actifs} icon={Store}
+          sub={`${kpis.fondateurs_en_attente || 0} en attente`} accent="violet" />
+        <KpiCard index={4} loading={loading} title="Transporteurs" value={kpis.transporteurs_actifs} icon={CheckCircle}
+          sub={`${kpis.transporteurs_en_livraison || 0} en livraison`} accent="emerald" />
+        <KpiCard index={5} loading={loading} title="CA total" value={`${Math.round(kpis.ca_total || 0).toLocaleString()} MAD`}
+          icon={TrendingUp} sub={`${Math.round(kpis.ca_mois || 0).toLocaleString()} MAD ce mois`} accent="amber" />
+        <KpiCard index={6} loading={loading} title="Signalées" value={kpis.commandes_signalees} icon={AlertCircle}
+          sub="À traiter" accent="rose" />
+        <KpiCard index={7} loading={loading} title="Taux livraison" value={`${kpis.taux_livraison || 0}%`} icon={Star}
+          sub="Livrées / total" accent="blue" />
       </div>
 
-      {/* KPI Cards */}
-      <div className="stats-grid">
-        <StatCard title="Commandes totales" value={kpis.commandes_total} icon={Package}
-          sub={`${kpis.commandes_aujourd_hui || 0} aujourd'hui`} colorClass="icon-primary" loading={loading} />
-        <StatCard title="En cours" value={kpis.commandes_en_cours} icon={Truck}
-          sub={`Taux livraison: ${kpis.taux_livraison || 0}%`} colorClass="icon-warning" loading={loading} />
-        <StatCard title="Clients" value={kpis.clients_total} icon={Users}
-          sub="Inscrits sur la plateforme" colorClass="icon-success" loading={loading} />
-        <StatCard title="Boutiques actives" value={kpis.fondateurs_actifs} icon={Store}
-          sub={`${kpis.fondateurs_en_attente || 0} en attente de validation`} colorClass="icon-primary" loading={loading} />
-        <StatCard title="Transporteurs dispos" value={kpis.transporteurs_actifs} icon={CheckCircle}
-          sub={`${kpis.transporteurs_en_livraison || 0} en livraison`} colorClass="icon-success" loading={loading} />
-        <StatCard title="CA total" value={`${Math.round(kpis.ca_total || 0).toLocaleString()} MAD`} icon={TrendingUp}
-          sub={`${Math.round(kpis.ca_mois || 0).toLocaleString()} MAD ce mois`} colorClass="icon-warning" loading={loading} />
-        <StatCard title="Signalées" value={kpis.commandes_signalees} icon={AlertCircle}
-          sub="Commandes à traiter" colorClass="icon-danger" loading={loading} />
-        <StatCard title="Taux livraison" value={`${kpis.taux_livraison || 0}%`} icon={Star}
-          sub="Commandes livrées / total" colorClass="icon-primary" loading={loading} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-2"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Évolution des commandes (6 mois)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={evolution}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="mois" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                  <Tooltip contentStyle={chartTooltipStyle} />
+                  <Line type="monotone" dataKey="commandes" name="Commandes" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Par statut</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={parStatut} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <Tooltip contentStyle={chartTooltipStyle} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {parStatut.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Graphiques */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Évolution 6 mois */}
-        <div className="glass-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <h3 className="card-title" style={{ marginBottom: '1.5rem' }}>Évolution des commandes (6 mois)</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={evolution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
-              <XAxis dataKey="mois" stroke="#94a3b8" fontSize={12} />
-              <YAxis stroke="#94a3b8" fontSize={12} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
-              <Line type="monotone" dataKey="commandes" name="Commandes" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mt-6 grid gap-6 lg:grid-cols-2"
+      >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Top boutiques</CardTitle>
+            <Badge variant="info">CA</Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topFondateurs.length === 0 && <p className="text-sm text-muted-foreground">Aucune donnée</p>}
+            {topFondateurs.map((f, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+                <span className="text-sm font-medium">{f.fondateur__nom_boutique || '—'}</span>
+                <span className="text-sm font-semibold text-primary">{Math.round(f.ca || 0).toLocaleString()} MAD</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-        {/* Répartition par statut */}
-        <div className="glass-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <h3 className="card-title" style={{ marginBottom: '1.5rem' }}>Par statut</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={parStatut} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
-              <XAxis type="number" stroke="#94a3b8" fontSize={11} />
-              <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={10} width={95} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
-              <Bar dataKey="value" name="Commandes" radius={[0, 4, 4, 0]}>
-                {parStatut.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Top Fondateurs + Top Transporteurs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <div className="glass-card animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <h3 className="card-title" style={{ marginBottom: '1.2rem' }}>Top boutiques (CA)</h3>
-          {loading ? <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {topFondateurs.slice(0, 6).map((f, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700' }}>
-                      {i + 1}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{f.fondateur__nom_boutique}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{f.nb_commandes} commandes</div>
-                    </div>
-                  </div>
-                  <span style={{ color: '#10b981', fontWeight: 700, fontSize: '14px' }}>
-                    {Math.round(f.ca || 0).toLocaleString()} MAD
-                  </span>
-                </div>
-              ))}
-              {topFondateurs.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Aucune donnée</p>}
-            </div>
-          )}
-        </div>
-
-        <div className="glass-card animate-fade-in" style={{ animationDelay: '0.4s' }}>
-          <h3 className="card-title" style={{ marginBottom: '1.2rem' }}>Top transporteurs</h3>
-          {loading ? <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {topTransporteurs.slice(0, 6).map((t, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700' }}>
-                      {i + 1}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{t.user__first_name} {t.user__last_name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t.vehicule_type} — ⭐ {t.note_moyenne}</div>
-                    </div>
-                  </div>
-                  <span style={{ color: '#3b82f6', fontWeight: 700, fontSize: '14px' }}>
-                    {t.nombre_livraisons} livr.
-                  </span>
-                </div>
-              ))}
-              {topTransporteurs.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Aucune donnée</p>}
-            </div>
-          )}
-        </div>
-      </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Top transporteurs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topTransporteurs.length === 0 && <p className="text-sm text-muted-foreground">Aucune donnée</p>}
+            {topTransporteurs.map((t, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+                <span className="text-sm font-medium">
+                  {t.user__first_name} {t.user__last_name}
+                  <span className="ml-2 text-xs text-muted-foreground">{t.vehicule_type}</span>
+                </span>
+                <Badge variant="secondary">{t.nombre_livraisons} livraisons</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
-};
-
-export default Dashboard;
+}

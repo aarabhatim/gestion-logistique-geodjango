@@ -207,6 +207,8 @@ class TransporteurAccepterCommandeView(APIView):
                 t.save(update_fields=['is_on_delivery'])
             except Exception:
                 pass
+            from contrats.services import creer_contrat_pour_commande
+            creer_contrat_pour_commande(commande, cree_par=request.user)
             return Response(CommandeSerializer(commande).data)
         elif action == 'refuser':
             return Response({'message': 'Commande refusée. Prochaine proposition...'})
@@ -304,6 +306,8 @@ class AdminAssignerTransporteurView(APIView):
         commande.save()
         transporteur.is_on_delivery = True
         transporteur.save(update_fields=['is_on_delivery'])
+        from contrats.services import creer_contrat_pour_commande
+        creer_contrat_pour_commande(commande, cree_par=request.user)
         return Response(CommandeSerializer(commande).data)
 
 

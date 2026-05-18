@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Truck, Lock, User, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import './Auth.css';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-const Login = () => {
+export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: '', password: '' });
@@ -17,10 +20,9 @@ const Login = () => {
     setLoading(true);
     try {
       const user = await login(form.username, form.password);
-      if (user.role === 'ADMIN') navigate('/');
+      if (user.role === 'ADMIN' || user.role === 'FONDATEUR') navigate('/');
       else if (user.role === 'CLIENT') navigate('/client');
       else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
-      else if (user.role === 'FONDATEUR') navigate('/');
       else navigate('/');
     } catch (err) {
       setError(err.response?.data?.non_field_errors?.[0] || 'Identifiants incorrects.');
@@ -30,61 +32,77 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container animate-fade-in">
-        <div className="auth-logo">
-          <div className="logo-icon"><Truck size={28} color="white" /></div>
-          <h1 className="logo-text text-gradient">LogisTrack</h1>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.15),_transparent_50%)]" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-[500px] w-[500px] bg-[radial-gradient(circle,_hsl(var(--primary)/0.08),_transparent_70%)]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-glow">
+            <Truck className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-tight">
+            <span className="text-gradient">DeliverMap</span>
+          </h1>
+          <p className="text-sm text-muted-foreground">Plateforme logistique entreprise</p>
         </div>
 
-        <div className="auth-card glass-card">
-          <h2 className="auth-title">Connexion</h2>
-          <p className="auth-subtitle">Accédez à votre espace logistique</p>
-
-          {error && (
-            <div className="auth-error">
-              <AlertCircle size={16} /> {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label><User size={14} /> Nom d'utilisateur</label>
-              <input
-                type="text"
-                className="glass-input"
-                placeholder="votre_username"
-                value={form.username}
-                onChange={e => setForm({ ...form, username: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label><Lock size={14} /> Mot de passe</label>
-              <input
-                type="password"
-                className="glass-input"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-              {loading ? 'Connexion...' : 'Se connecter'}
-            </button>
-          </form>
-
-          <p className="auth-footer">
-            Pas encore de compte ?{' '}
-            <Link to="/register" className="auth-link">Créer un compte</Link>
-          </p>
-        </div>
-      </div>
+        <Card className="border-border/80 shadow-card backdrop-blur">
+          <CardHeader>
+            <CardTitle>Connexion</CardTitle>
+            <CardDescription>Accédez à votre espace professionnel</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <User className="h-4 w-4 text-muted-foreground" /> Nom d&apos;utilisateur
+                </label>
+                <Input
+                  value={form.username}
+                  onChange={e => setForm({ ...form, username: e.target.value })}
+                  placeholder="votre_username"
+                  required
+                  autoComplete="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="h-4 w-4 text-muted-foreground" /> Mot de passe
+                </label>
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </Button>
+            </form>
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              Pas de compte ?{' '}
+              <Link to="/register" className="font-medium text-primary hover:underline">
+                Créer un compte
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
-};
-
-export default Login;
+}

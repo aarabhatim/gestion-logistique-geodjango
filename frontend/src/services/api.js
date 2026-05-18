@@ -7,7 +7,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── Intercepteur: inject token ───────────────────────────────────────────────
+// Intercepteur: inject token
 api.interceptors.request.use((config) => {
   const stored = localStorage.getItem('delivermap-auth');
   if (stored) {
@@ -21,7 +21,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Intercepteur: refresh token auto ────────────────────────────────────────
+// Intercepteur: refresh token auto
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -53,7 +53,7 @@ api.interceptors.response.use(
   }
 );
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Auth
 export const authApi = {
   login: (data) => api.post('auth/login/', data),
   register: (data) => api.post('auth/register/', data),
@@ -64,7 +64,7 @@ export const authApi = {
   updatePosition: (lat, lon) => api.post('auth/position/', { latitude: lat, longitude: lon }),
 };
 
-// ─── Fondateurs & Produits ────────────────────────────────────────────────────
+// Fondateurs & Produits
 export const fondateursApi = {
   proches: (lat, lon, rayon = 10, categorie) =>
     api.get('fondateurs/proches/', { params: { lat, lon, rayon, categorie } }),
@@ -83,9 +83,13 @@ export const fondateursApi = {
   verifierCode: (data) => api.post('fondateurs/verifier-code-promo/', data),
   adminListe: (params) => api.get('fondateurs/admin/liste/', { params }),
   adminValider: (id, action, motif) => api.post(`fondateurs/admin/${id}/valider/`, { action, motif }),
+  // Stock management
+  toggleDisponibilite: (id) => api.post(`fondateurs/mes-produits/${id}/toggle-disponibilite/`),
+  majStock: (id, data) => api.patch(`fondateurs/mes-produits/${id}/stock/`, data),
+  stockAlertes: () => api.get('fondateurs/mon-stock/alertes/'),
 };
 
-// ─── Commandes ────────────────────────────────────────────────────────────────
+// Commandes
 export const commandesApi = {
   list: (params) => api.get('commandes/', { params }),
   create: (data) => api.post('commandes/', data),
@@ -98,13 +102,12 @@ export const commandesApi = {
   proposees: () => api.get('commandes/proposees/'),
   creerAvis: (commandeId, data) => api.post(`commandes/${commandeId}/avis/`, data),
   avis: (params) => api.get('commandes/avis/', { params }),
-  // Admin
   adminAnnuler: (id) => api.post(`commandes/${id}/admin/annuler/`),
   adminAssigner: (id, transporteurId) => api.post(`commandes/${id}/admin/assigner/`, { transporteur_id: transporteurId }),
   adminTransporteursDispo: (id) => api.get(`commandes/${id}/admin/transporteurs/`),
 };
 
-// ─── Livraisons ───────────────────────────────────────────────────────────────
+// Livraisons
 export const livraisonsApi = {
   detail: (id) => api.get(`livraisons/${id}/`),
   mesLivraisons: () => api.get('livraisons/mes-livraisons/'),
@@ -114,7 +117,7 @@ export const livraisonsApi = {
     api.post('livraisons/position/', { latitude: lat, longitude: lon, vitesse_kmh: vitesse, livraison_id: livraisonId }),
 };
 
-// ─── Transporteurs ────────────────────────────────────────────────────────────
+// Transporteurs
 export const transporteursApi = {
   monProfil: () => api.get('transporteurs/mon-profil/'),
   creerProfil: (data) => api.post('transporteurs/mon-profil/', data),
@@ -124,29 +127,83 @@ export const transporteursApi = {
   adminValider: (id, action) => api.post(`transporteurs/admin/${id}/valider/`, { action }),
 };
 
-// ─── Notifications ────────────────────────────────────────────────────────────
+// Notifications
 export const notificationsApi = {
-  list: () => api.get('notifications/'),
+  list: (params) => api.get('notifications/', { params }),
   nonLues: () => api.get('notifications/non-lues/'),
   marquerLue: (id) => api.post(`notifications/${id}/lire/`),
   toutLire: () => api.post('notifications/tout-lire/'),
+  supprimer: (id) => api.delete(`notifications/${id}/supprimer/`),
+  supprimerLues: () => api.delete('notifications/supprimer-lues/'),
+  alertesRetard: () => api.get('notifications/alertes-retard/'),
 };
 
-// ─── Analytics ────────────────────────────────────────────────────────────────
+// Analytics
 export const analyticsApi = {
   adminDashboard: () => api.get('analytics/admin/'),
   fondateurAnalytics: () => api.get('analytics/fondateur/'),
   publiques: () => api.get('analytics/publiques/'),
+  // Heatmap legacy (couverture territoriale)
   heatmap: () => api.get('analytics/heatmap/'),
+  // 5 heatmap types avec filtre periode (7j, 30j, 90j)
+  heatmapCommandes: (periode) => api.get('analytics/heatmap/commandes/', { params: periode ? { periode } : {} }),
+  heatmapRetards: (periode) => api.get('analytics/heatmap/retards/', { params: periode ? { periode } : {} }),
+  heatmapIncidents: (periode) => api.get('analytics/heatmap/incidents/', { params: periode ? { periode } : {} }),
+  heatmapProfits: (periode) => api.get('analytics/heatmap/profits/', { params: periode ? { periode } : {} }),
+  heatmapTrafic: (periode) => api.get('analytics/heatmap/trafic/', { params: periode ? { periode } : {} }),
 };
 
-// ─── Chatbot conversationnel ─────────────────────────────────────────────────
+// Incidents
+export const incidentsApi = {
+  list: (params) => api.get('incidents/', { params }),
+  detail: (id) => api.get(`incidents/${id}/`),
+  signaler: (data) => api.post('incidents/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  resoudre: (id, data) => api.post(`incidents/${id}/resoudre/`, data),
+  prendreEnCharge: (id) => api.post(`incidents/${id}/prendre-en-charge/`),
+  mesIncidents: () => api.get('incidents/mes-incidents/'),
+  stats: () => api.get('incidents/stats/'),
+  ajouterPhoto: (id, data) => api.post(`incidents/${id}/ajouter-photo/`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+// Scoring
+export const scoringApi = {
+  monScore: () => api.get('scoring/mon-score/'),
+  detail: (id) => api.get(`scoring/${id}/`),
+  classement: (params) => api.get('scoring/classement/', { params }),
+  recalculer: (id) => api.post(`scoring/${id}/recalculer/`),
+  recalculerTous: () => api.post('scoring/recalculer-tous/'),
+};
+
+// Tickets
+export const ticketsApi = {
+  list: (params) => api.get('tickets/', { params }),
+  create: (data) => api.post('tickets/', data),
+  detail: (id) => api.get(`tickets/${id}/`),
+  repondre: (id, data) => api.post(`tickets/${id}/repondre/`, data),
+  assigner: (id, data) => api.post(`tickets/${id}/assigner/`, data),
+  changerStatut: (id, statut) => api.post(`tickets/${id}/changer-statut/`, { statut }),
+  mesTickets: () => api.get('tickets/mes-tickets/'),
+};
+
+// Contrats
+export const contratsApi = {
+  list: (params) => api.get('contrats/', { params }),
+  detail: (id) => api.get(`contrats/${id}/`),
+  creer: (data) => api.post('contrats/', data),
+  genererPdf: (id) => api.post(`contrats/${id}/generer-pdf/`),
+  telechargerPdf: (id) => api.get(`contrats/${id}/telecharger-pdf/`, { responseType: 'blob' }),
+  signer: (id, data) => api.post(`contrats/${id}/signer/`, data),
+  activer: (id) => api.post(`contrats/${id}/activer/`),
+  resilier: (id, data) => api.post(`contrats/${id}/resilier/`, data),
+  verifierExpirations: () => api.post('contrats/verifier-expirations/'),
+};
+
+// Chatbot conversationnel
 export const chatbotApi = {
   send: ({ message, history }) => api.post('chatbot/', { message, history }),
 };
 
-// ─── Exports nommés compatibles (anciens composants) ─────────────────────────
-
+// Exports nommés compatibles (anciens composants)
 export const getCommandes = (params) => commandesApi.list(params);
 export const createCommande = (data) => commandesApi.create(data);
 export const validerCommande = (id) => commandesApi.avancer(id);
@@ -157,7 +214,10 @@ export const livrerCommande = (id) => commandesApi.avancer(id);
 export const getClients = (params) =>
   api.get('auth/admin/users/', { params: { role: 'CLIENT', ...params } });
 
-// ─── Admin user / boutique / transporteur management ─────────────────────────
+export const getIncidents = (params) => incidentsApi.list(params);
+export const resoudreIncident = (id, notes) => incidentsApi.resoudre(id, { notes_resolution: notes });
+
+// Admin user / boutique / transporteur management
 export const adminApi = {
   listUsers:           (params) => api.get('auth/admin/users/', { params }),
   banUser:             (id) => api.post(`auth/admin/users/${id}/ban/`),
@@ -167,19 +227,5 @@ export const adminApi = {
 };
 
 export const getStats = () => analyticsApi.adminDashboard();
-
-export const getNonLues = () => notificationsApi.nonLues();
-export const marquerLue = (id) => notificationsApi.marquerLue(id);
-export const toutMarquerLu = () => notificationsApi.toutLire();
-
-export const getVehicules = (params) => transporteursApi.adminListe(params);
-export const getChauffeurs = (params) =>
-  api.get('auth/admin/users/', { params: { role: 'TRANSPORTEUR', ...params } });
-
-// Incidents n'existe plus — retourne une liste vide pour éviter les crashs
-export const getIncidents = () =>
-  Promise.resolve({ data: { features: [] } });
-export const resoudreIncident = () =>
-  Promise.resolve({ data: {} });
 
 export default api;

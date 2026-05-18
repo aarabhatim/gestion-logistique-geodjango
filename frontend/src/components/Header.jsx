@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, Globe } from 'lucide-react';
-import { getNonLues, marquerLue, toutMarquerLu } from '../services/api';
+import { notificationsApi } from '../services/api';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
 
@@ -22,7 +22,7 @@ const Header = () => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await getNonLues();
+      const res = await notificationsApi.nonLues();
       setNotifications(res.data.results || res.data || []);
     } catch (error) {
       console.error("Erreur chargement notifications", error);
@@ -51,13 +51,13 @@ const Header = () => {
   const handleMarquerLue = async (id, e) => {
     e.stopPropagation();
     setLoading(true);
-    try { await marquerLue(id); await fetchNotifications(); }
+    try { await notificationsApi.marquerLue(id); await fetchNotifications(); }
     finally { setLoading(false); }
   };
 
   const handleToutMarquerLu = async () => {
     setLoading(true);
-    try { await toutMarquerLu(); await fetchNotifications(); setShowDropdown(false); }
+    try { await notificationsApi.toutLire(); await fetchNotifications(); setShowDropdown(false); }
     finally { setLoading(false); }
   };
 

@@ -1,6 +1,7 @@
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
+from django.db import models
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -216,4 +217,90 @@ class VerifierCodePromoView(APIView):
             'valeur': str(code_promo.valeur),
             'reduction': reduction,
             'montant_final': float(montant) - reduction,
+        })
+
+
+# --- Gestion stock & disponibilite ---
+
+class ToggleDisponibiliteProduitView(APIView):
+    """
+    Bascule rapide disponible/indisponible pour un produit (fondateur owner).
+    POST /api/fondateurs/mes-produits/{pk}/toggle-disponibilite/
+    """
+    permission_classes = [IsFondateurRole]
+
+    def post(self, request, pk):
+        try:
+            produit = Produit.objects.get(pk=pk, fondateur=request.user.fondateur_profile)
+        except Produit.DoesNotExist:
+            return Response({'detail': 'Produit introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not produit.disponible and produit.stock <= 0:
+            return Response(
+                {'detail': "Impossible d'activer un produit sans stock."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if 'disponible' in request.data:
+            produit.disponible = bool(request.data['disponible'])
+        else:
+            produit.disponible = not produit.disponible
+
+        produit.save(update_fields=['disponible'])
+        return Response({'id': produit.pk, 'disponible': produit.disponible, 'stock': produit.stock})
+
+
+class MettreAJourStockView(APIView):
+    """
+    Mise a jour du stock d'un produit (fondateur).
+    PATCH /api/fondateurs/mes-produits/{pk}/stock/
+    Body : {"stock": 50}
+    """
+    permission_classes = [IsFondateurRole]
+
+    def patch(self, request, pk):
+        try:
+            produit = Produit.objects.get(pk=pk, fondateur=request.user.fondateur_profile)
+        except Produit.DoesNotExist:
+            return Response({'detail': 'Produit introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        nouveau_stock = request.data.get('stock')
+        if nouveau_stock is None:
+            return Response({'detail': 'Le champ "stock" est requis.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            nouveau_stock = int(nouveau_stock)
+            if nouveau_stock < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({'detail': 'Stock invalide (entier >= 0).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        produit.stock = nouveau_stock
+        if nouveau_stock > 0 and not produit.disponible:
+            produit.disponible = True
+        produit.save(update_fields=['stock', 'disponible'])
+        return Response({'id': produit.pk, 'stock': produit.stock, 'disponible': produit.disponible})
+
+
+class StockAlertesView(APIView):
+    """
+    Liste les produits avec stock bas ou en rupture pour le fondateur connecte.
+    GET /api/fondateurs/mon-stock/alertes/
+    """
+    permission_classes = [IsFondateurRole]
+
+    def get(self, request):
+        from django.db.models import Q, F
+        fondateur = request.user.fondateur_profile
+        produits = list(Produit.objects.filter(
+            fondateur=fondateur
+        ).filter(
+            Q(stock=0) | Q(stock__lte=F('stock_alerte'))
+        ).values('id', 'nom', 'stock', 'stock_alerte', 'disponible', 'categorie'))
+
+        ruptures = [p for p in produits if p['stock'] == 0]
+        bas = [p for p in produits if 0 < p['stock'] <= p['stock_alerte']]
+        return Response({
+            'ruptures': ruptures,
+            'stock_bas': bas,
+            'total_alertes': len(ruptures) + len(bas),
         })

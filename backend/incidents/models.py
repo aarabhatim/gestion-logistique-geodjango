@@ -9,6 +9,8 @@ class Incident(models.Model):
         ('colis_endommage', 'Colis endommagé'),
         ('panne', 'Panne véhicule'),
         ('vol', 'Vol / Perte'),
+        ('client_absent', 'Client absent'),
+        ('adresse_introuvable', 'Adresse introuvable'),
         ('autre', 'Autre'),
     ]
     STATUT_CHOICES = [
@@ -36,3 +38,25 @@ class Incident(models.Model):
 
     def __str__(self):
         return f"[{self.get_type_incident_display()}] Commande {self.commande.id} — {self.get_statut_display()}"
+
+
+def incident_photo_path(instance, filename):
+    return f'incidents/{instance.incident.id}/{filename}'
+
+
+class IncidentPhoto(models.Model):
+    """Photos jointes à un incident (plusieurs possibles)."""
+    incident = models.ForeignKey(
+        Incident, on_delete=models.CASCADE, related_name='photos'
+    )
+    image = models.ImageField(upload_to=incident_photo_path)
+    legende = models.CharField(max_length=200, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Photo incident"
+        verbose_name_plural = "Photos incidents"
+        ordering = ['uploaded_at']
+
+    def __str__(self):
+        return f"Photo #{self.pk} — Incident #{self.incident.pk}"
