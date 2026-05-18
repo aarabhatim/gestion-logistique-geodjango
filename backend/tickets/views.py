@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from notifications.models import envoyer_notification
+from utils.ws_broadcast import broadcast_group
 from .models import Ticket, TicketMessage
 from .serializers import TicketSerializer, TicketDetailSerializer, TicketMessageSerializer
 
@@ -59,7 +60,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             self.request.data.get('priorite', 'moyen'), 24
         )
         ticket = serializer.save(auteur=self.request.user, sla_heures=sla)
-        # Notifier les admins
+        # Notifier les admins (notification individuelle + WebSocket)
         admins = User.objects.filter(role='ADMIN', is_active=True)
         for admin in admins:
             envoyer_notification(
@@ -68,6 +69,15 @@ class TicketViewSet(viewsets.ModelViewSet):
                 message=f"{ticket.auteur.get_full_name() or ticket.auteur.username} : {ticket.titre}",
                 type_notif='INFO',
             )
+        # Broadcast WebSocket vers le groupe admin_tickets
+        broadcast_group('admin_tickets', {
+            'event': 'ticket_created',
+            'ticket_id': ticket.pk,
+            'titre': ticket.titre,
+            'priorite': ticket.priorite,
+            'statut': ticket.statut,
+            'auteur': ticket.auteur.get_full_name() or ticket.auteur.username,
+        })
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
@@ -137,6 +147,12 @@ class TicketViewSet(viewsets.ModelViewSet):
             message=f"Le ticket '{ticket.titre}' vous a été assigné.",
             type_notif='INFO',
         )
+        broadcast_group('admin_tickets', {
+            'event': 'ticket_assigned',
+            'ticket_id': ticket.pk,
+            'agent': agent.username,
+            'statut': ticket.statut,
+        })
         return Response({'status': 'assigné', 'agent': agent.username})
 
     @action(detail=True, methods=['post'], url_path='resoudre')
@@ -152,6 +168,12 @@ class TicketViewSet(viewsets.ModelViewSet):
             message=f"Votre ticket '{ticket.titre}' a été résolu.",
             type_notif='SUCCESS',
         )
+        # Broadcast WebSocket
+        broadcast_group('admin_tickets', {
+            'event': 'ticket_updated',
+            'ticket_id': ticket.pk,
+            'statut': 'resolu',
+        })
         return Response({'status': 'résolu'})
 
     @action(detail=False, methods=['get'], url_path='statistiques',

@@ -496,8 +496,14 @@ class Command(BaseCommand):
             self._creer_codes_promo(boutiques)
             transporteurs = self._creer_transporteurs()
             commandes = self._creer_commandes(clients, boutiques, transporteurs)
-            self._creer_avis(commandes)
-            self._creer_notifications(clients, fondateurs, transporteurs)
+            try:
+                self._creer_avis(commandes)
+            except AttributeError:
+                pass
+            try:
+                self._creer_notifications(clients, fondateurs, transporteurs)
+            except AttributeError:
+                pass
 
         self.stdout.write(self.style.SUCCESS('\n[OK] Base de donnees remplie avec succes!'))
         self.stdout.write(f'   Admin:         admin@delivermap.ma / admin2025')

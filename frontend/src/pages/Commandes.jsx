@@ -2,9 +2,38 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Check, Truck, X, RefreshCw, Filter,
   ChevronLeft, ChevronRight, Eye, UserCheck, AlertTriangle,
-  ArrowRight, MapPin, Clock, Star, Search,
+  ArrowRight, MapPin, Clock, Star, Search, Download,
 } from 'lucide-react';
 import { commandesApi } from '../services/api';
+
+// ─── Export CSV helper ────────────────────────────────────────────────────────
+const exportCSV = (rows) => {
+  const headers = ['ID', 'Référence', 'Client', 'Boutique', 'Statut', 'Montant (MAD)', 'Date'];
+  const escape = (v) => {
+    if (v == null) return '';
+    const s = String(v).replace(/"/g, '""');
+    return /[",\n;]/.test(s) ? `"${s}"` : s;
+  };
+  const lines = [
+    headers.map(escape).join(','),
+    ...rows.map(c => [
+      c.id,
+      c.reference || '',
+      c.client_nom || c.client || '',
+      c.fondateur_nom || c.boutique || '',
+      c.statut || '',
+      c.montant_total || c.total || '',
+      c.created_at ? new Date(c.created_at).toLocaleDateString() : '',
+    ].map(escape).join(',')),
+  ].join('\n');
+  const blob = new Blob(['﻿' + lines], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `commandes_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 // ─── Config statuts ───────────────────────────────────────────────────────────
 const STATUT_CONFIG = {
@@ -311,9 +340,16 @@ const Commandes = () => {
           <h2 className="page-title text-gradient">Gestion des Commandes</h2>
           <p className="page-subtitle">{count} commandes · Page {page}/{Math.max(1, totalPages)}</p>
         </div>
-        <button className="btn btn-secondary" onClick={() => fetchCommandes()}>
-          <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => exportCSV(commandes)}
+            title="Exporter la page courante en CSV"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={15} /> CSV
+          </button>
+          <button className="btn btn-secondary" onClick={() => fetchCommandes()}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Quick stat chips */}

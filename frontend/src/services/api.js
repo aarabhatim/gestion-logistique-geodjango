@@ -183,6 +183,8 @@ export const ticketsApi = {
   assigner: (id, data) => api.post(`tickets/${id}/assigner/`, data),
   changerStatut: (id, statut) => api.post(`tickets/${id}/changer-statut/`, { statut }),
   mesTickets: () => api.get('tickets/mes-tickets/'),
+  resoudre: (id) => api.post(`tickets/${id}/resoudre/`),
+  statistiques: () => api.get('tickets/statistiques/'),
 };
 
 // Contrats
@@ -196,6 +198,19 @@ export const contratsApi = {
   activer: (id) => api.post(`contrats/${id}/activer/`),
   resilier: (id, data) => api.post(`contrats/${id}/resilier/`, data),
   verifierExpirations: () => api.post('contrats/verifier-expirations/'),
+};
+
+// Clients CRUD
+export const clientsApi = {
+  list: (params) => api.get('clients/clients/', { params }),
+  create: (data) => api.post('clients/clients/', data),
+  detail: (id) => api.get(`clients/clients/${id}/`),
+  detailComplet: (id) => api.get(`clients/clients/${id}/detail/`),
+  update: (id, data) => api.patch(`clients/clients/${id}/`, data),
+  delete: (id) => api.delete(`clients/clients/${id}/`),
+  activer: (id) => api.post(`clients/clients/${id}/activer/`),
+  geojson: () => api.get('clients/clients/geojson/'),
+  stats: () => api.get('clients/clients/stats/'),
 };
 
 // Chatbot conversationnel

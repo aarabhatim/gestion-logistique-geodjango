@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Truck } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -52,9 +53,30 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-function AppRoutes() {
+const pageVariants = {
+  initial:  { opacity: 0, y: 12, scale: 0.99 },
+  animate:  { opacity: 1, y: 0,  scale: 1,    transition: { duration: 0.22, ease: [0.4, 0, 0.2, 1] } },
+  exit:     { opacity: 0, y: -8, scale: 0.99, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
+};
+
+const AnimatedRoutes = ({ children }) => {
+  const location = useLocation();
   return (
-    <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div key={location.pathname} variants={pageVariants}
+        initial="initial" animate="animate" exit="exit"
+        style={{ width: '100%', height: '100%' }}>
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+function AppRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={location.pathname}>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/client" element={<ProtectedRoute allowedRoles={['CLIENT']}><ClientDashboard /></ProtectedRoute>} />
@@ -75,6 +97,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['ADMIN', 'FONDATEUR']}><AdminShell><SettingsPage /></AdminShell></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </AnimatePresence>
   );
 }
 
@@ -87,6 +110,7 @@ function App() {
             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AppRoutes />
             </Router>
+
           </NotificationProvider>
         </AuthProvider>
       </I18nProvider>

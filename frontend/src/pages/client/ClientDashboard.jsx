@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingCart, Package, Map as MapIcon, User, LogOut, Star, Plus, Minus,
   Trash2, MapPin, Clock, CheckCircle, Truck, Tag, X, Search, ChevronRight,
-  Heart, Zap, ArrowLeft, CreditCard, Gift, RefreshCw, Navigation,
+  Heart, Zap, ArrowLeft, CreditCard, Gift, RefreshCw, Navigation, TicketIcon,
+  AlertCircle, MessageSquare, Send,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fondateursApi, commandesApi } from '../../services/api';
+import { fondateursApi, commandesApi, ticketsApi } from '../../services/api';
 import useCartStore from '../../stores/cartStore';
 import ChatbotWidget from '../../components/ChatbotWidget';
 import { useNavigate } from 'react-router-dom';
@@ -110,6 +111,7 @@ const TABS = [
   { id: 'catalogue', label: 'Catalogue', icon: ShoppingCart },
   { id: 'commandes', label: 'Mes commandes', icon: Package },
   { id: 'suivi',     label: 'Suivi live',    icon: MapIcon },
+  { id: 'tickets',   label: 'Tickets',       icon: TicketIcon },
   { id: 'profil',    label: 'Mon profil',    icon: User },
 ];
 
@@ -1372,6 +1374,237 @@ const ProfilTab = ({ user }) => (
   </div>
 );
 
+// ─── TICKET STATUS CONFIG ─────────────────────────────────────────────────────
+const TICKET_STATUS = {
+  ouvert:     { label: 'Ouvert',     color: '#3b82f6', bg: '#3b82f620' },
+  en_cours:   { label: 'En cours',   color: '#f59e0b', bg: '#f59e0b20' },
+  en_attente: { label: 'En attente', color: '#8b5cf6', bg: '#8b5cf620' },
+  resolu:     { label: 'Résolu',     color: '#10b981', bg: '#10b98120' },
+  ferme:      { label: 'Fermé',      color: '#64748b', bg: '#64748b20' },
+};
+
+const TICKET_PRIORITY = {
+  urgent: { label: 'Urgent', color: '#ef4444' },
+  moyen:  { label: 'Moyen',  color: '#f59e0b' },
+  faible: { label: 'Faible', color: '#10b981' },
+};
+
+const TICKET_CATEGORIES = [
+  { value: 'livraison',   label: 'Problème de livraison' },
+  { value: 'paiement',    label: 'Problème de paiement' },
+  { value: 'produit',     label: 'Produit endommagé / manquant' },
+  { value: 'retard',      label: 'Retard de livraison' },
+  { value: 'annulation',  label: 'Annulation de commande' },
+  { value: 'autre',       label: 'Autre' },
+];
+
+// ─── Tickets Tab ──────────────────────────────────────────────────────────────
+const TicketsTab = () => {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [form, setForm] = useState({
+    titre: '',
+    description: '',
+    categorie: 'livraison',
+    priorite: 'moyen',
+  });
+
+  const loadTickets = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await ticketsApi.list({ page_size: 10 });
+      setTickets(res.data.results || res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.titre.trim() || !form.description.trim()) return;
+    setSubmitting(true);
+    try {
+      await ticketsApi.create(form);
+      setSuccessMsg('Votre ticket a été créé avec succès !');
+      setForm({ titre: '', description: '', categorie: 'livraison', priorite: 'moyen' });
+      setShowForm(false);
+      await loadTickets();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Message succès */}
+      {successMsg && (
+        <div style={{
+          background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
+          padding: '12px 20px', borderRadius: 12, marginBottom: 16,
+          fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <CheckCircle size={18} /> {successMsg}
+        </div>
+      )}
+
+      {/* Card création ticket */}
+      {!showForm ? (
+        <div className="glass-card" style={{
+          padding: '1.5rem', marginBottom: '1.5rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          border: '1px dashed rgba(59,130,246,0.4)',
+          cursor: 'pointer', transition: 'all 0.2s',
+        }}
+          onClick={() => setShowForm(true)}
+          onMouseEnter={e => { e.currentTarget.style.border = '1px dashed rgba(59,130,246,0.8)'; e.currentTarget.style.background = 'rgba(59,130,246,0.06)'; }}
+          onMouseLeave={e => { e.currentTarget.style.border = '1px dashed rgba(59,130,246,0.4)'; e.currentTarget.style.background = ''; }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TicketIcon size={24} color="#3b82f6" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Créer un ticket support</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Un problème ? Notre équipe vous répond rapidement.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#3b82f6', fontWeight: 600, fontSize: 14 }}>
+            <Plus size={18} /> Créer
+          </div>
+        </div>
+      ) : (
+        <div className="glass-card animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid rgba(59,130,246,0.3)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TicketIcon size={18} color="#3b82f6" /> Nouveau ticket
+            </h3>
+            <button onClick={() => setShowForm(false)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
+              <X size={18} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Catégorie</label>
+                <select className="glass-input" value={form.categorie}
+                  onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
+                  style={{ width: '100%' }}>
+                  {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Priorité</label>
+                <select className="glass-input" value={form.priorite}
+                  onChange={e => setForm(f => ({ ...f, priorite: e.target.value }))}
+                  style={{ width: '100%' }}>
+                  <option value="faible">🟢 Faible</option>
+                  <option value="moyen">🟡 Moyen</option>
+                  <option value="urgent">🔴 Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Titre *</label>
+              <input className="glass-input" value={form.titre} placeholder="Décrivez brièvement votre problème"
+                onChange={e => setForm(f => ({ ...f, titre: e.target.value }))}
+                required style={{ width: '100%' }} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Description *</label>
+              <textarea className="glass-input" value={form.description}
+                placeholder="Donnez le maximum de détails..."
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                required rows={4}
+                style={{ width: '100%', resize: 'vertical', minHeight: 100 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="submit" disabled={submitting}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, border: 'none',
+                  background: 'var(--gradient-primary, linear-gradient(135deg, #3b82f6, #2563eb))',
+                  color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  opacity: submitting ? 0.7 : 1,
+                }}>
+                <Send size={16} /> {submitting ? 'Envoi en cours…' : 'Envoyer le ticket'}
+              </button>
+              <button type="button" onClick={() => setShowForm(false)}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>
+                Annuler
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Liste des tickets récents */}
+      <div>
+        <h3 style={{ margin: '0 0 1rem', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MessageSquare size={16} color="var(--accent-primary)" /> Mes tickets récents
+        </h3>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[1, 2, 3].map(i => <div key={i} className="glass-card" style={{ height: 80, opacity: 0.4 }} />)}
+          </div>
+        ) : tickets.length === 0 ? (
+          <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <TicketIcon size={32} style={{ opacity: 0.25, display: 'block', margin: '0 auto 10px' }} />
+            <div style={{ fontSize: 14 }}>Aucun ticket pour le moment</div>
+            <div style={{ fontSize: 12, marginTop: 6 }}>Créez un ticket si vous avez un problème.</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {tickets.map(ticket => {
+              const s = TICKET_STATUS[ticket.statut] || TICKET_STATUS.ouvert;
+              const p = TICKET_PRIORITY[ticket.priorite] || TICKET_PRIORITY.moyen;
+              const cat = TICKET_CATEGORIES.find(c => c.value === ticket.categorie)?.label || ticket.categorie;
+              return (
+                <div key={ticket.id} className="glass-card animate-fade-in"
+                  style={{ padding: '1rem 1.2rem', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: s.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TicketIcon size={18} color={s.color} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>#{ticket.id} — {ticket.titre}</span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <span style={{ fontSize: 11, background: s.bg, color: s.color, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>{s.label}</span>
+                        <span style={{ fontSize: 11, color: p.color, fontWeight: 600 }}>• {p.label}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ticket.description}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      <span>📂 {cat}</span>
+                      <span>📅 {new Date(ticket.created_at).toLocaleDateString()}</span>
+                      {ticket.messages?.length > 0 && <span>💬 {ticket.messages.length} message(s)</span>}
+                      {ticket.sla_depasse && <span style={{ color: '#ef4444', fontWeight: 600 }}>⚠ SLA dépassé</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
@@ -1426,6 +1659,7 @@ const ClientDashboard = () => {
         {tab === 'catalogue' && <CatalogueTab onCartOpen={() => setCartOpen(true)} />}
         {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} />}
         {tab === 'suivi'     && <SuiviTab user={user} />}
+        {tab === 'tickets'   && <TicketsTab />}
         {tab === 'profil'    && <ProfilTab user={user} />}
       </div>
 

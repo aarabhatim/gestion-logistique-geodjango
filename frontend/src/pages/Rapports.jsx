@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { analyticsApi } from '../services/api';
+import { analyticsApi, incidentsApi, ticketsApi, scoringApi } from '../services/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
+  PieChart, Pie, Cell, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
 import {
   TrendingUp, Package, Truck, Store, Printer, Download, FileText,
-  Calendar, RefreshCw,
+  Calendar, RefreshCw, AlertTriangle, TicketIcon, BarChart2, CheckCircle,
 } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext';
 
@@ -63,14 +63,33 @@ const Rapports = () => {
   const [loading, setLoading] = useState(true);
   const [periode, setPeriode] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [incidentStats, setIncidentStats] = useState(null);
+  const [ticketStats, setTicketStats] = useState(null);
+  const [scoringStats, setScoringStats] = useState(null);
   const printRef = useRef(null);
 
   const fetchData = () => {
     setLoading(true);
-    analyticsApi.adminDashboard()
-      .then(r => setData(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    Promise.all([
+      analyticsApi.adminDashboard(),
+      incidentsApi.stats().catch(() => ({ data: null })),
+      ticketsApi.statistiques().catch(() => ({ data: null })),
+      scoringApi.classement({ page_size: 100 }).catch(() => ({ data: null })),
+    ]).then(([mainRes, incRes, tickRes, scoreRes]) => {
+      setData(mainRes.data);
+      setIncidentStats(incRes.data);
+      if (tickRes.data) {
+        setTicketStats(tickRes.data);
+      }
+      // Compute avg score
+      if (scoreRes.data) {
+        const scores = scoreRes.data.results || scoreRes.data || [];
+        const avg = scores.length > 0
+          ? scores.reduce((s, sc) => s + (sc.score_global || 0), 0) / scores.length
+          : null;
+        setScoringStats({ avg_score: avg, count: scores.length });
+      }
+    }).catch(console.error).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -321,8 +340,8 @@ const Rapports = () => {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+      {/* KPIs — Section 1 : Commandes & Réseau */}
+      <div className="stats-grid" style={{ marginBottom: '1rem' }}>
         <KPICard icon={Package} title={t('total_revenue')}
           value={`${Math.round(kpis.ca_total || 0).toLocaleString()} ${devise}`}
           sub={`${Math.round(kpis.ca_mois || 0).toLocaleString()} ${devise} ${t('this_month')}`} color="#10b981" />
@@ -332,6 +351,34 @@ const Rapports = () => {
           sub={`${kpis.fondateurs_en_attente || 0} en attente`} color="#f59e0b" />
         <KPICard icon={Truck} title={t('transporteurs')} value={kpis.transporteurs_actifs || 0}
           sub={`${kpis.transporteurs_en_livraison || 0} en mission`} color="#8b5cf6" />
+      </div>
+
+      {/* KPIs — Section 2 : Incidents, Scoring, Tickets */}
+      <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+        {incidentStats && (
+          <>
+            <KPICard icon={AlertTriangle} title={t('resolution_rate')}
+              value={`${incidentStats.taux_resolution ?? '—'}%`}
+              sub={`${incidentStats.total_resolus ?? '—'} / ${incidentStats.total ?? '—'} incidents`}
+              color="#ef4444" />
+            <KPICard icon={CheckCircle} title="Incidents ouverts"
+              value={incidentStats.ouverts ?? '—'}
+              sub={`${incidentStats.en_cours ?? 0} en cours`}
+              color="#f59e0b" />
+          </>
+        )}
+        {scoringStats?.avg_score != null && (
+          <KPICard icon={BarChart2} title={t('avg_carrier_score')}
+            value={scoringStats.avg_score.toFixed(1)}
+            sub={`${scoringStats.count} transporteurs évalués`}
+            color="#8b5cf6" />
+        )}
+        {ticketStats && (
+          <KPICard icon={TicketIcon} title="Tickets support"
+            value={ticketStats.count ?? ticketStats.total ?? '—'}
+            sub="Tickets créés au total"
+            color="#06b6d4" />
+        )}
       </div>
 
       {/* Évolution CA + commandes */}
@@ -434,6 +481,74 @@ const Rapports = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Section Tickets par catégorie */}
+      {ticketStats && (ticketStats.par_categorie || ticketStats.par_statut) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          {ticketStats.par_categorie && (
+            <div className="glass-card animate-fade-in" style={{ animationDelay: '0.5s' }}>
+              <h3 className="card-title" style={{ margin: '0 0 1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TicketIcon size={16} color="#06b6d4" /> {t('tickets_by_category')}
+              </h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={Object.entries(ticketStats.par_categorie).map(([k, v]) => ({ name: k, count: v }))}
+                  margin={{ left: 0, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                  <YAxis stroke="#64748b" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
+                  <Bar dataKey="count" name="Tickets" radius={[4, 4, 0, 0]}>
+                    {Object.keys(ticketStats.par_categorie).map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {ticketStats.par_statut && (
+            <div className="glass-card animate-fade-in" style={{ animationDelay: '0.6s' }}>
+              <h3 className="card-title" style={{ margin: '0 0 1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TicketIcon size={16} color="#8b5cf6" /> Tickets par statut
+              </h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={Object.entries(ticketStats.par_statut).map(([k, v]) => ({ name: k, value: v }))}
+                    cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                    paddingAngle={3} dataKey="value"
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {Object.keys(ticketStats.par_statut).map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
+                  <Legend iconType="circle" iconSize={8} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section Incidents stats */}
+      {incidentStats?.par_type && (
+        <div className="glass-card animate-fade-in" style={{ marginBottom: '1.5rem', animationDelay: '0.55s' }}>
+          <h3 className="card-title" style={{ margin: '0 0 1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={16} color="#ef4444" /> Incidents par type
+          </h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={Object.entries(incidentStats.par_type).map(([k, v]) => ({ name: k, count: v }))}
+              margin={{ left: 0, right: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+              <YAxis stroke="#64748b" fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
+              <Bar dataKey="count" name="Incidents" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 };

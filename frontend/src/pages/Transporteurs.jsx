@@ -3,8 +3,46 @@ import {
   Truck, Star, MapPin, CheckCircle, XCircle, RefreshCw,
   Clock, AlertTriangle, Shield, UserCheck, UserX, Search,
   Filter, Eye, TrendingUp, DollarSign, Award, Calendar,
+  BarChart2, Download,
 } from 'lucide-react';
-import { transporteursApi } from '../services/api';
+import { transporteursApi, scoringApi } from '../services/api';
+
+// ─── Export CSV helper ────────────────────────────────────────────────────────
+const exportTransporteursCSV = (rows) => {
+  const escape = (v) => {
+    if (v == null) return '';
+    const s = String(v).replace(/"/g, '""');
+    return /[",\n;]/.test(s) ? `"${s}"` : s;
+  };
+  const headers = ['ID', 'Nom', 'Email', 'Téléphone', 'Véhicule', 'Plaque', 'Vérifié', 'Disponible', 'Livraisons', 'Note', 'Revenus'];
+  const lines = [
+    headers.map(escape).join(','),
+    ...rows.map(t => [
+      t.id,
+      t.nom_complet || `${t.user_first_name || ''} ${t.user_last_name || ''}`,
+      t.user_email || t.email || '',
+      t.phone || '',
+      t.vehicule_type || '',
+      t.plaque || '',
+      t.is_verified ? 'Oui' : 'Non',
+      t.is_available ? 'Oui' : 'Non',
+      t.nombre_livraisons || 0,
+      t.note_moyenne?.toFixed?.(2) || '',
+      t.revenus_total || 0,
+    ].map(escape).join(',')),
+  ].join('\n');
+  const blob = new Blob(['﻿' + lines], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transporteurs_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+} from 'recharts';
 
 const VEHICULE_ICONS = {
   MOTO: '🛵',
@@ -56,108 +94,248 @@ const Toast = ({ msg, type, onHide }) => {
   );
 };
 
+// ─── Score Tab ─────────────────────────────────────────────────────────────────
+const ScoreTab = ({ transporteurId }) => {
+  const [score, setScore] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!transporteurId) return;
+    scoringApi.detail(transporteurId)
+      .then(r => setScore(r.data))
+      .catch(() => setScore(null))
+      .finally(() => setLoading(false));
+  }, [transporteurId]);
+
+  if (loading) return (
+    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      Chargement du score…
+    </div>
+  );
+
+  if (!score) return (
+    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <BarChart2 size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 10px' }} />
+      Aucun score calculé pour ce transporteur
+    </div>
+  );
+
+  const dims = [
+    { key: 'score_ponctualite', label: 'Ponctualité', color: '#3b82f6', fullMark: 100 },
+    { key: 'score_fiabilite',   label: 'Fiabilité',   color: '#10b981', fullMark: 100 },
+    { key: 'score_satisfaction',label: 'Satisfaction', color: '#f59e0b', fullMark: 100 },
+    { key: 'score_rapidite',    label: 'Rapidité',    color: '#8b5cf6', fullMark: 100 },
+  ];
+
+  const radarData = dims.map(d => ({
+    dimension: d.label,
+    score: Math.round((score[d.key] || 0) * 100) / 100,
+    fullMark: 100,
+  }));
+
+  const globalScore = score.score_global || 0;
+  const scoreColor = globalScore >= 75 ? '#10b981' : globalScore >= 50 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div style={{ padding: '1rem' }}>
+      {/* Score global */}
+      <div style={{
+        textAlign: 'center', marginBottom: '1.25rem',
+        background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '1rem',
+        border: `1px solid ${scoreColor}30`,
+      }}>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>
+          SCORE GLOBAL
+        </div>
+        <div style={{ fontSize: 48, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>
+          {globalScore.toFixed(1)}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>/100</div>
+      </div>
+
+      {/* Radar chart */}
+      <div style={{ height: 220, marginBottom: '1rem' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+            <PolarGrid stroke="rgba(255,255,255,0.08)" />
+            <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
+            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+            <Radar name="Score" dataKey="score" stroke="#4f8cff" fill="#4f8cff" fillOpacity={0.25} strokeWidth={2} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Détail par dimension */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {dims.map(d => {
+          const val = (score[d.key] || 0);
+          const pct = Math.min(100, Math.round(val));
+          return (
+            <div key={d.key} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{d.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: d.color }}>{val.toFixed(1)}</span>
+              </div>
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: d.color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dernière mise à jour */}
+      {score.updated_at && (
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', marginTop: 12 }}>
+          Dernière mise à jour : {new Date(score.updated_at).toLocaleDateString()}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
-const DetailModal = ({ t, onClose, onAction }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-    <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 580, maxHeight: '85vh', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 36 }}>{VEHICULE_ICONS[t.vehicule_type] || '🚗'}</div>
-          <div>
-            <h3 className="card-title" style={{ margin: 0 }}>{t.nom_complet || `${t.user_first_name || ''} ${t.user_last_name || ''}`}</h3>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{t.user_email || t.email}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.phone || '—'}</div>
-          </div>
-        </div>
-        <button className="btn btn-secondary btn-sm" onClick={onClose}><XCircle size={15} /></button>
-      </div>
+const DETAIL_TABS = [
+  { key: 'info',  label: 'Infos',  icon: Eye },
+  { key: 'score', label: 'Score',  icon: BarChart2 },
+];
 
-      {/* Statut bar */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-        <span style={{ background: t.is_verified ? '#10b98120' : '#f59e0b20', color: t.is_verified ? '#10b981' : '#f59e0b', fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
-          {t.is_verified ? '✔ Vérifié' : '⏳ En attente vérification'}
-        </span>
-        <span style={{
-          background: t.is_on_delivery ? '#f59e0b20' : t.is_available ? '#10b98120' : '#47556920',
-          color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#94a3b8',
-          fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600,
-        }}>
-          {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Disponible' : '⭕ Hors ligne'}
-        </span>
-      </div>
+const DetailModal = ({ t, onClose, onAction }) => {
+  const [activeTab, setActiveTab] = useState('info');
 
-      {/* Véhicule */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>VÉHICULE</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type</div><div style={{ fontWeight: 600 }}>{t.vehicule_type}</div></div>
-          <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Plaque</div><div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{t.plaque}</div></div>
-          <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Capacité</div><div style={{ fontWeight: 600 }}>{t.capacite_kg} kg</div></div>
-        </div>
-      </div>
-
-      {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: '1rem' }}>
-        {[
-          { label: 'Livraisons', value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
-          { label: 'Note', value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
-          { label: 'Avis', value: t.nombre_avis || 0, color: '#8b5cf6', icon: Award },
-          { label: 'Revenus', value: `${Math.round((t.revenus_total || 0) / 1000)}k`, color: '#10b981', icon: DollarSign },
-        ].map(({ label, value, color, icon: Icon }) => (
-          <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-            <Icon size={14} color={color} style={{ margin: '0 auto 4px', display: 'block' }} />
-            <div style={{ fontWeight: 700, fontSize: 16, color }}>{value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Heures de travail */}
-      <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
-        <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Clock size={12} /> HEURES DE TRAVAIL
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Aujourd'hui</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#a78bfa' }}>
-              {formatDuration((t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0))}
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.25rem 1.25rem 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ fontSize: 36 }}>{VEHICULE_ICONS[t.vehicule_type] || '🚗'}</div>
+            <div>
+              <h3 className="card-title" style={{ margin: 0 }}>{t.nom_complet || `${t.user_first_name || ''} ${t.user_last_name || ''}`}</h3>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{t.user_email || t.email}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.phone || '—'}</div>
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Cette semaine</div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{formatDuration(t.minutes_travaillees_semaine || 0)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ce mois</div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{formatDuration(t.minutes_travaillees_mois || 0)}</div>
-          </div>
+          <button className="btn btn-secondary btn-sm" onClick={onClose}><XCircle size={15} /></button>
         </div>
-        {t.is_available && (
-          <div style={{ marginTop: 10, fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
-            Session en cours depuis {formatDuration(t.minutes_session_courante || 0)}
-          </div>
-        )}
-      </div>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {!t.is_verified ? (
-          <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
-            onClick={() => onAction(t, 'approuver')}>
-            <Shield size={15} /> Vérifier ce chauffeur
-          </button>
-        ) : (
-          <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', color: '#ef4444', border: '1px solid #ef444430' }}
-            onClick={() => onAction(t, 'rejeter')}>
-            <UserX size={15} /> Retirer la vérification
-          </button>
-        )}
+        {/* Statut badges */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0.75rem 1.25rem', flexShrink: 0 }}>
+          <span style={{ background: t.is_verified ? '#10b98120' : '#f59e0b20', color: t.is_verified ? '#10b981' : '#f59e0b', fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
+            {t.is_verified ? '✔ Vérifié' : '⏳ En attente vérification'}
+          </span>
+          <span style={{
+            background: t.is_on_delivery ? '#f59e0b20' : t.is_available ? '#10b98120' : '#47556920',
+            color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#94a3b8',
+            fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600,
+          }}>
+            {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Disponible' : '⭕ Hors ligne'}
+          </span>
+        </div>
+
+        {/* Onglets */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', paddingLeft: '1.25rem', flexShrink: 0 }}>
+          {DETAIL_TABS.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px',
+                  border: 'none', borderBottom: activeTab === tab.key ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  background: 'transparent', color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s',
+                  marginBottom: '-1px',
+                }}>
+                <Icon size={14} /> {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Contenu onglet */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {activeTab === 'info' && (
+            <div style={{ padding: '1rem 1.25rem' }}>
+              {/* Véhicule */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>VÉHICULE</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                  <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type</div><div style={{ fontWeight: 600 }}>{t.vehicule_type}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Plaque</div><div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{t.plaque}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Capacité</div><div style={{ fontWeight: 600 }}>{t.capacite_kg} kg</div></div>
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: '1rem' }}>
+                {[
+                  { label: 'Livraisons', value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
+                  { label: 'Note', value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
+                  { label: 'Avis', value: t.nombre_avis || 0, color: '#8b5cf6', icon: Award },
+                  { label: 'Revenus', value: `${Math.round((t.revenus_total || 0) / 1000)}k`, color: '#10b981', icon: DollarSign },
+                ].map(({ label, value, color, icon: Icon }) => (
+                  <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                    <Icon size={14} color={color} style={{ margin: '0 auto 4px', display: 'block' }} />
+                    <div style={{ fontWeight: 700, fontSize: 16, color }}>{value}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Heures de travail */}
+              <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Clock size={12} /> HEURES DE TRAVAIL
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Aujourd'hui</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#a78bfa' }}>
+                      {formatDuration((t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Cette semaine</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{formatDuration(t.minutes_travaillees_semaine || 0)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ce mois</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{formatDuration(t.minutes_travaillees_mois || 0)}</div>
+                  </div>
+                </div>
+                {t.is_available && (
+                  <div style={{ marginTop: 10, fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
+                    Session en cours depuis {formatDuration(t.minutes_session_courante || 0)}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!t.is_verified ? (
+                  <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={() => onAction(t, 'approuver')}>
+                    <Shield size={15} /> Vérifier ce chauffeur
+                  </button>
+                ) : (
+                  <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', color: '#ef4444', border: '1px solid #ef444430' }}
+                    onClick={() => onAction(t, 'rejeter')}>
+                    <UserX size={15} /> Retirer la vérification
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'score' && (
+            <ScoreTab transporteurId={t.id} />
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Transporteurs = () => {
@@ -233,9 +411,16 @@ const Transporteurs = () => {
           <h2 className="page-title text-gradient">Flotte de Transporteurs</h2>
           <p className="page-subtitle">{count} chauffeurs · {stats.pending} en attente de vérification</p>
         </div>
-        <button className="btn btn-secondary" onClick={fetchData}>
-          <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => exportTransporteursCSV(transporteurs)}
+            title="Exporter en CSV"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={15} /> CSV
+          </button>
+          <button className="btn btn-secondary" onClick={fetchData}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Stats KPI row */}

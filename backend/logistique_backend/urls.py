@@ -41,5 +41,6 @@ urlpatterns = [
     path('api/scoring/',       include('scoring.urls')),
     path('api/tickets/',       include('tickets.urls')),
     path('api/contrats/',      include('contrats.urls')),
+    path('api/clients/',       include('clients.urls')),
     path('api/chatbot/',       ChatbotView.as_view(), name='chatbot'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from notifications.models import envoyer_notification
+from utils.ws_broadcast import broadcast_group
 from .models import Incident, IncidentPhoto
 from .serializers import IncidentSerializer, IncidentListSerializer, IncidentPhotoSerializer
 
@@ -54,6 +55,14 @@ class IncidentViewSet(viewsets.ModelViewSet):
             ),
             commande_id=incident.commande.pk,
         )
+        # Broadcast WebSocket vers le groupe admin_incidents
+        broadcast_group('admin_incidents', {
+            'event': 'incident_created',
+            'incident_id': incident.pk,
+            'type': incident.type_incident,
+            'commande': incident.commande.reference,
+            'statut': incident.statut,
+        })
 
     @action(detail=True, methods=['post'])
     def resoudre(self, request, pk=None):
@@ -70,6 +79,11 @@ class IncidentViewSet(viewsets.ModelViewSet):
             message=f"L'incident sur la commande {incident.commande.reference} a été résolu.",
             commande_id=incident.commande.pk,
         )
+        broadcast_group('admin_incidents', {
+            'event': 'incident_resolved',
+            'incident_id': incident.pk,
+            'commande': incident.commande.reference,
+        })
         return Response({'status': 'incident résolu avec succès'})
 
     @action(detail=True, methods=['post'], url_path='ajouter-photo',

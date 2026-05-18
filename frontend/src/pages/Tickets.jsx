@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Pagination from '../components/Pagination';
 import {
   MessageSquare, Plus, Send, RefreshCw, Filter, X,
   Clock, User, Tag, ChevronLeft, AlertCircle,
@@ -30,23 +31,28 @@ const Tickets = () => {
   const [filtreStatut, setFiltreStatut] = useState('');
   const [filtrePriorite, setFiltrePriorite] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
   const threadEndRef = useRef(null);
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
       const endpoint = isAdmin ? ticketsApi.list : ticketsApi.mesTickets;
       const params = isAdmin
-        ? { statut: filtreStatut || undefined, priorite: filtrePriorite || undefined }
-        : undefined;
-      const res = isAdmin ? await endpoint(params) : await endpoint();
-      const items = res.data.results || res.data;
+        ? { statut: filtreStatut || undefined, priorite: filtrePriorite || undefined, page: p, page_size: ps }
+        : { page: p, page_size: ps };
+      const res = isAdmin ? await endpoint(params) : await endpoint(params);
+      const data = res.data;
+      const items = data.results || data;
       setTickets(Array.isArray(items) ? items : []);
-    } catch { setTickets([]); }
+      setTotal(data.count || (Array.isArray(items) ? items.length : 0));
+    } catch { setTickets([]); setTotal(0); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTickets(); }, [filtreStatut, filtrePriorite]);
+  useEffect(() => { setPage(1); fetchTickets(1, pageSize); }, [filtreStatut, filtrePriorite]);
 
   const openTicket = async (ticket) => {
     setSelected(ticket);
@@ -193,6 +199,17 @@ const Tickets = () => {
           />
         )}
       </div>
+
+      {/* Pagination */}
+      {total > pageSize && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={(p) => { setPage(p); fetchTickets(p, pageSize); }}
+          onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); fetchTickets(1, ps); }}
+        />
+      )}
 
       {/* Modal creation */}
       {showCreate && (
