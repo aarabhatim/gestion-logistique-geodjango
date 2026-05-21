@@ -29,6 +29,9 @@ def api_root(request):
             'promotions':    '/api/promotions/',
             'bannieres':     '/api/bannieres/',
             'blacklist':     '/api/blacklist/',
+            'favoris':       '/api/favoris/',
+            'fidelite':      '/api/fidelite/',
+            'mode_groupe':   '/api/mode-groupe/',
         },
     })
 
@@ -54,4 +57,8 @@ urlpatterns = [
     path('api/bannieres/',     include('bannieres.urls')),
     path('api/blacklist/',     include('blacklist.urls')),
     path('api/chatbot/', ChatbotView.as_view(), name='chatbot'),
+    # Nouvelles fonctionnalités
+    path('api/favoris/',       include('favoris.urls')),
+    path('api/fidelite/',      include('fidelite.urls')),
+    path('api/mode-groupe/',   include('mode_groupe.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

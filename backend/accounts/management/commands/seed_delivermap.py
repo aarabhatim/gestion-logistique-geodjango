@@ -510,7 +510,8 @@ class Command(BaseCommand):
         self.stdout.write(f'   Fondateurs:    {len(boutiques)} boutiques dans 5 villes')
         self.stdout.write(f'   Transporteurs: {len(transporteurs)} chauffeurs')
         self.stdout.write(f'   Clients:       {len(clients)} utilisateurs')
-        self.stdout.write(f'   Commandes:     {len(commandes)} creees')
+        nb_cmd = len(commandes) if commandes else 0
+        self.stdout.write(f'   Commandes:     {nb_cmd} creees')
 
     def _vider_base(self):
         PositionTracking.objects.all().delete()

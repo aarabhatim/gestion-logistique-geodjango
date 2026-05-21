@@ -1,27 +1,35 @@
-import * as React from 'react';
-import { cva } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import React from 'react';
 
-const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors',
-  {
-    variants: {
-      variant: {
-        default: 'border-transparent bg-primary text-primary-foreground',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground',
-        outline: 'text-foreground',
-        success: 'border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-        warning: 'border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400',
-        info: 'border-transparent bg-sky-500/15 text-sky-600 dark:text-sky-400',
-      },
-    },
-    defaultVariants: { variant: 'default' },
-  },
-);
+/**
+ * Badge coloré unifié
+ * Usage: <Badge variant="success">Livré</Badge>
+ */
+const Badge = ({ children, variant = 'default', size = 'md', dot = false, className = '' }) => {
+  const variants = {
+    default: 'bg-gray-100 text-gray-700',
+    primary: 'bg-[var(--color-primary-10)] text-[var(--color-primary)]',
+    success: 'bg-[var(--color-success-10)] text-[var(--color-success)]',
+    danger:  'bg-[var(--color-danger-10)] text-[var(--color-danger)]',
+    warning: 'bg-[var(--color-warning-10)] text-[var(--color-warning)]',
+    accent:  'bg-teal-50 text-teal-700',
+    dark:    'bg-[var(--color-secondary)] text-white',
+  };
 
-function Badge({ className, variant, ...props }) {
-  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
-}
+  const sizes = {
+    sm: 'text-xs px-1.5 py-0.5',
+    md: 'text-xs px-2 py-1',
+    lg: 'text-sm px-3 py-1',
+  };
 
-export { Badge, badgeVariants };
+  return (
+    <span className={`inline-flex items-center gap-1 font-medium rounded-full ${variants[variant]} ${sizes[size]} ${className}`}>
+      {dot && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+      {children}
+    </span>
+  );
+};
+// Named exports for shadcn compatibility (@/components/ui/badge)
+export { Badge };
+export const badgeVariants = (props) => props?.variant || '';
+
+export default Badge;

@@ -214,11 +214,13 @@ export const clientsApi = {
 };
 
 // Chatbot conversationnel
+
+// Chatbot conversationnel
 export const chatbotApi = {
   send: ({ message, history }) => api.post('chatbot/', { message, history }),
 };
 
-// Exports nommés compatibles (anciens composants)
+// Exports nommes compatibles (anciens composants)
 export const getCommandes    = (params) => commandesApi.list(params);
 export const createCommande  = (data)   => commandesApi.create(data);
 export const validerCommande = (id)     => commandesApi.avancer(id);
@@ -241,54 +243,52 @@ export const markNotifRead    = (id)     => notificationsApi.marquerLue(id);
 
 // Client actions (chat, etc.)
 export const clientApi = {
-  chatGet: (commandeId) => api.get(`transporteurs/chat/${commandeId}/`),
+  chatGet:  (commandeId)          => api.get(`transporteurs/chat/${commandeId}/`),
   chatSend: (commandeId, contenu) => api.post(`transporteurs/chat/${commandeId}/`, { contenu }),
 };
 
-// ─── Nouvelles APIs ─────────────────────────────────────────────────────────
-
 // Zones de livraison
 export const zonesApi = {
-  list: (params) => api.get('zones/', { params }),
-  create: (data) => api.post('zones/', data),
-  update: (id, data) => api.patch(`zones/${id}/`, data),
-  delete: (id) => api.delete(`zones/${id}/`),
-  assignerTransporteur: (id, data) => api.post(`zones/${id}/assigner-transporteur/`, data),
-  retirerTransporteur: (id, data) => api.post(`zones/${id}/retirer-transporteur/`, data),
-  pourPosition: (lat, lng) => api.get('zones/pour-position/', { params: { lat, lng } }),
+  list:                (params)      => api.get('zones/', { params }),
+  create:              (data)        => api.post('zones/', data),
+  update:              (id, data)    => api.patch(`zones/${id}/`, data),
+  delete:              (id)          => api.delete(`zones/${id}/`),
+  assignerTransporteur:(id, data)    => api.post(`zones/${id}/assigner-transporteur/`, data),
+  retirerTransporteur: (id, data)    => api.post(`zones/${id}/retirer-transporteur/`, data),
+  pourPosition:        (lat, lng)    => api.get('zones/pour-position/', { params: { lat, lng } }),
 };
 
 // Promotions globales
 export const promotionsApi = {
-  list: (params) => api.get('promotions/', { params }),
-  create: (data) => api.post('promotions/', data),
-  update: (id, data) => api.patch(`promotions/${id}/`, data),
-  delete: (id) => api.delete(`promotions/${id}/`),
-  verifier: (code, montant) => api.post('promotions/verifier/', { code, montant }),
-  utiliser: (code, commandeId) => api.post('promotions/utiliser/', { code, commande_id: commandeId }),
-  stats: () => api.get('promotions/stats/'),
+  list:    (params)         => api.get('promotions/', { params }),
+  create:  (data)           => api.post('promotions/', data),
+  update:  (id, data)       => api.patch(`promotions/${id}/`, data),
+  delete:  (id)             => api.delete(`promotions/${id}/`),
+  verifier:(code, montant)  => api.post('promotions/verifier/', { code, montant }),
+  utiliser:(code, commandeId) => api.post('promotions/utiliser/', { code, commande_id: commandeId }),
+  stats:   ()               => api.get('promotions/stats/'),
 };
 
-// Bannières
+// Bannieres
 export const bannieresApi = {
-  list: (params) => api.get('bannieres/', { params }),
-  create: (data) => api.post('bannieres/', data),
-  update: (id, data) => api.patch(`bannieres/${id}/`, data),
-  delete: (id) => api.delete(`bannieres/${id}/`),
-  actives: (role) => api.get('bannieres/actives/', { params: role ? { role } : {} }),
+  list:    (params) => api.get('bannieres/', { params }),
+  create:  (data)   => api.post('bannieres/', data),
+  update:  (id, data) => api.patch(`bannieres/${id}/`, data),
+  delete:  (id)     => api.delete(`bannieres/${id}/`),
+  actives: (role)   => api.get('bannieres/actives/', { params: role ? { role } : {} }),
 };
 
 // Blacklist adresses
 export const blacklistApi = {
-  list: (params) => api.get('blacklist/', { params }),
-  create: (data) => api.post('blacklist/', data),
-  delete: (id) => api.delete(`blacklist/${id}/`),
-  verifier: (adresse) => api.post('blacklist/verifier/', { adresse }),
+  list:    (params)   => api.get('blacklist/', { params }),
+  create:  (data)     => api.post('blacklist/', data),
+  delete:  (id)       => api.delete(`blacklist/${id}/`),
+  verifier:(adresse)  => api.post('blacklist/verifier/', { adresse }),
 };
 
 // Impersonation
 export const impersonationApi = {
-  search: (q) => api.get('auth/users/', { params: { search: q, page_size: 10 } }),
+  search:      (q)      => api.get('auth/users/', { params: { search: q, page_size: 10 } }),
   impersonate: (userId) => api.post('auth/impersonate/', { user_id: userId }),
 };
 
@@ -297,44 +297,61 @@ export const calendrierApi = {
   get: (params) => api.get('commandes/calendrier/', { params }),
 };
 
-// Prévisions de demande
+// Previsions de demande
 export const previsionsApi = {
   get: () => api.get('analytics/previsions/'),
 };
 
-// Galerie boutique (médias fondateur)
+// Galerie boutique
 export const galerieApi = {
-  list: (fondateurId) => api.get(`fondateurs/${fondateurId}/medias/`),
-  upload: (fondateurId, data) => api.post(`fondateurs/${fondateurId}/medias/`, data, {
+  list:    (fondateurId)           => api.get(`fondateurs/${fondateurId}/medias/`),
+  upload:  (fondateurId, data)     => api.post(`fondateurs/${fondateurId}/medias/`, data, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  delete: (fondateurId, mediaId) => api.delete(`fondateurs/${fondateurId}/medias/${mediaId}/`),
-  reorder: (fondateurId, data) => api.post(`fondateurs/${fondateurId}/medias/reorder/`, data),
+  delete:  (fondateurId, mediaId)  => api.delete(`fondateurs/${fondateurId}/medias/${mediaId}/`),
+  reorder: (fondateurId, data)     => api.post(`fondateurs/${fondateurId}/medias/reorder/`, data),
 };
 
 // Avis clients
 export const avisApi = {
-  list: (params) => api.get('commandes/avis/', { params }),
-  reply: (avisId, reponse) => api.post(`commandes/avis/${avisId}/reply/`, { reponse }),
+  list:  (params)            => api.get('commandes/avis/', { params }),
+  reply: (avisId, reponse)   => api.post(`commandes/avis/${avisId}/reply/`, { reponse }),
 };
 
-// Fonctions chauffeur avancées
+// Favoris
+export const favorisApi = {
+  boutiques:        ()   => api.get('favoris/boutiques/'),
+  toggleBoutique:   (id) => api.post(`favoris/boutiques/${id}/toggle/`),
+  produits:         ()   => api.get('favoris/produits/'),
+  toggleProduit:    (id) => api.post(`favoris/produits/${id}/toggle/`),
+};
+
+// Fidelite
+export const fideliteApi = {
+  monCompte:     ()     => api.get('fidelite/mon-compte/'),
+  utiliserPoints:(pts)  => api.post('fidelite/utiliser-points/', { points: pts }),
+};
+
+// Mode groupe
+export const modeGroupeApi = {
+  creer:         (data)       => api.post('mode-groupe/creer/', data),
+  rejoindre:     (code)       => api.post('mode-groupe/rejoindre/', { code }),
+  detail:        (sessionId)  => api.get(`mode-groupe/${sessionId}/`),
+  ajouterArticle:(sessionId, data) => api.post(`mode-groupe/${sessionId}/ajouter-article/`, data),
+  pret:          (sessionId)  => api.post(`mode-groupe/${sessionId}/pret/`),
+  valider:       (sessionId)  => api.post(`mode-groupe/${sessionId}/valider/`),
+};
+
+// Fonctions chauffeur avancees
 export const chauffeurApi = {
-  // SOS / Urgence
-  sos: (data) => api.post('transporteurs/sos/', data),
-  // Chat livraison active
-  chatGet: (commandeId) => api.get(`transporteurs/chat/${commandeId}/`),
-  chatSend: (commandeId, contenu) => api.post(`transporteurs/chat/${commandeId}/`, { contenu }),
-  // Objectifs hebdomadaires
-  objectifs: () => api.get('transporteurs/objectifs/'),
-  // Multi-livraisons optimisées
-  multiLivraisonsDisponibles: () => api.get('transporteurs/multi-livraisons/'),
-  multiLivraisonsAccepter: (data) => api.post('transporteurs/multi-livraisons/', data),
-  // Profil public
-  profilPublic: (id) => api.get(`transporteurs/${id}/profil-public/`),
-  // Historique détaillé
-  historique: (params) => api.get('livraisons/mes-livraisons/', { params }),
-  // Navigation OSRM
+  sos:                        (data)   => api.post('transporteurs/sos/', data),
+  chatGet:                    (id)     => api.get(`transporteurs/chat/${id}/`),
+  chatSend:                   (id, c)  => api.post(`transporteurs/chat/${id}/`, { contenu: c }),
+  objectifs:                  ()       => api.get('transporteurs/objectifs/'),
+  multiLivraisonsDisponibles: ()       => api.get('transporteurs/multi-livraisons/'),
+  multiLivraisonsAccepter:    (data)   => api.post('transporteurs/multi-livraisons/', data),
+  profilPublic:               (id)     => api.get(`transporteurs/${id}/profil-public/`),
+  historique:                 (params) => api.get('livraisons/mes-livraisons/', { params }),
   itineraire: (orig, dest) => api.get('tracking/itineraire/', {
     params: { orig_lat: orig.lat, orig_lng: orig.lng, dest_lat: dest.lat, dest_lng: dest.lng },
   }),

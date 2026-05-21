@@ -73,6 +73,10 @@ INSTALLED_APPS = [
     'promotions',
     'bannieres',
     'blacklist',
+    # Nouvelles fonctionnalités
+    'favoris',
+    'fidelite',
+    'mode_groupe',
 ]
 
 MIDDLEWARE = [

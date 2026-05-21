@@ -53,6 +53,10 @@ import SignalerIncident   from './pages/chauffeur/SignalerIncident';
 
 // Client
 import ClientDashboard from './pages/client/ClientDashboard';
+import FavoritesPage   from './pages/client/FavoritesPage';
+
+// Nouvelles fonctionnalités globales
+import GlobalSearch from './components/GlobalSearch';
 
 import './index.css';
 import './pages/Pages.css';
@@ -119,6 +123,11 @@ function AppRoutes() {
             <ClientDashboard />
           </ProtectedRoute>
         } />
+        <Route path="/client/favoris" element={
+          <ProtectedRoute allowedRoles={['CLIENT']}>
+            <FavoritesPage />
+          </ProtectedRoute>
+        } />
 
         {/* Chauffeur */}
         <Route path="/chauffeur" element={
@@ -178,6 +187,8 @@ function App() {
         <AuthProvider>
           <NotificationProvider>
             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              {/* Recherche globale Cmd+K — disponible sur toutes les pages admin */}
+              <GlobalSearch />
               <AppRoutes />
             </Router>
           </NotificationProvider>
