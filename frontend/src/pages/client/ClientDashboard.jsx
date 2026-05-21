@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ShoppingCart, Package, Map as MapIcon, User, LogOut, Star, Plus, Minus,
   Trash2, MapPin, Clock, CheckCircle, Truck, Tag, X, Search, ChevronRight,
@@ -6,30 +6,29 @@ import {
   AlertCircle, MessageSquare, Send,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fondateursApi, commandesApi, ticketsApi } from '../../services/api';
+import { fondateursApi, commandesApi, ticketsApi, clientApi } from '../../services/api';
 import useCartStore from '../../stores/cartStore';
+import useFavoritesStore from '../../stores/favoritesStore';
+import useLoyaltyStore from '../../stores/loyaltyStore';
 import ChatbotWidget from '../../components/ChatbotWidget';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet icons
+// ─── Inline SVG icons — no external CDN (avoids tracking-prevention blocks) ───
 delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+L.Icon.Default.mergeOptions({ iconUrl: '', shadowUrl: '', iconRetinaUrl: '' });
+
+const _pin = (color, emoji = '📍') => L.divIcon({
+  className: '',
+  html: `<div style="width:30px;height:30px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.9);box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:14px">${emoji}</span></div>`,
+  iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -32],
 });
-const makeIcon = (color) => new L.Icon({
-  iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-});
-const iconBlue = makeIcon('blue');
-const iconGreen = makeIcon('green');
-const iconOrange = makeIcon('orange');
-const iconRed = makeIcon('red');
+const iconBlue   = _pin('#3b82f6', '🏪');
+const iconGreen  = _pin('#10b981', '✅');
+const iconOrange = _pin('#f59e0b', '🚚');
+const iconRed    = _pin('#ef4444', '📍');
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -111,6 +110,7 @@ const TABS = [
   { id: 'catalogue', label: 'Catalogue', icon: ShoppingCart },
   { id: 'commandes', label: 'Mes commandes', icon: Package },
   { id: 'suivi',     label: 'Suivi live',    icon: MapIcon },
+  { id: 'favoris',   label: 'Favoris',       icon: Heart },
   { id: 'tickets',   label: 'Tickets',       icon: TicketIcon },
   { id: 'profil',    label: 'Mon profil',    icon: User },
 ];
@@ -124,6 +124,143 @@ const Stars = ({ note, size = 12 }) => (
     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '3px' }}>{note?.toFixed(1)}</span>
   </span>
 );
+
+// ─── Chat avec le livreur ───────────────────────────────────────────────────
+const ChatSidebar = ({ commande, onClose }) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const chatBottomRef = useRef(null);
+
+  const loadMessages = useCallback(async () => {
+    try {
+      const r = await clientApi.chatGet(commande.id);
+      setMessages(r.data || []);
+    } catch (e) {
+      console.error('Erreur chatGet:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [commande.id]);
+
+  useEffect(() => {
+    setLoading(true);
+    loadMessages();
+    const interval = setInterval(loadMessages, 4000);
+    return () => clearInterval(interval);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const text = input.trim();
+    setInput('');
+    try {
+      const r = await clientApi.chatSend(commande.id, text);
+      const newMsg = {
+        id: r.data.id,
+        auteur_role: 'CLIENT',
+        contenu: r.data.contenu,
+        created_at: r.data.created_at,
+      };
+      setMessages(prev => [...prev, newMsg]);
+    } catch (e) {
+      console.error('Erreur chatSend:', e);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(4px)' }}>
+      <div className="glass-card animate-fade-in" style={{ width: '400px', height: '100vh', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'rgba(15,20,34,0.97)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Header */}
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, background: 'rgba(99,102,241,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+              🛵
+            </div>
+            <div>
+              <h3 style={{ fontWeight: 800, margin: 0, fontSize: 15 }}>
+                {commande.transporteur_detail ? `${commande.transporteur_detail.first_name} ${commande.transporteur_detail.last_name}` : 'Livreur'}
+              </h3>
+              <div style={{ fontSize: '11px', color: 'rgba(99,102,241,0.85)', marginTop: '2px', fontFamily: 'monospace', fontWeight: 600 }}>
+                #{commande.reference}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
+        </div>
+
+        {/* Message list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {loading ? (
+            <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+              <RefreshCw size={24} className="spin" />
+              <span style={{ fontSize: 12 }}>Chargement du chat...</span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13, padding: '0 20px', lineHeight: 1.6 }}>
+              💬 Pas encore de messages.<br />Envoyez un message pour commencer la discussion avec votre livreur !
+            </div>
+          ) : (
+            messages.map((msg, i) => {
+              const isMe = msg.auteur_role === 'CLIENT';
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '80%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: isMe ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.06)',
+                    border: isMe ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    color: '#f1f5f9', fontSize: 13, lineHeight: 1.5,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                  }}>
+                    <div style={{ wordBreak: 'break-word' }}>{msg.contenu}</div>
+                    <div style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)', marginTop: 4, textAlign: 'right' }}>
+                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={chatBottomRef} />
+        </div>
+
+        {/* Input */}
+        <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
+          <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Message pour le livreur..."
+              style={{
+                flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                color: '#fff', fontSize: 13, outline: 'none'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              style={{
+                background: input.trim() ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)',
+                border: 'none', borderRadius: 10, padding: '10px 14px',
+                color: input.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                cursor: input.trim() ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <Send size={15} />
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ─── Panier flottant ─────────────────────────────────────────────────────────
 const CartSidebar = ({ onClose, onOrder }) => {
@@ -325,6 +462,7 @@ const calculerFrais = (distKm, baseFrais = 15) => {
 // ─── Checkout Modal ───────────────────────────────────────────────────────────
 const CheckoutModal = ({ onClose, onSuccess }) => {
   const { items, fondateur, clearCart } = useCartStore();
+  const { points, redeemPoints, addPoints } = useLoyaltyStore();
   const [adresse, setAdresse] = useState('');
   const [position, setPosition] = useState(null);      // [lat, lon] de l'utilisateur
   const [quartier, setQuartier] = useState(null);
@@ -335,6 +473,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
   const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [usePoints, setUsePoints] = useState(false);
 
   // Distance et frais dynamiques
   const boutiquePos = fondateur && fondateur.latitude && fondateur.longitude
@@ -352,7 +491,11 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
   const baseFrais = fondateur ? parseFloat(fondateur.frais_livraison_base) : 15;
   const fraisCalcules = targetPos ? calculerFrais(distance, baseFrais) : baseFrais;
   const sousTotal = items.reduce((s, i) => s + parseFloat(i.produit.prix_effectif) * i.quantite, 0);
-  const total = sousTotal + fraisCalcules;
+  
+  const totalSansReduction = sousTotal + fraisCalcules;
+  const pointsRedeemed = usePoints ? Math.min(Math.floor(points / 100) * 100, Math.floor(totalSansReduction / 10) * 100) : 0;
+  const discount = (pointsRedeemed / 100) * 10;
+  const total = totalSansReduction - discount;
 
   // Estimation temps (km / 30 km/h * 60min = min)
   const tempsEstime = distance > 0 ? Math.max(15, Math.round((distance / 30) * 60) + 15) : null;
@@ -385,7 +528,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
     if (!adresse.trim()) { setError('Veuillez sélectionner ou saisir une adresse de livraison'); return; }
     setLoading(true);
     try {
-      await commandesApi.create({
+      const res = await commandesApi.create({
         fondateur_id: fondateur.id,
         produits: items.map(i => ({ produit_id: i.produit.id, quantite: i.quantite })),
         adresse_livraison: adresse,
@@ -395,6 +538,15 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
         instructions_livraison: instructions,
         livraison_immediate: true,
       });
+      
+      const order = res.data;
+      const ref = order.reference || `#${order.id}`;
+      
+      if (pointsRedeemed > 0) {
+        redeemPoints(pointsRedeemed, ref);
+      }
+      addPoints(total, ref);
+      
       clearCart();
       onSuccess();
     } catch (err) {
@@ -565,6 +717,22 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               placeholder="Étage, digicode, point de repère..." rows={2} style={{ resize: 'none', fontSize: 13 }} />
           </div>
 
+          {/* ── Points de Fidélité (Feature 7) ── */}
+          {points >= 100 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, marginBottom: '1rem', fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>⭐</span>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#f59e0b' }}>Utiliser mes points</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
+                    Solde : {points} pts · Réduction max : {Math.min(Math.floor(points / 100) * 10, Math.floor(totalSansReduction))} MAD
+                  </div>
+                </div>
+              </div>
+              <input type="checkbox" checked={usePoints} onChange={e => setUsePoints(e.target.checked)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
+            </div>
+          )}
+
           {/* ── Récap ─────────────────────────────────────────────────────── */}
           <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '1rem', marginBottom: '1rem', fontSize: 13 }}>
             <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -583,6 +751,12 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               <span>Frais de livraison</span>
               <span>{fraisCalcules.toFixed(2)} MAD {fraisCalcules !== baseFrais && <span style={{ color: '#10b981', fontSize: 10 }}> (calculé)</span>}</span>
             </div>
+            {discount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: 12 }}>
+                <span>Réduction Fidélité</span>
+                <span>- {discount.toFixed(2)} MAD</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', fontWeight: 700, marginTop: 6, fontSize: 15 }}>
               <span>Total</span>
               <span style={{ color: '#10b981' }}>{total.toFixed(2)} MAD</span>
@@ -601,10 +775,9 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
 };
 
 // ─── Onglet CATALOGUE ─────────────────────────────────────────────────────────
-const CatalogueTab = ({ onCartOpen }) => {
+const CatalogueTab = ({ onCartOpen, groupCode, setGroupCode, groupMembers, selectedBoutique, setSelectedBoutique }) => {
   const [categorie, setCategorie] = useState('');
   const [boutiques, setBoutiques] = useState([]);
-  const [selectedBoutique, setSelectedBoutique] = useState(null);
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState('');
   const [searchBoutique, setSearchBoutique] = useState('');
@@ -612,7 +785,15 @@ const CatalogueTab = ({ onCartOpen }) => {
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
   const [loadingBoutiques, setLoadingBoutiques] = useState(true);
   const [loadingProduits, setLoadingProduits] = useState(false);
+
+  // Advanced filters (Feature 1)
+  const [noteMin, setNoteMin] = useState(0);
+  const [fraisMax, setFraisMax] = useState(50);
+  const [delaiMax, setDelaiMax] = useState(90);
+  const [showFilters, setShowFilters] = useState(false);
+
   const { addItem, items, fondateur: cartFondateur } = useCartStore();
+  const { toggleFavShop, isFavShop, toggleFavProduct, isFavProduct } = useFavoritesStore();
 
   const cartCount = items.reduce((s, i) => s + i.quantite, 0);
 
@@ -625,6 +806,15 @@ const CatalogueTab = ({ onCartOpen }) => {
       .finally(() => setLoadingBoutiques(false));
   }, [categorie]);
 
+  // Load products when boutique is selected (Feature 1 / useEffect)
+  useEffect(() => {
+    if (!selectedBoutique) return;
+    setLoadingProduits(true);
+    fondateursApi.produits(selectedBoutique.id)
+      .then(r => setProduits(r.data.results || r.data || []))
+      .finally(() => setLoadingProduits(false));
+  }, [selectedBoutique]);
+
   // Liste unique des villes disponibles
   const villesDisponibles = React.useMemo(() => {
     const set = new Set();
@@ -632,7 +822,7 @@ const CatalogueTab = ({ onCartOpen }) => {
     return Array.from(set).sort();
   }, [boutiques]);
 
-  // Filtrage final : ville + recherche + status ouvert
+  // Filtrage final (Feature 1)
   const boutiquesFiltrees = React.useMemo(() => {
     return boutiques.filter(b => {
       if (filtreVille && b.ville !== filtreVille) return false;
@@ -642,16 +832,17 @@ const CatalogueTab = ({ onCartOpen }) => {
         const hay = `${b.nom_boutique || ''} ${b.ville || ''} ${b.adresse || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      // Advanced constraints
+      if (b.note_moyenne < noteMin) return false;
+      if (parseFloat(b.frais_livraison_base || 0) > fraisMax) return false;
+      const delai = Math.round(20 + (b.rayon_livraison_km || 5) * 4);
+      if (delai > delaiMax) return false;
       return true;
     });
-  }, [boutiques, filtreVille, searchBoutique, showOnlyOpen]);
+  }, [boutiques, filtreVille, searchBoutique, showOnlyOpen, noteMin, fraisMax, delaiMax]);
 
   const selectBoutique = (b) => {
     setSelectedBoutique(b);
-    setLoadingProduits(true);
-    fondateursApi.produits(b.id)
-      .then(r => setProduits(r.data.results || r.data || []))
-      .finally(() => setLoadingProduits(false));
   };
 
   const filteredProduits = produits.filter(p =>
@@ -660,6 +851,94 @@ const CatalogueTab = ({ onCartOpen }) => {
   );
 
   const POIDS_APPROX = { ALIMENTAIRE: '0.3–2 kg', BOISSONS: '0.5–1.5 kg', HYGIENE: '0.1–0.5 kg', VETEMENTS: '0.2–1 kg', ELECTRONIQUE: '0.1–0.8 kg', MEDICAMENTS: '0.05–0.3 kg', AUTRE: '—' };
+
+  const GroupOrderBanner = () => {
+    const [inputCode, setInputCode] = useState('');
+    const [copied, setCopied] = useState(false);
+
+    const startGroup = () => {
+      const code = 'GP-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      setGroupCode(code);
+    };
+
+    const joinGroup = () => {
+      if (inputCode.trim().length >= 4) {
+        setGroupCode(inputCode.trim().toUpperCase());
+        setInputCode('');
+      }
+    };
+
+    const leaveGroup = () => {
+      setGroupCode('');
+      localStorage.removeItem('delivermap_group_code');
+    };
+
+    const copyCode = () => {
+      navigator.clipboard.writeText(groupCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    if (groupCode) {
+      return (
+        <div className="glass-card animate-fade-in" style={{
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))',
+          border: '1px solid rgba(99,102,241,0.25)',
+          borderRadius: 14, padding: '12px 16px', marginBottom: '1.25rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>👥</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#818cf8' }}>
+                Panier de groupe actif : {groupCode}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {groupMembers} participant{groupMembers > 1 ? 's' : ''} connecté{groupMembers > 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={copyCode} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: 12 }}>
+              {copied ? 'Copié !' : '📋 Copier le code'}
+            </button>
+            <button onClick={leaveGroup} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+              Quitter
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="glass-card animate-fade-in" style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 14, padding: '12px 16px', marginBottom: '1.25rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>👥</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>Commande de groupe</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              Partagez votre panier et commandez à plusieurs en temps réel
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input className="glass-input" placeholder="Code groupe..." value={inputCode} onChange={e => setInputCode(e.target.value)} style={{ padding: '6px 10px', fontSize: 12, width: 110, height: 32 }} />
+          <button onClick={joinGroup} className="btn btn-secondary btn-sm" style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
+            Rejoindre
+          </button>
+          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+          <button onClick={startGroup} className="btn btn-primary btn-sm" style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
+            Créer un groupe
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   if (selectedBoutique) return (
     <div>
@@ -674,7 +953,7 @@ const CatalogueTab = ({ onCartOpen }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
             <span><MapPin size={11} style={{ display: 'inline', marginRight: '3px' }} />{selectedBoutique.ville}</span>
             <span><Stars note={selectedBoutique.note_moyenne} /></span>
-            <span><Clock size={11} style={{ display: 'inline', marginRight: '3px' }} />~25–40 min</span>
+            <span><Clock size={11} style={{ display: 'inline', marginRight: '3px' }} />~{Math.round(20 + (selectedBoutique.rayon_livraison_km || 5) * 4)} min</span>
             <span>Livraison: {selectedBoutique.frais_livraison_base} MAD</span>
           </div>
         </div>
@@ -715,7 +994,13 @@ const CatalogueTab = ({ onCartOpen }) => {
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.4)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ''; }}>
                 {/* Photo */}
-                <ProductImage produit={p} />
+                <div style={{ position: 'relative' }}>
+                  <ProductImage produit={p} />
+                  <button onClick={() => toggleFavProduct(p, selectedBoutique.id)}
+                    style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(15,23,42,0.6)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: isFavProduct(p.id) ? '#ef4444' : 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', transition: 'all 0.2s' }}>
+                    <Heart size={14} fill={isFavProduct(p.id) ? '#ef4444' : 'transparent'} />
+                  </button>
+                </div>
 
                 {/* Content */}
                 <div style={{ padding: '0.875rem 1rem 1rem' }}>
@@ -772,6 +1057,9 @@ const CatalogueTab = ({ onCartOpen }) => {
 
   return (
     <div>
+      {/* Group order banner */}
+      <GroupOrderBanner />
+
       {/* Filtres catégorie */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '4px' }}>
         {CATEGORIES.map(c => (
@@ -811,9 +1099,15 @@ const CatalogueTab = ({ onCartOpen }) => {
           🟢 Ouvertes uniquement
         </label>
 
+        {/* Advanced Filters Toggle (Feature 1) */}
+        <button onClick={() => setShowFilters(!showFilters)}
+          style={{ background: showFilters ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          🎛️ Filtres {showFilters ? 'masqués' : 'avancés'}
+        </button>
+
         {/* Reset */}
-        {(filtreVille || searchBoutique || showOnlyOpen) && (
-          <button onClick={() => { setFiltreVille(''); setSearchBoutique(''); setShowOnlyOpen(false); }}
+        {(filtreVille || searchBoutique || showOnlyOpen || noteMin > 0 || fraisMax < 50 || delaiMax < 90) && (
+          <button onClick={() => { setFiltreVille(''); setSearchBoutique(''); setShowOnlyOpen(false); setNoteMin(0); setFraisMax(50); setDelaiMax(90); }}
             style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
             <X size={12} /> Réinitialiser
           </button>
@@ -823,6 +1117,30 @@ const CatalogueTab = ({ onCartOpen }) => {
           {boutiquesFiltrees.length} / {boutiques.length} boutiques
         </div>
       </div>
+
+      {/* Advanced Filter Sliders Panel (Feature 1) */}
+      {showFilters && (
+        <div className="glass-card animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginTop: '-0.5rem', marginBottom: '1.25rem', padding: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              Note minimale : <strong style={{ color: '#f59e0b' }}>{noteMin} ★</strong>
+            </label>
+            <input type="range" min="0" max="5" step="0.5" value={noteMin} onChange={e => setNoteMin(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              Frais de livraison max : <strong style={{ color: '#10b981' }}>{fraisMax} MAD</strong>
+            </label>
+            <input type="range" min="0" max="50" step="1" value={fraisMax} onChange={e => setFraisMax(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              Délai de livraison max : <strong style={{ color: '#f59e0b' }}>{delaiMax} min</strong>
+            </label>
+            <input type="range" min="15" max="90" step="5" value={delaiMax} onChange={e => setDelaiMax(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
+          </div>
+        </div>
+      )}
 
       {/* Grille boutiques */}
       {loadingBoutiques ? (
@@ -848,7 +1166,13 @@ const CatalogueTab = ({ onCartOpen }) => {
                     <MapPin size={11} style={{ display: 'inline' }} /> {b.ville || b.adresse}
                   </div>
                 </div>
-                <span style={{ fontSize: '24px' }}>{CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavShop(b); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: isFavShop(b.id) ? '#ef4444' : 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}>
+                    <Heart size={18} fill={isFavShop(b.id) ? '#ef4444' : 'transparent'} />
+                  </button>
+                  <span style={{ fontSize: '24px' }}>{CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪'}</span>
+                </div>
               </div>
               <Stars note={b.note_moyenne} />
               <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -868,7 +1192,7 @@ const CatalogueTab = ({ onCartOpen }) => {
 };
 
 // ─── Onglet MES COMMANDES ─────────────────────────────────────────────────────
-const CommandesTab = ({ onNavigateSuivi }) => {
+const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
@@ -996,10 +1320,16 @@ const CommandesTab = ({ onNavigateSuivi }) => {
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Votre livreur en route</div>
                 </div>
               </div>
-              <button onClick={onNavigateSuivi}
-                style={{ background: '#06b6d4', color: 'white', border: 'none', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <MapIcon size={11} /> Suivre
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => onOpenChat(cmd)}
+                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <MessageSquare size={11} /> Chat
+                </button>
+                <button onClick={onNavigateSuivi}
+                  style={{ background: '#06b6d4', color: 'white', border: 'none', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <MapIcon size={11} /> Suivre
+                </button>
+              </div>
             </div>
           )}
 
@@ -1080,7 +1410,7 @@ const fetchClientRoute = async (from, to) => {
 };
 
 // ─── Onglet SUIVI LIVE (avec filtres calques) ────────────────────────────────
-const SuiviTab = ({ user }) => {
+const SuiviTab = ({ user, onOpenChat }) => {
   const [livraisons, setLivraisons] = useState([]);
   const [boutiques, setBoutiques] = useState([]);
   const [transporteurs, setTransporteurs] = useState([]);
@@ -1318,8 +1648,19 @@ const SuiviTab = ({ user }) => {
                       🏪 {cmd.fondateur_detail?.nom_boutique}
                     </div>
                     {cmd.transporteur_detail && (
-                      <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>👤 {cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</span>
+                        <button
+                          onClick={() => onOpenChat(cmd)}
+                          style={{
+                            background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 6, padding: '2px 8px',
+                            color: '#a5b4fc', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.25)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; }}
+                        >
+                          <MessageSquare size={10} /> Chat livreur
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1399,267 +1740,128 @@ const TICKET_CATEGORIES = [
 ];
 
 // ─── Tickets Tab ──────────────────────────────────────────────────────────────
-const TicketsTab = () => {
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [form, setForm] = useState({
-    titre: '',
-    description: '',
-    categorie: 'livraison',
-    priorite: 'moyen',
-  });
+const TicketsTab = ({ userId }) => {
+  const [tickets, setTickets] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [sujet, setSujet] = React.useState('');
+  const [categorie, setCategorie] = React.useState('autre');
+  const [desc, setDesc] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const loadTickets = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await ticketsApi.list({ page_size: 10 });
-      setTickets(res.data.results || res.data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  React.useEffect(() => {
+    ticketsApi.list().then(r => setTickets(r.data?.results || r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { loadTickets(); }, [loadTickets]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.titre.trim() || !form.description.trim()) return;
+  const handleSubmit = async () => {
+    if (!sujet.trim()) return;
     setSubmitting(true);
     try {
-      await ticketsApi.create(form);
-      setSuccessMsg('Votre ticket a été créé avec succès !');
-      setForm({ titre: '', description: '', categorie: 'livraison', priorite: 'moyen' });
-      setShowForm(false);
-      await loadTickets();
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSubmitting(false);
-    }
+      await ticketsApi.create({ titre: sujet, categorie, description: desc });
+      const r = await ticketsApi.list();
+      setTickets(r.data?.results || r.data || []);
+      setSujet(''); setDesc('');
+    } catch { /* ignore */ } finally { setSubmitting(false); }
   };
 
   return (
     <div>
-      {/* Message succès */}
-      {successMsg && (
-        <div style={{
-          background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
-          padding: '12px 20px', borderRadius: 12, marginBottom: 16,
-          fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <CheckCircle size={18} /> {successMsg}
-        </div>
-      )}
-
-      {/* Card création ticket */}
-      {!showForm ? (
-        <div className="glass-card" style={{
-          padding: '1.5rem', marginBottom: '1.5rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          border: '1px dashed rgba(59,130,246,0.4)',
-          cursor: 'pointer', transition: 'all 0.2s',
-        }}
-          onClick={() => setShowForm(true)}
-          onMouseEnter={e => { e.currentTarget.style.border = '1px dashed rgba(59,130,246,0.8)'; e.currentTarget.style.background = 'rgba(59,130,246,0.06)'; }}
-          onMouseLeave={e => { e.currentTarget.style.border = '1px dashed rgba(59,130,246,0.4)'; e.currentTarget.style.background = ''; }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TicketIcon size={24} color="#3b82f6" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Créer un ticket support</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Un problème ? Notre équipe vous répond rapidement.
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#3b82f6', fontWeight: 600, fontSize: 14 }}>
-            <Plus size={18} /> Créer
-          </div>
-        </div>
-      ) : (
-        <div className="glass-card animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.5rem', border: '1px solid rgba(59,130,246,0.3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TicketIcon size={18} color="#3b82f6" /> Nouveau ticket
-            </h3>
-            <button onClick={() => setShowForm(false)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
-              <X size={18} />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Catégorie</label>
-                <select className="glass-input" value={form.categorie}
-                  onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
-                  style={{ width: '100%' }}>
-                  {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Priorité</label>
-                <select className="glass-input" value={form.priorite}
-                  onChange={e => setForm(f => ({ ...f, priorite: e.target.value }))}
-                  style={{ width: '100%' }}>
-                  <option value="faible">🟢 Faible</option>
-                  <option value="moyen">🟡 Moyen</option>
-                  <option value="urgent">🔴 Urgent</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Titre *</label>
-              <input className="glass-input" value={form.titre} placeholder="Décrivez brièvement votre problème"
-                onChange={e => setForm(f => ({ ...f, titre: e.target.value }))}
-                required style={{ width: '100%' }} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', fontWeight: 600 }}>Description *</label>
-              <textarea className="glass-input" value={form.description}
-                placeholder="Donnez le maximum de détails..."
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                required rows={4}
-                style={{ width: '100%', resize: 'vertical', minHeight: 100 }} />
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button type="submit" disabled={submitting}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: 10, border: 'none',
-                  background: 'var(--gradient-primary, linear-gradient(135deg, #3b82f6, #2563eb))',
-                  color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  opacity: submitting ? 0.7 : 1,
-                }}>
-                <Send size={16} /> {submitting ? 'Envoi en cours…' : 'Envoyer le ticket'}
-              </button>
-              <button type="button" onClick={() => setShowForm(false)}
-                style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>
-                Annuler
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Liste des tickets récents */}
-      <div>
-        <h3 style={{ margin: '0 0 1rem', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <MessageSquare size={16} color="var(--accent-primary)" /> Mes tickets récents
-        </h3>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1, 2, 3].map(i => <div key={i} className="glass-card" style={{ height: 80, opacity: 0.4 }} />)}
-          </div>
-        ) : tickets.length === 0 ? (
-          <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <TicketIcon size={32} style={{ opacity: 0.25, display: 'block', margin: '0 auto 10px' }} />
-            <div style={{ fontSize: 14 }}>Aucun ticket pour le moment</div>
-            <div style={{ fontSize: 12, marginTop: 6 }}>Créez un ticket si vous avez un problème.</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {tickets.map(ticket => {
-              const s = TICKET_STATUS[ticket.statut] || TICKET_STATUS.ouvert;
-              const p = TICKET_PRIORITY[ticket.priorite] || TICKET_PRIORITY.moyen;
-              const cat = TICKET_CATEGORIES.find(c => c.value === ticket.categorie)?.label || ticket.categorie;
-              return (
-                <div key={ticket.id} className="glass-card animate-fade-in"
-                  style={{ padding: '1rem 1.2rem', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: s.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <TicketIcon size={18} color={s.color} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: 14 }}>#{ticket.id} — {ticket.titre}</span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <span style={{ fontSize: 11, background: s.bg, color: s.color, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>{s.label}</span>
-                        <span style={{ fontSize: 11, color: p.color, fontWeight: 600 }}>• {p.label}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ticket.description}
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-secondary)' }}>
-                      <span>📂 {cat}</span>
-                      <span>📅 {new Date(ticket.created_at).toLocaleDateString()}</span>
-                      {ticket.messages?.length > 0 && <span>💬 {ticket.messages.length} message(s)</span>}
-                      {ticket.sla_depasse && <span style={{ color: '#ef4444', fontWeight: 600 }}>⚠ SLA dépassé</span>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 20, marginBottom: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
+        <h3 style={{ color: 'var(--text-primary)', marginBottom: 16, fontSize: 15, fontWeight: 700 }}>📝 Nouveau ticket</h3>
+        <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder="Sujet du ticket"
+          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }} />
+        <select value={categorie} onChange={e => setCategorie(e.target.value)}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }}>
+          {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description détaillée..." rows={3}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, resize: 'vertical', boxSizing: 'border-box' }} />
+        <button onClick={handleSubmit} disabled={submitting || !sujet.trim()}
+          style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#6366f1', color: 'white', fontWeight: 700, cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
+          {submitting ? 'Envoi...' : '📨 Envoyer le ticket'}
+        </button>
       </div>
+
+      {loading ? <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {tickets.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Aucun ticket pour le moment.</p>}
+          {tickets.map(t => (
+            <div key={t.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>#{t.id} — {t.sujet}</span>
+                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: t.statut === 'ouvert' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)', color: t.statut === 'ouvert' ? '#818cf8' : '#34d399' }}>
+                  {t.statut}
+                </span>
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{t.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────────
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('catalogue');
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
   const { items } = useCartStore();
   const cartCount = items.reduce((s, i) => s + i.quantite, 0);
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
-  const handleOrderSuccess = () => { setCheckoutOpen(false); setCartOpen(false); setOrderSuccess(true); setTab('commandes'); setTimeout(() => setOrderSuccess(false), 4000); };
+  const [selectedBoutique, setSelectedBoutique] = useState(null);
+  const [groupCode, setGroupCode] = useState('');
+  const [groupMembers, setGroupMembers] = useState(1);
+  const [activeChatCommande, setActiveChatCommande] = useState(null);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Bar */}
-      <div className="glass-card" style={{ borderRadius: 0, padding: '0 2rem', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="logo-icon" style={{ width: '36px', height: '36px' }}><Truck size={20} color="white" /></div>
-          <span className="logo-text text-gradient" style={{ fontSize: '1.2rem', fontWeight: 800 }}>DeliverMap</span>
-          <span className="badge badge-info">Client</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Bonjour, <strong style={{ color: 'var(--text-primary)' }}>{user?.first_name}</strong></span>
-          <button style={{ position: 'relative', background: cartCount > 0 ? 'var(--gradient-primary)' : 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', color: 'white', borderRadius: '10px', padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: cartCount > 0 ? 700 : 400 }}
-            onClick={() => setCartOpen(true)}>
-            <ShoppingCart size={18} />
-            {cartCount > 0 && <span style={{ background: '#ef4444', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{cartCount}</span>}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary,#0f1422)', color: 'var(--text-primary,#f1f5f9)', fontFamily: 'system-ui,sans-serif' }}>
+
+      {/* Top bar */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(15,20,34,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontWeight: 800, fontSize: 16, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>🚚 DeliverMap</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => setCartOpen(true)} style={{ position: 'relative', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ShoppingCart size={16} /> Panier
+            {cartCount > 0 && <span style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{cartCount}</span>}
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={handleLogout}><LogOut size={15} /></button>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>👤 {user?.first_name || user?.username}</span>
+          <button onClick={() => { logout(); navigate('/login'); }} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '6px 10px', color: '#f87171', cursor: 'pointer' }}>
+            <LogOut size={14} />
+          </button>
         </div>
       </div>
 
-      {orderSuccess && (
-        <div style={{ position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '1rem 2rem', borderRadius: '12px', fontWeight: 700, boxShadow: '0 8px 30px rgba(16,185,129,0.4)', animation: 'fadeIn 0.3s' }}>
-          🎉 Commande passée avec succès !
-        </div>
-      )}
-
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', padding: '0 2rem', background: 'rgba(255,255,255,0.02)' }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '1rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? '#3b82f6' : 'var(--text-secondary)', borderBottom: `2px solid ${tab === id ? '#3b82f6' : 'transparent'}`, fontWeight: tab === id ? 700 : 400, fontSize: '14px', transition: 'all 0.2s', position: 'relative' }}>
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
+      {/* Tab nav */}
+      <div style={{ display: 'flex', gap: 4, padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto' }}>
+        {TABS.map(t => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', background: active ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: active ? 'white' : 'rgba(255,255,255,0.55)' }}>
+              <Icon size={15} /> {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div style={{ flex: 1, padding: '2rem', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
-        {tab === 'catalogue' && <CatalogueTab onCartOpen={() => setCartOpen(true)} />}
-        {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} />}
-        {tab === 'suivi'     && <SuiviTab user={user} />}
-        {tab === 'tickets'   && <TicketsTab />}
+      {/* Tab content */}
+      <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
+        {tab === 'catalogue' && (
+          <CatalogueTab
+            onCartOpen={() => setCartOpen(true)}
+            groupCode={groupCode}
+            setGroupCode={setGroupCode}
+            groupMembers={groupMembers}
+            selectedBoutique={selectedBoutique}
+            setSelectedBoutique={setSelectedBoutique}
+          />
+        )}
+        {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} onOpenChat={setActiveChatCommande} />}
+        {tab === 'suivi'     && <SuiviTab user={user} onOpenChat={setActiveChatCommande} />}
+        {tab === 'tickets'   && <TicketsTab userId={user?.id} />}
         {tab === 'profil'    && <ProfilTab user={user} />}
       </div>
 
@@ -1672,11 +1874,16 @@ const ClientDashboard = () => {
       {checkoutOpen && (
         <CheckoutModal
           onClose={() => setCheckoutOpen(false)}
-          onSuccess={handleOrderSuccess}
+          onSuccess={() => { setCheckoutOpen(false); setTab('commandes'); }}
         />
       )}
-
-      <ChatbotWidget onOpenCart={() => setCartOpen(true)} />
+      {activeChatCommande && (
+        <ChatSidebar
+          commande={activeChatCommande}
+          onClose={() => setActiveChatCommande(null)}
+        />
+      )}
+      <ChatbotWidget />
     </div>
   );
 };

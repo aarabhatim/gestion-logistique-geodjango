@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Mail, Phone, MapPin, Search, UserX, Shield, RefreshCw } from 'lucide-react';
-import { getClients } from '../services/api';
+import api from '../services/api';
 
 const roleColor = (role) => {
   const map = { CLIENT: 'badge-info', ADMIN: 'badge-danger', FONDATEUR: 'badge-warning', TRANSPORTEUR: 'badge-success' };
@@ -17,7 +17,7 @@ const Clients = () => {
   const fetchClients = async (q = search, p = page) => {
     setLoading(true);
     try {
-      const res = await getClients({ search: q, page: p });
+      const res = await api.get('auth/admin/users/', { params: { role: 'CLIENT', search: q, page: p } });
       const results = res.data.results || res.data || [];
       setClients(results);
       setCount(res.data.count || results.length);

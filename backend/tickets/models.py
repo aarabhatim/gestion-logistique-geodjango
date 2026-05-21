@@ -10,6 +10,10 @@ class Ticket(models.Model):
         ('incident', 'Incident'),
         ('retard', 'Retard de livraison'),
         ('retour', 'Retour produit'),
+        ('livraison', 'Livraison'),
+        ('paiement', 'Paiement'),
+        ('technique', 'Technique'),
+        ('compte', 'Compte'),
         ('autre', 'Autre'),
     ]
     PRIORITE_CHOICES = [

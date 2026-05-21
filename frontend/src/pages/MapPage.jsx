@@ -607,20 +607,20 @@ const MapPage = () => {
 
               {/* Overlays */}
               <KPIRow stats={kpiStats} />
-              <LayerToggle layers={layers} onToggle={toggleLayer} />
-              <Legend />
             </>
           )}
         </div>
 
-        {/* SIDE PANELS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: 4 }}>
-          <ActivityPanel transporteurs={transporteurs} livraisons={livraisons} />
-          <BoutiqueSupervisionPanel boutiques={boutiques} onValider={handleValiderBoutique} loading={loading} />
+        {/* Side panel placeholder */}
+        {/* Side panel placeholder */}
+        <div className="glass-card" style={{ overflowY: 'auto', padding: 16 }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+            Sélectionnez un élément sur la carte pour voir les détails.
+          </div>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default MapPage;

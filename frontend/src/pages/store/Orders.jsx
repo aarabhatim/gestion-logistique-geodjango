@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, Package } from 'lucide-react';
-import api from '../../services/api';
+import { commandesApi } from '../../services/api';
 
 const StoreOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -8,8 +8,9 @@ const StoreOrders = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await api.get('commandes/');
-      setOrders(res.data);
+      const res = await commandesApi.list({ statuts: 'EN_ATTENTE,EN_PREPARATION,VALIDEE', page_size: 100 });
+      const items = res.data.results ?? (Array.isArray(res.data) ? res.data : []);
+      setOrders(items);
     } catch (err) {
       console.error(err);
     } finally {

@@ -4,15 +4,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { transporteursApi, commandesApi, fondateursApi } from '../services/api';
 
-// ─── Fix default Leaflet icon paths ──────────────────────────────────────────
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// ─── Inline SVG icons — no external CDN ──────────────────────────────────────
+import '../../utils/leafletIcons'; // applies the L.Icon.Default patch
 
-// ─── Custom marker icons ──────────────────────────────────────────────────────
 const makePin = (color, emoji) => L.divIcon({
   className: '',
   html: `<div style="

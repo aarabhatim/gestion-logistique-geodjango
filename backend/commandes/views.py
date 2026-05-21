@@ -42,6 +42,12 @@ class CommandeListCreateView(generics.ListCreateAPIView):
         serializer = CommandeCreateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             commande = serializer.save()
+            # Email de confirmation au client
+            try:
+                from utils.emails import email_confirmation_commande
+                email_confirmation_commande(commande)
+            except Exception:
+                pass
             return Response(
                 CommandeSerializer(commande, context={'request': request}).data,
                 status=status.HTTP_201_CREATED,
@@ -77,9 +83,7 @@ class CommandeStatutView(APIView):
             'EN_PREPARATION': 'EN_ROUTE',
             'EN_ROUTE': 'LIVREE',
         },
-        'CLIENT': {
-            'EN_ATTENTE': 'ANNULEE',
-        },
+        'CLIENT': {},
         'ADMIN': {
             'EN_ATTENTE': 'VALIDEE',
             'VALIDEE': 'EN_PREPARATION',
@@ -126,6 +130,12 @@ class CommandeStatutView(APIView):
             if not nouveau_statut:
                 return Response({'error': 'Transition non autorisée.'}, status=status.HTTP_403_FORBIDDEN)
             commande.statut = nouveau_statut
+            if nouveau_statut == 'EN_ROUTE':
+                try:
+                    from utils.emails import email_livraison_en_route
+                    email_livraison_en_route(commande)
+                except Exception:
+                    pass
             if nouveau_statut == 'LIVREE':
                 commande.livree_at = timezone.now()
                 commande.est_paye = True
@@ -156,6 +166,12 @@ class CommandeStatutView(APIView):
                 except Exception:
                     pass
             commande.save()
+            if nouveau_statut == 'LIVREE':
+                try:
+                    from utils.emails import email_commande_livree
+                    email_commande_livree(commande)
+                except Exception:
+                    pass
             return Response(CommandeSerializer(commande).data)
 
         return Response({'error': 'Action invalide.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -359,12 +375,67 @@ class AvisCreateView(APIView):
         try:
             commande = Commande.objects.get(pk=commande_pk, client=request.user)
         except Commande.DoesNotExist:
-            return Response({'error': 'Commande introuvable.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = AvisCreateSerializer(
-            data=request.data,
-            context={'request': request, 'commande': commande},
-        )
-        if serializer.is_valid():
-            avis = serializer.save()
-            return Response(AvisSerializer(avis).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Resp
+
+
+# ─── Calendrier livraisons ────────────────────────────────────────────────────
+class CalendrierLivraisonsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Q
+        from datetime import datetime, timedelta
+        year = int(request.query_params.get('year', datetime.now().year))
+        month = int(request.query_params.get('month', datetime.now().month))
+        week_start = request.query_params.get('week_start')
+
+        from commandes.models import Commande
+        if week_start:
+            try:
+                start = datetime.strptime(week_start, '%Y-%m-%d').date()
+                end = start + timedelta(days=6)
+                qs = Commande.objects.filter(
+                    created_at__date__range=[start, end]
+                ).exclude(statut='ANNULEE')
+            except ValueError:
+                return Response({'error': 'Format date invalide'}, status=400)
+        else:
+            import calendar
+            last_day = calendar.monthrange(year, month)[1]
+            from datetime import date
+            qs = Commande.objects.filter(
+                created_at__year=year,
+                created_at__month=month,
+            ).exclude(statut='ANNULEE')
+
+        events = []
+        for cmd in qs.select_related('client', 'transporteur_assigne'):
+            events.append({
+                'id': cmd.id,
+                'reference': cmd.reference,
+                'date': cmd.created_at.strftime('%Y-%m-%d'),
+                'statut': cmd.statut,
+                'client': str(cmd.client) if cmd.client else '',
+                'transporteur': str(cmd.transporteur_assigne) if cmd.transporteur_assigne else None,
+                'adresse_livraison': cmd.adresse_livraison if hasattr(cmd, 'adresse_livraison') else '',
+            })
+
+        return Response({'events': events, 'count': len(events)})
+
+
+# ─── Réponse aux avis ────────────────────────────────────────────────────────
+class AvisReplyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, avis_id):
+        from commandes.models import Avis
+        try:
+            avis = Avis.objects.get(pk=avis_id)
+        except Avis.DoesNotExist:
+            return Response({'error': 'Avis introuvable'}, status=404)
+        reponse = request.data.get('reponse', '').strip()
+        if not reponse:
+            return Response({'error': 'Reponse vide'}, status=400)
+        avis.reponse_fondateur = reponse
+        avis.save()
+        return Response({'status': 'ok', 'reponse': reponse})

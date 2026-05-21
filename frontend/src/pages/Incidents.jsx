@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import Pagination from '../components/Pagination';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -34,20 +35,26 @@ const Incidents = () => {
   const [filtreType, setFiltreType] = useState('');
   const [resolveNotes, setResolveNotes] = useState('');
   const [resolving, setResolving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
-  const fetchAll = async () => {
+  const fetchAll = async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
       const [incRes, statsRes] = await Promise.all([
-        incidentsApi.list({ statut: filtreStatut || undefined, type_incident: filtreType || undefined }),
+        incidentsApi.list({
+          statut: filtreStatut || undefined,
+          type_incident: filtreType || undefined,
+          page: p,
+          page_size: ps,
+        }),
         incidentsApi.stats(),
       ]);
-      const features = incRes.data.features
-        || (incRes.data.results && incRes.data.results.features)
-        || incRes.data.results
-        || incRes.data
-        || [];
-      setIncidents(features);
+      const data = incRes.data;
+      const items = data.results ?? (Array.isArray(data) ? data : []);
+      setTotal(data.count ?? items.length);
+      setIncidents(items);
       setStats(statsRes.data);
     } catch (err) {
       console.error(err);
@@ -57,7 +64,7 @@ const Incidents = () => {
     }
   };
 
-  useEffect(() => { fetchAll(); }, [filtreStatut, filtreType]);
+  useEffect(() => { setPage(1); fetchAll(1, pageSize); }, [filtreStatut, filtreType]);
 
   const handlePrendreEnCharge = async (id) => {
     try {
@@ -244,6 +251,15 @@ const Incidents = () => {
           )}
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={(p) => { setPage(p); fetchAll(p, pageSize); }}
+        onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); fetchAll(1, ps); }}
+      />
     </div>
   );
 };

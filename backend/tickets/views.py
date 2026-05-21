@@ -115,15 +115,69 @@ class TicketViewSet(viewsets.ModelViewSet):
         if request.user != ticket.auteur:
             envoyer_notification(
                 ticket.auteur,
-                titre=f"💬 Réponse sur votre ticket #{ticket.pk}",
-                message=f"Une réponse a été apportée à votre ticket '{ticket.titre}'.",
+                titre=f"Reponse sur votre ticket #{ticket.pk}",
+                message=f"Une reponse a ete apportee a votre ticket '{ticket.titre}'.",
                 type_notif='INFO',
             )
+            # Email de notification de réponse
+            try:
+                from utils.emails import email_ticket_reponse
+                email_ticket_reponse(ticket, msg)
+            except Exception:
+                pass
 
         return Response(
             TicketMessageSerializer(msg, context={'request': request}).data,
             status=status.HTTP_201_CREATED
         )
+
+    @action(detail=False, methods=['get'], url_path='mes-tickets')
+    def mes_tickets(self, request):
+        """Tickets de l'utilisateur connecté."""
+        qs = Ticket.objects.filter(auteur=request.user).order_by('-created_at')
+        serializer = TicketSerializer(qs, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='changer-statut')
+    def changer_statut(self, request, pk=None):
+        """Changer le statut d'un ticket (admin uniquement)."""
+        ticket = self.get_object()
+        if request.user.role != 'ADMIN':
+            return Response({'detail': 'Réservé aux admins.'}, status=status.HTTP_403_FORBIDDEN)
+        nouveau_statut = request.data.get('statut')
+        statuts_valides = ['ouvert', 'en_cours', 'en_attente', 'resolu', 'ferme']
+        if nouveau_statut not in statuts_valides:
+            return Response({'detail': f'Statut invalide. Valeurs: {statuts_valides}'}, status=status.HTTP_400_BAD_REQUEST)
+        ticket.statut = nouveau_statut
+        if nouveau_statut == 'resolu':
+            ticket.resolu_at = timezone.now()
+            ticket.save(update_fields=['statut', 'resolu_at'])
+        else:
+            ticket.save(update_fields=['statut'])
+        broadcast_group('admin_tickets', {'event': 'ticket_updated', 'ticket_id': ticket.pk, 'statut': ticket.statut})
+        return Response({'statut': ticket.statut})
+
+    @action(detail=False, methods=['get'], url_path='statistiques')
+    def statistiques(self, request):
+        """Statistiques globales des tickets (admin uniquement)."""
+        from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+        qs = Ticket.objects.all()
+        par_statut   = dict(qs.values_list('statut').annotate(n=Count('id')).values_list('statut', 'n'))
+        par_priorite = dict(qs.values_list('priorite').annotate(n=Count('id')).values_list('priorite', 'n'))
+        par_cat      = dict(qs.values_list('categorie').annotate(n=Count('id')).values_list('categorie', 'n'))
+        resolus      = qs.filter(statut='resolu', resolu_at__isnull=False)
+        taux = round(resolus.count() / max(qs.count(), 1) * 100, 1)
+        return Response({
+            'total': qs.count(),
+            'ouverts': par_statut.get('ouvert', 0),
+            'en_cours': par_statut.get('en_cours', 0),
+            'en_attente': par_statut.get('en_attente', 0),
+            'resolus': par_statut.get('resolu', 0),
+            'fermes': par_statut.get('ferme', 0),
+            'taux_resolution': taux,
+            'par_priorite': par_priorite,
+            'par_categorie': par_cat,
+        })
 
     @action(detail=True, methods=['post'], url_path='assigner',
             permission_classes=[IsAuthenticated])
@@ -158,6 +212,8 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='resoudre')
     def resoudre(self, request, pk=None):
         """Marquer un ticket comme résolu."""
+        if request.user.role != 'ADMIN':
+            return Response({'detail': 'Réservé aux admins.'}, status=status.HTTP_403_FORBIDDEN)
         ticket = self.get_object()
         ticket.statut = 'resolu'
         ticket.resolu_at = timezone.now()
@@ -176,23 +232,3 @@ class TicketViewSet(viewsets.ModelViewSet):
         })
         return Response({'status': 'résolu'})
 
-    @action(detail=False, methods=['get'], url_path='statistiques',
-            permission_classes=[IsAuthenticated])
-    def statistiques(self, request):
-        """KPIs tickets pour le dashboard admin."""
-        from django.db.models import Count
-        if request.user.role != 'ADMIN':
-            return Response({'detail': 'Réservé aux admins.'}, status=status.HTTP_403_FORBIDDEN)
-        par_statut = {s['statut']: s['count']
-                      for s in Ticket.objects.values('statut').annotate(count=Count('id'))}
-        par_priorite = {p['priorite']: p['count']
-                        for p in Ticket.objects.values('priorite').annotate(count=Count('id'))}
-        return Response({
-            'total': Ticket.objects.count(),
-            'par_statut': par_statut,
-            'par_priorite': par_priorite,
-            'sla_depasses': Ticket.objects.filter(sla_depasse=True).count(),
-            'non_assignes': Ticket.objects.filter(
-                assigne_a__isnull=True, statut__in=['ouvert', 'en_cours']
-            ).count(),
-        })

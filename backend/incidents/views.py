@@ -15,7 +15,7 @@ User = get_user_model()
 
 
 def _notifier_admins(titre, message, commande_id=None):
-    """Envoie une notification à tous les utilisateurs admin."""
+    """Envoie une notification a tous les utilisateurs admin."""
     admins = User.objects.filter(role='ADMIN', is_active=True)
     for admin in admins:
         envoyer_notification(admin, titre, message, type_notif='WARNING', commande_id=commande_id)
@@ -46,83 +46,110 @@ class IncidentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         incident = serializer.save()
+        # Notification interne aux admins
         _notifier_admins(
-            titre=f"⚠️ Incident signalé — {incident.commande.reference}",
-            message=(
-                f"Un incident de type '{incident.get_type_incident_display()}' a été signalé "
-                f"pour la commande {incident.commande.reference}.\n"
-                f"Description : {incident.description[:120]}"
-            ),
-            commande_id=incident.commande.pk,
+            titre=f"Incident signale -- {incident.get_type_incident_display()}",
+            message=f"Commande #{incident.commande_id} : {incident.description[:120]}",
+            commande_id=incident.commande_id,
         )
-        # Broadcast WebSocket vers le groupe admin_incidents
+        # Push WebSocket vers le groupe admin_incidents
         broadcast_group('admin_incidents', {
             'event': 'incident_created',
             'incident_id': incident.pk,
             'type': incident.type_incident,
-            'commande': incident.commande.reference,
-            'statut': incident.statut,
+            'commande_id': incident.commande_id,
         })
+        # Email aux admins
+        try:
+            from utils.emails import email_incident_signale
+            admin_emails = list(
+                User.objects.filter(role='ADMIN', is_active=True)
+                .values_list('email', flat=True)
+            )
+            if admin_emails:
+                email_incident_signale(incident, admin_emails)
+        except Exception:
+            pass
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='resoudre')
     def resoudre(self, request, pk=None):
-        """Marquer un incident comme résolu (admin)."""
+        """Marquer un incident comme resolu."""
         incident = self.get_object()
-        if incident.statut == 'resolu':
-            return Response({'detail': 'Incident déjà résolu.'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role != 'ADMIN':
+            return Response({'detail': 'Reserve aux admins.'}, status=status.HTTP_403_FORBIDDEN)
+        notes = request.data.get('notes_resolution', '')
         incident.statut = 'resolu'
         incident.date_resolution = timezone.now()
-        incident.notes_resolution = request.data.get('notes_resolution', '')
+        incident.notes_resolution = notes
         incident.save(update_fields=['statut', 'date_resolution', 'notes_resolution'])
-        _notifier_admins(
-            titre=f"✅ Incident résolu — {incident.commande.reference}",
-            message=f"L'incident sur la commande {incident.commande.reference} a été résolu.",
-            commande_id=incident.commande.pk,
-        )
+        # Notifier le chauffeur qui a signe l'incident (via commande > transporteur)
+        try:
+            transporteur = incident.commande.transporteur
+            if transporteur:
+                envoyer_notification(
+                    transporteur,
+                    titre=f"Incident #{incident.pk} resolu",
+                    message=f"L'incident sur la commande #{incident.commande_id} a ete resolu.",
+                    type_notif='SUCCESS',
+                )
+        except Exception:
+            pass
         broadcast_group('admin_incidents', {
-            'event': 'incident_resolved',
+            'event': 'incident_updated',
             'incident_id': incident.pk,
-            'commande': incident.commande.reference,
+            'statut': 'resolu',
         })
-        return Response({'status': 'incident résolu avec succès'})
+        return Response(IncidentSerializer(incident, context={'request': request}).data)
 
-    @action(detail=True, methods=['post'], url_path='ajouter-photo',
-            parser_classes=[MultiPartParser, FormParser])
-    def ajouter_photo(self, request, pk=None):
-        """Uploader une ou plusieurs photos pour un incident."""
-        incident = self.get_object()
-        images = request.FILES.getlist('images')
-        if not images:
-            return Response({'detail': 'Aucune image fournie.'}, status=status.HTTP_400_BAD_REQUEST)
-        created = []
-        for img in images:
-            legende = request.data.get('legende', '')
-            photo = IncidentPhoto.objects.create(incident=incident, image=img, legende=legende)
-            created.append(IncidentPhotoSerializer(photo, context={'request': request}).data)
-        return Response({'photos': created, 'count': len(created)}, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['get'], url_path='photos')
-    def liste_photos(self, request, pk=None):
-        """Lister les photos d'un incident."""
-        incident = self.get_object()
-        serializer = IncidentPhotoSerializer(
-            incident.photos.all(), many=True, context={'request': request}
-        )
+    @action(detail=False, methods=['get'], url_path='mes-incidents')
+    def mes_incidents(self, request):
+        """Incidents signalés par le transporteur connecté."""
+        qs = Incident.objects.filter(
+            commande__transporteur=request.user
+        ).select_related('commande').prefetch_related('photos').order_by('-date_signalement')
+        serializer = IncidentListSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='prendre-en-charge')
+    def prendre_en_charge(self, request, pk=None):
+        """Passer l'incident en traitement (alias de en-traitement)."""
+        incident = self.get_object()
+        incident.statut = 'en_traitement'
+        incident.save(update_fields=['statut'])
+        broadcast_group('admin_incidents', {
+            'event': 'incident_updated',
+            'incident_id': incident.pk,
+            'statut': 'en_traitement',
+        })
+        return Response(IncidentSerializer(incident, context={'request': request}).data)
 
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
-        return self.statistiques(request)
-
-    @action(detail=False, methods=['get'], url_path='statistiques')
-    def statistiques(self, request):
-        """KPIs incidents pour le dashboard admin."""
+        """Statistiques globales des incidents."""
         from django.db.models import Count
-        stats = Incident.objects.values('statut').annotate(count=Count('id'))
-        par_type = Incident.objects.values('type_incident').annotate(count=Count('id')).order_by('-count')
+        qs = Incident.objects.all()
+        total = qs.count()
+        par_statut = dict(qs.values_list('statut').annotate(n=Count('id')).values_list('statut', 'n'))
+        par_type   = dict(qs.values_list('type_incident').annotate(n=Count('id')).values_list('type_incident', 'n'))
         return Response({
-            'par_statut': {s['statut']: s['count'] for s in stats},
-            'par_type': list(par_type),
-            'total': Incident.objects.count(),
-            'ouverts': Incident.objects.filter(statut='ouvert').count(),
+            'total': total,
+            'ouverts': par_statut.get('ouvert', 0),
+            'en_traitement': par_statut.get('en_traitement', 0),
+            'resolus': par_statut.get('resolu', 0),
+            'par_type': par_type,
         })
+
+    @action(detail=True, methods=['post'], url_path='en-traitement')
+    def en_traitement(self, request, pk=None):
+        """Passer un incident en traitement."""
+        incident = self.get_object()
+        if request.user.role != 'ADMIN':
+            return Response({'detail': 'Reserve aux admins.'}, status=status.HTTP_403_FORBIDDEN)
+        incident.statut = 'en_traitement'
+        incident.save(update_fields=['statut'])
+        broadcast_group('admin_incidents', {
+            'event': 'incident_updated',
+            'incident_id': incident.pk,
+            'statut': 'en_traitement',
+        })
+        return Response(IncidentSerializer(incident, context={'request': request}).data)

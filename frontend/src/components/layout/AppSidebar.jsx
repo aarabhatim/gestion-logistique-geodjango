@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Users, Truck, Package, Map as MapIcon,
   Settings, BarChart2, AlertTriangle, LogOut, Store, Activity,
-  Award, MessageSquare, FileText,
+  Award, MessageSquare, FileText, Radio, CalendarDays, MapPinned,
+  Tag, TrendingUp, UserCog, Megaphone, Ban, Image, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const NavLink = ({ to, icon: Icon, label }) => {
+const NavLink = ({ to, icon: Icon, label, badge }) => {
   const { pathname } = useLocation();
   const active = pathname === to;
 
@@ -33,8 +34,13 @@ const NavLink = ({ to, icon: Icon, label }) => {
             : 'text-sidebar-foreground/60 hover:bg-white/5 hover:text-sidebar-foreground',
         )}
       >
-        <Icon className={cn('h-[18px] w-[18px]', active && 'text-[hsl(var(--sidebar-accent))]')} />
-        {label}
+        <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-[hsl(var(--sidebar-accent))]')} />
+        <span className="flex-1 truncate">{label}</span>
+        {badge && (
+          <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+            {badge}
+          </span>
+        )}
       </span>
     </Link>
   );
@@ -58,14 +64,18 @@ export function AppSidebar() {
     ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'A'
     : 'A';
   const roleLabel = {
-    ADMIN: 'Administrateur',
-    FONDATEUR: 'Fondateur',
+    ADMIN:       'Administrateur',
+    FONDATEUR:   'Fondateur',
     TRANSPORTEUR: 'Transporteur',
-    CLIENT: 'Client',
+    CLIENT:      'Client',
   };
+
+  const isAdmin    = user?.role === 'ADMIN';
+  const isFondateur = user?.role === 'FONDATEUR';
 
   return (
     <aside className="flex h-screen w-[260px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-glow">
           <Truck className="h-5 w-5 text-primary-foreground" />
@@ -77,29 +87,85 @@ export function AppSidebar() {
       </div>
 
       <ScrollArea className="flex-1 px-3 py-4">
-        <NavSection title={t('nav_overview')}>
-          <NavLink to="/" icon={LayoutDashboard} label={t('dashboard')} />
-          <NavLink to="/map" icon={MapIcon} label={t('map_tracking')} />
-        </NavSection>
-        <NavSection title={t('nav_operations')}>
-          <NavLink to="/commandes" icon={Package} label={t('commandes')} />
-          <NavLink to="/boutiques" icon={Store} label={t('boutiques')} />
-          <NavLink to="/incidents" icon={AlertTriangle} label={t('incidents')} />
-        </NavSection>
-        <NavSection title={t('nav_management')}>
-          <NavLink to="/clients" icon={Users} label={t('clients')} />
-          <NavLink to="/transporteurs" icon={Truck} label={t('transporteurs')} />
-          <NavLink to="/scoring" icon={Award} label="Scoring" />
-          <NavLink to="/tickets" icon={MessageSquare} label="Tickets" />
-          <NavLink to="/contrats" icon={FileText} label="Contrats" />
-        </NavSection>
-        <NavSection title={t('nav_analysis')}>
-          <NavLink to="/rapports" icon={BarChart2} label={t('reports')} />
-          <NavLink to="/heatmap" icon={Activity} label={t('heatmap')} />
-          <NavLink to="/settings" icon={Settings} label={t('settings')} />
-        </NavSection>
+
+        {/* ── ADMIN ────────────────────────────────────────── */}
+        {isAdmin && (
+          <>
+            <NavSection title="Tableau de bord">
+              <NavLink to="/"          icon={LayoutDashboard} label={t('dashboard')} />
+              <NavLink to="/live"      icon={Radio}           label="Live temps réel" />
+              <NavLink to="/map"       icon={MapIcon}         label={t('map_tracking')} />
+              <NavLink to="/calendrier" icon={CalendarDays}   label="Calendrier" />
+            </NavSection>
+
+            <NavSection title="Opérations">
+              <NavLink to="/commandes"    icon={Package}       label={t('commandes')} />
+              <NavLink to="/boutiques"    icon={Store}         label={t('boutiques')} />
+              <NavLink to="/incidents"    icon={AlertTriangle} label={t('incidents')} />
+              <NavLink to="/zones"        icon={MapPinned}     label="Zones de livraison" />
+              <NavLink to="/promotions"   icon={Tag}           label="Promotions" />
+            </NavSection>
+
+            <NavSection title="Gestion">
+              <NavLink to="/clients"      icon={Users}         label={t('clients')} />
+              <NavLink to="/transporteurs" icon={Truck}        label={t('transporteurs')} />
+              <NavLink to="/scoring"      icon={Award}         label="Scoring" />
+              <NavLink to="/tickets"      icon={MessageSquare} label="Tickets" />
+              <NavLink to="/contrats"     icon={FileText}      label="Contrats" />
+            </NavSection>
+
+            <NavSection title="Intelligence">
+              <NavLink to="/rapports"     icon={BarChart2}     label={t('reports')} />
+              <NavLink to="/heatmap"      icon={Activity}      label={t('heatmap')} />
+              <NavLink to="/previsions"   icon={TrendingUp}    label="Prévisions demande" />
+            </NavSection>
+
+            <NavSection title="Outils Admin">
+              <NavLink to="/impersonation" icon={UserCog}  label="Impersonation" />
+              <NavLink to="/bannieres"     icon={Megaphone} label="Bannières" />
+              <NavLink to="/blacklist"     icon={Ban}       label="Blacklist adresses" />
+              <NavLink to="/settings"      icon={Settings}  label={t('settings')} />
+            </NavSection>
+          </>
+        )}
+
+        {/* ── FONDATEUR ─────────────────────────────────────── */}
+        {isFondateur && (
+          <>
+            <NavSection title="Ma Boutique">
+              <NavLink to="/boutique"           icon={LayoutDashboard} label="Tableau de bord" />
+              <NavLink to="/boutique/commandes" icon={Package}         label="Commandes" />
+              <NavLink to="/boutique/produits"  icon={Store}           label="Produits & Stock" />
+              <NavLink to="/boutique/galerie"   icon={Image}           label="Galerie boutique" />
+            </NavSection>
+
+            <NavSection title="Clients">
+              <NavLink to="/boutique/avis"      icon={Star}            label="Avis clients" />
+              <NavLink to="/tickets"            icon={MessageSquare}   label="Tickets support" />
+            </NavSection>
+
+            <NavSection title="Analytics">
+              <NavLink to="/boutique/analytics" icon={BarChart2}       label="Analytiques" />
+            </NavSection>
+
+            <NavSection title="Paramètres">
+              <NavLink to="/settings"           icon={Settings}        label={t('settings')} />
+            </NavSection>
+          </>
+        )}
+
+        {/* ── Partagé ADMIN + FONDATEUR ────────────────────── */}
+        {!isAdmin && !isFondateur && (
+          <NavSection title="">
+            <NavLink to="/"        icon={LayoutDashboard} label={t('dashboard')} />
+            <NavLink to="/tickets" icon={MessageSquare}   label="Tickets" />
+            <NavLink to="/settings" icon={Settings}       label={t('settings')} />
+          </NavSection>
+        )}
+
       </ScrollArea>
 
+      {/* User footer */}
       <div className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">

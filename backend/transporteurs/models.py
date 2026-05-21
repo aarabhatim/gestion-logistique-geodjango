@@ -106,3 +106,50 @@ class Transporteur(models.Model):
         self.minutes_travaillees_mois += delta_min
         self.date_derniere_session = today
         self.heure_debut_disponibilite = None
+
+
+class ChatMessage(models.Model):
+    """Messagerie entre transporteur et client pendant une livraison active."""
+    commande = models.ForeignKey(
+        'commandes.Commande', on_delete=models.CASCADE, related_name='chat_messages'
+    )
+    auteur = models.ForeignKey(
+        'accounts.CustomUser', on_delete=models.CASCADE, related_name='chat_messages_sent'
+    )
+    contenu = models.TextField()
+    lu = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Chat cmd#{self.commande_id} - {self.auteur}"
+
+
+class ObjectifHebdomadaire(models.Model):
+    """Gamification - objectifs et badges par semaine."""
+    transporteur = models.ForeignKey(
+        'Transporteur', on_delete=models.CASCADE, related_name='objectifs'
+    )
+    semaine = models.DateField(help_text='Lundi de la semaine cible')
+    objectif_livraisons = models.PositiveIntegerField(default=10)
+    livraisons_effectuees = models.PositiveIntegerField(default=0)
+    objectif_note = models.DecimalField(max_digits=3, decimal_places=1, default=4.0)
+    note_obtenue = models.DecimalField(max_digits=3, decimal_places=1, default=0)
+    bonus_obtenu = models.BooleanField(default=False)
+    badge = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-semaine']
+        unique_together = ['transporteur', 'semaine']
+
+    def __str__(self):
+        return f"{self.transporteur} - semaine {self.semaine}"
+
+    @property
+    def taux_completion(self):
+        if self.objectif_livraisons == 0:
+            return 0
+        return min(100, round(self.livraisons_effectuees / self.objectif_livraisons * 100))

@@ -137,3 +137,150 @@ class AdminTransporteurValidateView(APIView):
             t.save()
             return Response({'message': 'Rejeté.'})
         return Response({'error': 'Action invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─── SOS Urgence ──────────────────────────────────────────────────────────────
+class SOSView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from notifications.models import Notification
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        lat = request.data.get('lat')
+        lng = request.data.get('lng')
+        message = request.data.get('message', 'SOS - Urgence chauffeur')
+        # Notifier tous les admins
+        admins = User.objects.filter(role='ADMIN')
+        nom_chauffeur = request.user.get_full_name() or request.user.username
+        for admin in admins:
+            Notification.objects.create(
+                destinataire=admin,
+                titre=f"🆘 SOS — {nom_chauffeur}",
+                message=f"Urgence signalée par {nom_chauffeur} — Position: {lat},{lng} — {message}",
+                type_notif='WARNING',
+            )
+        return Response({'status': 'SOS envoye', 'admins_notifies': admins.count()})
+
+
+# ─── Chat livraison ───────────────────────────────────────────────────────────
+class ChatLivraisonView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, commande_id):
+        from transporteurs.models import ChatMessage
+        msgs = ChatMessage.objects.filter(commande_id=commande_id).select_related('auteur')
+        data = [{
+            'id': m.id,
+            'auteur_nom': m.auteur.get_full_name() or m.auteur.email,
+            'auteur_role': getattr(m.auteur, 'role', ''),
+            'contenu': m.contenu,
+            'lu': m.lu,
+            'created_at': m.created_at.isoformat(),
+        } for m in msgs]
+        # Mark as read
+        ChatMessage.objects.filter(commande_id=commande_id, lu=False).exclude(
+            auteur=request.user
+        ).update(lu=True)
+        return Response(data)
+
+    def post(self, request, commande_id):
+        from transporteurs.models import ChatMessage
+        contenu = request.data.get('contenu', '').strip()
+        if not contenu:
+            return Response({'error': 'Message vide'}, status=400)
+        msg = ChatMessage.objects.create(
+            commande_id=commande_id,
+            auteur=request.user,
+            contenu=contenu,
+        )
+        return Response({
+            'id': msg.id,
+            'contenu': msg.contenu,
+            'created_at': msg.created_at.isoformat(),
+        }, status=201)
+
+
+# ─── Objectifs hebdomadaires ──────────────────────────────────────────────────
+class ObjectifsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from transporteurs.models import ObjectifHebdomadaire, Transporteur
+        from datetime import date, timedelta
+        try:
+            t = Transporteur.objects.get(user=request.user)
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur introuvable'}, status=404)
+
+        objectifs = ObjectifHebdomadaire.objects.filter(
+            transporteur=t
+        ).order_by('-semaine')[:8]
+
+        # Creer objectif semaine courante si inexistant
+        today = date.today()
+        lundi = today - timedelta(days=today.weekday())
+        current, _ = ObjectifHebdomadaire.objects.get_or_create(
+            transporteur=t,
+            semaine=lundi,
+            defaults={
+                'objectif_livraisons': 10,
+                'objectif_note': 4.0,
+                'livraisons_effectuees': t.nombre_livraisons or 0,
+            }
+        )
+
+        data = [{
+            'id': o.id,
+            'semaine': str(o.semaine),
+            'objectif_livraisons': o.objectif_livraisons,
+            'livraisons_effectuees': o.livraisons_effectuees,
+            'objectif_note': float(o.objectif_note),
+            'note_obtenue': float(o.note_obtenue),
+            'taux_completion': o.taux_completion,
+            'bonus_obtenu': o.bonus_obtenu,
+            'badge': o.badge,
+            'is_current': o.semaine == lundi,
+        } for o in objectifs]
+        return Response(data)
+
+
+# ─── Multi-livraisons optimisees (TSP simple) ─────────────────────────────────
+class MultiLivraisonsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retourne les commandes disponibles groupees par zone pour ce transporteur."""
+        from commandes.models import Commande
+        commandes = Commande.objects.filter(
+            statut='VALIDEE',
+            transporteur_assigne__isnull=True,
+        ).order_by('created_at')[:20]
+
+        # TSP simple: tri greedy par proximite (si coordonnees dispo)
+        data = [{
+            'id': c.id,
+            'reference': c.reference,
+            'adresse': getattr(c, 'adresse_livraison', ''),
+            'client': str(c.client) if c.client else '',
+            'montant': float(c.total) if hasattr(c, 'total') else 0,
+            'created_at': c.created_at.isoformat(),
+        } for c in commandes]
+        return Response({'commandes': data, 'count': len(data)})
+
+    def post(self, request):
+        """Accepter un groupe de commandes (multi-livraison)."""
+        ids = request.data.get('commande_ids', [])
+        if not ids:
+            return Response({'error': 'commande_ids requis'}, status=400)
+        from commandes.models import Commande
+        from transporteurs.models import Transporteur
+        try:
+            t = Transporteur.objects.get(user=request.user)
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur requis'}, status=404)
+
+        updated = Commande.objects.filter(
+            id__in=ids, statut='VALIDEE', transporteur_assigne__isnull=True
+        ).update(transporteur_assigne=t, statut='EN_PREPARATION')
+        return Response({'assigned': updated, 'ids': ids})

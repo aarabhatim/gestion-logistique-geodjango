@@ -23,6 +23,12 @@ def api_root(request):
             'scoring':       '/api/scoring/',
             'tickets':       '/api/tickets/',
             'contrats':      '/api/contrats/',
+            'tracking':      '/api/tracking/',
+            'clients':       '/api/clients/',
+            'zones':         '/api/zones/',
+            'promotions':    '/api/promotions/',
+            'bannieres':     '/api/bannieres/',
+            'blacklist':     '/api/blacklist/',
         },
     })
 
@@ -42,5 +48,10 @@ urlpatterns = [
     path('api/tickets/',       include('tickets.urls')),
     path('api/contrats/',      include('contrats.urls')),
     path('api/clients/',       include('clients.urls')),
-    path('api/chatbot/',       ChatbotView.as_view(), name='chatbot'),
+    path('api/tracking/',      include('tracking.urls')),
+    path('api/zones/',         include('zones.urls')),
+    path('api/promotions/',    include('promotions.urls')),
+    path('api/bannieres/',     include('bannieres.urls')),
+    path('api/blacklist/',     include('blacklist.urls')),
+    path('api/chatbot/', ChatbotView.as_view(), name='chatbot'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

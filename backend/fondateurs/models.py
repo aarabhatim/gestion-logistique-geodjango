@@ -162,3 +162,24 @@ class CodePromo(models.Model):
         if self.type_reduction == 'POURCENTAGE':
             return round(float(montant) * float(self.valeur) / 100, 2)
         return min(float(self.valeur), float(montant))
+
+
+class FondateurMedia(models.Model):
+    TYPES = [
+        ('logo', 'Logo'),
+        ('banniere', 'Banniere boutique'),
+        ('photo', 'Photo boutique'),
+    ]
+    fondateur = models.ForeignKey(
+        'Fondateur', on_delete=models.CASCADE, related_name='medias'
+    )
+    type = models.CharField(max_length=10, choices=TYPES, default='photo')
+    image = models.ImageField(upload_to='boutiques/medias/')
+    ordre = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['ordre', 'created_at']
+
+    def __str__(self):
+        return f"{self.fondateur} - {self.type}"

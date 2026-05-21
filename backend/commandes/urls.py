@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    AvisReplyView, CalendrierLivraisonsView,
     CommandeListCreateView, CommandeDetailView, CommandeStatutView,
     FondateurAccepterCommandeView, TransporteurAccepterCommandeView,
     CommandesProposeesTrransporteurView,
@@ -21,4 +22,6 @@ urlpatterns = [
     path('<int:commande_pk>/avis/', AvisCreateView.as_view(), name='avis-create'),
     path('proposees/', CommandesProposeesTrransporteurView.as_view(), name='commandes-proposees'),
     path('avis/', AvisListView.as_view(), name='avis-list'),
+    path('calendrier/', CalendrierLivraisonsView.as_view(), name='calendrier'),
+    path('avis/<int:avis_id>/reply/', AvisReplyView.as_view(), name='avis-reply'),
 ]

@@ -74,94 +74,70 @@ const useCartStore = create(
           fondateurId = second;
           quantite = third;
         }
-        if (quantite <= 0) {
-          get().removeItem(produitId, fondateurId);
-          return;
-        }
-        const state = get();
-        const items = state.items.map(i => {
-          if (i.produit.id !== produitId) return i;
-          if (fondateurId != null && i.fondateurId !== fondateurId) return i;
-          return { ...i, quantite };
-        });
-        set({ items });
-      },
-
-      clearCart: () => set({
-        items: [], fondateurs: {}, fondateur: null,
-        codesPromos: {}, codePromo: '', reductionAppliquee: 0,
-      }),
-
-      clearShop: (fondateurId) => {
-        const state = get();
-        const items = state.items.filter(i => i.fondateurId !== fondateurId);
-        const fondateurs = { ...state.fondateurs };
-        const codesPromos = { ...state.codesPromos };
-        delete fondateurs[fondateurId];
-        delete codesPromos[fondateurId];
-        set({ items, fondateurs, codesPromos, fondateur: _recomputeFondateurUnique(items, fondateurs) });
-      },
-
-      groupsByShop: () => {
-        const state = get();
-        const map = {};
-        state.items.forEach(i => {
-          if (!map[i.fondateurId]) {
-            map[i.fondateurId] = {
-              fondateur: state.fondateurs[i.fondateurId],
-              items: [], sousTotal: 0,
-            };
-          }
-          map[i.fondateurId].items.push(i);
-          map[i.fondateurId].sousTotal += parseFloat(i.produit.prix_effectif) * i.quantite;
-        });
-        return Object.entries(map).map(([fondateurId, group]) => {
-          const frais = group.fondateur ? parseFloat(group.fondateur.frais_livraison_base) || 0 : 0;
-          const promo = state.codesPromos[fondateurId];
-          const reduction = promo ? promo.reduction : 0;
-          return {
-            fondateurId,
-            fondateur: group.fondateur,
-            items: group.items,
-            sousTotal: group.sousTotal,
-            frais, reduction,
-            total: group.sousTotal + frais - reduction,
-            codePromo: promo ? promo.code : '',
-          };
+        set(state => {
+          const items = state.items.map(i => {
+            if (i.produit.id === produitId && (fondateurId === null || String(i.fondateurId) === String(fondateurId))) {
+              return { ...i, quantite: Math.max(0, quantite) };
+            }
+            return i;
+          }).filter(i => i.quantite > 0);
+          const fondateurs = { ...state.fondateurs };
+          const codesPromos = { ...state.codesPromos };
+          Object.keys(fondateurs).forEach(fid => {
+            if (!items.find(i => String(i.fondateurId) === String(fid))) {
+              delete fondateurs[fid];
+              delete codesPromos[fid];
+            }
+          });
+          return { items, fondateurs, codesPromos, fondateur: _recomputeFondateurUnique(items, fondateurs) };
         });
       },
 
-      sousTotalGlobal: () => get().items.reduce((acc, i) => acc + parseFloat(i.produit.prix_effectif) * i.quantite, 0),
-      fraisGlobal: () => Object.values(get().fondateurs).reduce((acc, f) => acc + (parseFloat(f && f.frais_livraison_base) || 0), 0),
-      reductionGlobale: () => Object.values(get().codesPromos).reduce((acc, p) => acc + ((p && p.reduction) || 0), 0),
-      totalGlobal: () => { const s = get(); return s.sousTotalGlobal() + s.fraisGlobal() - s.reductionGlobale(); },
-      countItems: () => get().items.reduce((acc, i) => acc + i.quantite, 0),
-      countShops: () => Object.keys(get().fondateurs).length,
+      clearCart: () => set({ items: [], fondateurs: {}, codesPromos: {}, fondateur: null }),
 
-      appliquerCodePromo: (...args) => {
-        if (args.length === 2) {
-          const [code, reduction] = args;
-          const state = get();
-          const lastId = state.items.length ? state.items[state.items.length - 1].fondateurId : null;
-          if (lastId != null) {
-            set({ codesPromos: { ...state.codesPromos, [lastId]: { code, reduction } }, codePromo: code, reductionAppliquee: reduction });
-          }
-        } else {
-          const [fondateurId, code, reduction] = args;
-          set(s => ({ codesPromos: { ...s.codesPromos, [fondateurId]: { code, reduction } } }));
-        }
+      setFromOrder: (orderItems, fondateurObj) => {
+        if (!orderItems || !fondateurObj) return;
+        const fondateurId = fondateurObj.id;
+        const items = orderItems.map(l => ({
+          produit: l.produit_detail || {
+            id: l.produit,
+            nom: `Produit #${l.produit}`,
+            prix: parseFloat(l.prix_unitaire || 0),
+            prix_effectif: parseFloat(l.prix_unitaire || 0)
+          },
+          quantite: l.quantite,
+          fondateurId
+        }));
+        const fondateurs = { [fondateurId]: fondateurObj };
+        set({
+          items,
+          fondateurs,
+          fondateur: fondateurObj,
+          codesPromos: {},
+        });
       },
+
+      appliquerCodePromo: (fondateurId, code, reduction) =>
+        set(state => ({
+          codesPromos: { ...state.codesPromos, [fondateurId]: { code, reduction } },
+        })),
 
       retirerCodePromo: (fondateurId) =>
-        set(s => {
-          const newPromos = { ...s.codesPromos };
-          delete newPromos[fondateurId];
-          return { codesPromos: newPromos };
+        set(state => {
+          const codesPromos = { ...state.codesPromos };
+          delete codesPromos[fondateurId];
+          return { codesPromos };
         }),
-
-      setAdresse: (adresse, lat, lon) => set({ adresseLivraison: adresse, latitude: lat, longitude: lon }),
     }),
-    { name: 'delivermap-cart-v2', version: 2 }
+    {
+      name: 'delivermap-cart',
+      partialize: state => ({
+        items: state.items,
+        fondateurs: state.fondateurs,
+        codesPromos: state.codesPromos,
+        fondateur: state.fondateur,
+      }),
+    }
   )
 );
 

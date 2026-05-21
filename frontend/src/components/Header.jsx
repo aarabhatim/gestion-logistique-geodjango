@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Check, Trash2, Globe, X, CheckCheck } from 'lucide-react';
-import { notificationsApi } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, Check, Trash2, Globe, X, CheckCheck, Loader2 } from 'lucide-react';
 import { ThemeToggle } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const LANGS = [
   { code: 'fr', flag: '🇫🇷', label: 'Français' },
@@ -105,30 +105,34 @@ const GroupLabel = ({ label, count }) => (
 
 const Header = () => {
   const { t, langue, setLangue } = useI18n();
-  const [notifications, setNotifications] = useState([]);
+
+  // Use global NotificationContext (connected to WebSocket)
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    hasMore,
+    connected,
+    fetchNotifications,
+    fetchNextPage,
+    marquerLue,
+    supprimer,
+    toutLire,
+    supprimerLues,
+  } = useNotifications();
+
   const [showAll, setShowAll] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const langRef = useRef(null);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = showAll
-        ? await notificationsApi.list({ page_size: 50 })
-        : await notificationsApi.nonLues();
-      setNotifications(res.data.results || res.data || []);
-    } catch (error) {
-      console.error('Erreur chargement notifications', error);
-    }
-  }, [showAll]);
-
+  // Fetch notifications when dropdown opens or filter changes
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+    if (showDropdown) {
+      fetchNotifications(true, showAll);
+    }
+  }, [showDropdown, showAll, fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -141,31 +145,6 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMarquerLue = async (id) => {
-    setLoading(true);
-    try { await notificationsApi.marquerLue(id); await fetchNotifications(); }
-    finally { setLoading(false); }
-  };
-
-  const handleDelete = async (id) => {
-    setLoading(true);
-    try { await notificationsApi.supprimer(id); await fetchNotifications(); }
-    finally { setLoading(false); }
-  };
-
-  const handleToutMarquerLu = async () => {
-    setLoading(true);
-    try { await notificationsApi.toutLire(); await fetchNotifications(); }
-    finally { setLoading(false); }
-  };
-
-  const handleSupprimerLues = async () => {
-    setLoading(true);
-    try { await notificationsApi.supprimerLues(); await fetchNotifications(); }
-    finally { setLoading(false); }
-  };
-
-  const unreadCount = notifications.filter(n => !n.lue).length;
   const groups = groupByDate(notifications);
   const currentLang = LANGS.find(l => l.code === langue) || LANGS[0];
 
@@ -221,6 +200,13 @@ const Header = () => {
                 justifyContent: 'center', fontWeight: 'bold',
               }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
             )}
+            {/* WebSocket connection indicator */}
+            <span style={{
+              position: 'absolute', bottom: -2, right: -2,
+              width: 7, height: 7, borderRadius: '50%',
+              background: connected ? '#10b981' : '#6b7280',
+              border: '2px solid var(--bg-elevated, #0f1225)',
+            }} />
           </button>
 
           {showDropdown && (
@@ -255,13 +241,13 @@ const Header = () => {
                 </h4>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {unreadCount > 0 && (
-                    <button className="btn btn-sm" onClick={handleToutMarquerLu} disabled={loading}
+                    <button className="btn btn-sm" onClick={toutLire} disabled={loading}
                       title="Tout marquer comme lu"
                       style={{ background: 'transparent', color: 'var(--accent-primary)', fontSize: 12, padding: '4px 8px', border: '1px solid var(--accent-primary)30' }}>
                       <CheckCheck size={13} style={{ marginRight: 3 }} /> Tout lire
                     </button>
                   )}
-                  <button className="btn btn-sm" onClick={handleSupprimerLues} disabled={loading}
+                  <button className="btn btn-sm" onClick={supprimerLues} disabled={loading}
                     title="Supprimer les notifications lues"
                     style={{ background: 'transparent', color: '#ef4444', fontSize: 12, padding: '4px 8px', border: '1px solid #ef444430' }}>
                     <Trash2 size={13} />
@@ -305,7 +291,7 @@ const Header = () => {
                       <>
                         <GroupLabel label="Aujourd'hui" count={groups.today.length} />
                         {groups.today.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={handleMarquerLue} onDelete={handleDelete} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
                         ))}
                       </>
                     )}
@@ -313,7 +299,7 @@ const Header = () => {
                       <>
                         <GroupLabel label="Cette semaine" count={groups.week.length} />
                         {groups.week.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={handleMarquerLue} onDelete={handleDelete} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
                         ))}
                       </>
                     )}
@@ -321,9 +307,35 @@ const Header = () => {
                       <>
                         <GroupLabel label="Plus ancien" count={groups.older.length} />
                         {groups.older.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={handleMarquerLue} onDelete={handleDelete} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
                         ))}
                       </>
+                    )}
+
+                    {/* Charger plus — pagination */}
+                    {showAll && hasMore && (
+                      <div style={{
+                        padding: '10px 14px', textAlign: 'center',
+                        borderTop: '1px solid rgba(255,255,255,0.05)',
+                      }}>
+                        <button
+                          onClick={fetchNextPage}
+                          disabled={loading}
+                          style={{
+                            width: '100%', padding: '8px 0', borderRadius: 8,
+                            border: '1px solid var(--glass-border)',
+                            background: 'rgba(255,255,255,0.04)',
+                            color: 'var(--accent-primary)', fontSize: 12,
+                            fontWeight: 600, cursor: loading ? 'wait' : 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                        >
+                          {loading ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Chargement...</> : 'Charger plus'}
+                        </button>
+                      </div>
                     )}
                   </>
                 )}

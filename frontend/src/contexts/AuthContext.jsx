@@ -7,12 +7,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // loading while checking stored token
 
-  // Inject JWT token into every axios request
+  // Inject JWT token — skip auth endpoints to avoid sending an expired token
+  // to the login/register route (which would trigger a 401 from JWTAuthentication
+  // before AllowAny even runs).
   useEffect(() => {
+    const NO_AUTH_URLS = ['auth/login/', 'auth/register/', 'auth/token/refresh/'];
     const interceptor = api.interceptors.request.use((config) => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const isAuthEndpoint = NO_AUTH_URLS.some(u => config.url?.includes(u));
+      if (!isAuthEndpoint) {
+        const token = localStorage.getItem('access_token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });

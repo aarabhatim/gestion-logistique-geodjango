@@ -5,6 +5,8 @@ import {
 import { useAuth } from './AuthContext';
 import useNotificationSocket from '../hooks/useNotificationSocket';
 
+import { notificationsApi } from '../services/api';
+
 const NotificationContext = createContext(null);
 
 const TYPE_STYLE = {
@@ -72,7 +74,7 @@ const ToastItem = ({ notif, onDismiss }) => {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
         title="Fermer">
-        <X size={14} />
+          <X size={14} />
       </button>
     </div>
   );
@@ -82,18 +84,77 @@ const ToastItem = ({ notif, onDismiss }) => {
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const [toasts, setToasts] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [showAllMode, setShowAllMode] = useState(false);
   const idCounter = useRef(0);
+
+  const fetchNotifications = useCallback(async (reset = false, showAll = false) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const nextPage = reset ? 1 : page;
+      setShowAllMode(showAll);
+      if (showAll) {
+        const res = await notificationsApi.list({ page: nextPage, page_size: 15 });
+        const results = res.data.results || [];
+        setNotifications(prev => reset ? results : [...prev, ...results]);
+        setHasMore(!!res.data.next);
+        if (reset) {
+          const countRes = await notificationsApi.nonLues();
+          setUnreadCount(countRes.data.count || 0);
+        }
+      } else {
+        const res = await notificationsApi.nonLues();
+        const results = res.data.results || [];
+        setNotifications(results);
+        setUnreadCount(res.data.count || 0);
+        setHasMore(false);
+      }
+      if (reset) {
+        setPage(1);
+      }
+    } catch (err) {
+      console.error("Erreur chargement notifications", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, page]);
+
+  const fetchNextPage = useCallback(async () => {
+    if (loading || !hasMore || !showAllMode) return;
+    setLoading(true);
+    try {
+      const nextPage = page + 1;
+      const res = await notificationsApi.list({ page: nextPage, page_size: 15 });
+      const results = res.data.results || [];
+      setNotifications(prev => [...prev, ...results]);
+      setPage(nextPage);
+      setHasMore(!!res.data.next);
+    } catch (err) {
+      console.error("Erreur page suivante notifications", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hasMore, showAllMode, page]);
 
   const push = useCallback((notif) => {
     const _localId = ++idCounter.current;
     setToasts(t => [...t, { ...notif, _localId }]);
+    
+    setNotifications(prev => {
+      if (prev.some(n => n.id === notif.id)) return prev;
+      return [notif, ...prev];
+    });
     setUnreadCount(c => c + 1);
+
     // Son discret optionnel (désactivé par défaut)
     try {
       const prefs = JSON.parse(localStorage.getItem('delivermap-prefs') || '{}');
       if (prefs.notif_son) {
-        // Mini bip via Web Audio (pas de fichier externe)
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -110,14 +171,85 @@ export const NotificationProvider = ({ children }) => {
 
   const clearUnread = useCallback(() => setUnreadCount(0), []);
 
+  const marquerLue = useCallback(async (id) => {
+    try {
+      await notificationsApi.marquerLue(id);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, lue: true } : n)
+      );
+      setUnreadCount(c => Math.max(0, c - 1));
+    } catch (error) {
+      console.error("Erreur marquage notification lue", error);
+    }
+  }, []);
+
+  const supprimer = useCallback(async (id) => {
+    try {
+      const target = notifications.find(n => n.id === id);
+      const wasUnread = target && !target.lue;
+      await notificationsApi.supprimer(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      if (wasUnread) {
+        setUnreadCount(c => Math.max(0, c - 1));
+      }
+    } catch (error) {
+      console.error("Erreur suppression notification", error);
+    }
+  }, [notifications]);
+
+  const toutLire = useCallback(async () => {
+    try {
+      await notificationsApi.toutLire();
+      setNotifications(prev => prev.map(n => ({ ...n, lue: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Erreur marquage toutes notifications lues", error);
+    }
+  }, []);
+
+  const supprimerLues = useCallback(async () => {
+    try {
+      await notificationsApi.supprimerLues();
+      setNotifications(prev => prev.filter(n => !n.lue));
+    } catch (error) {
+      console.error("Erreur suppression notifications lues", error);
+    }
+  }, []);
+
   // Hook WebSocket connecté seulement si user authentifié
   const { connected } = useNotificationSocket({
     enabled: !!user,
     onNotification: push,
   });
 
+  useEffect(() => {
+    if (user) {
+      fetchNotifications(true, false);
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, [user]);
+
   return (
-    <NotificationContext.Provider value={{ push, dismiss, unreadCount, clearUnread, connected }}>
+    <NotificationContext.Provider
+      value={{
+        push,
+        dismiss,
+        unreadCount,
+        clearUnread,
+        connected,
+        notifications,
+        loading,
+        hasMore,
+        fetchNotifications,
+        fetchNextPage,
+        marquerLue,
+        supprimer,
+        toutLire,
+        supprimerLues,
+      }}
+    >
       {children}
       {/* Container fixe des toasts */}
       <div style={{

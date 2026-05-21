@@ -350,45 +350,61 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
   );
 };
 
-const CreateTicketModal = ({ onClose, onCreated }) => {
+function CreateTicketModal({ onClose, onCreated }) {
   const [sujet, setSujet] = useState('');
   const [description, setDescription] = useState('');
   const [categorie, setCategorie] = useState('livraison');
   const [priorite, setPriorite] = useState('moyen');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [errCreate, setErrCreate] = useState('');
 
   const handleSubmit = async () => {
-    if (!sujet.trim() || !description.trim()) { setError('Sujet et description obligatoires.'); return; }
+    if (!sujet.trim() || !description.trim()) {
+      setErrCreate('Sujet et description obligatoires.');
+      return;
+    }
     setSubmitting(true);
-    setError('');
+    setErrCreate('');
     try {
-      await ticketsApi.create({ sujet, description, categorie, priorite });
+      await ticketsApi.create({ titre: sujet, description, categorie, priorite });
       onCreated();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erreur lors de la creation.');
-    } finally { setSubmitting(false); }
+      setErrCreate(err.response?.data?.detail || 'Erreur lors de la création.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div className="glass-card animate-fade-in" style={{ width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    }}>
+      <div className="glass-card animate-fade-in"
+        style={{ width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <h3 style={{ margin: 0, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Plus size={16} /> Nouveau ticket de support
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+          <button onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
             <X size={18} />
           </button>
         </div>
 
+        {/* Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Sujet *</label>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              Sujet <span style={{ color: '#ef4444' }}>*</span>
+            </label>
             <input className="glass-input" value={sujet} onChange={e => setSujet(e.target.value)}
-              placeholder="Résumez votre problème..." style={{ width: '100%', padding: '8px 12px', fontSize: 13 }} />
+              placeholder="Résumez votre problème..."
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13 }} />
           </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Catégorie</label>
@@ -405,30 +421,41 @@ const CreateTicketModal = ({ onClose, onCreated }) => {
               <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Priorité</label>
               <select className="glass-input" value={priorite} onChange={e => setPriorite(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', fontSize: 13 }}>
-                <option value="urgent">Urgent</option>
-                <option value="moyen">Moyen</option>
-                <option value="faible">Faible</option>
+                <option value="urgent">Urgent (4h)</option>
+                <option value="moyen">Moyen (24h)</option>
+                <option value="faible">Faible (72h)</option>
               </select>
             </div>
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Description *</label>
-            <textarea className="glass-input" value={description} onChange={e => setDescription(e.target.value)}
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              Description <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <textarea className="glass-input" value={description}
+              onChange={e => setDescription(e.target.value)}
               placeholder="Décrivez votre problème en détail..."
               style={{ width: '100%', minHeight: 100, resize: 'vertical', fontSize: 13 }} />
           </div>
-          {error && <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 12, color: '#fca5a5' }}>{error}</div>}
+
+          {errCreate && (
+            <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.1)',
+              borderRadius: 8, fontSize: 12, color: '#fca5a5' }}>
+              {errCreate}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn btn-secondary">Annuler</button>
             <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Send size={13} /> {submitting ? 'Envoi...' : 'Créer le ticket'}
+              {submitting ? 'Envoi...' : 'Ouvrir le ticket'}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default Tickets;

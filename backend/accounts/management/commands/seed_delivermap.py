@@ -768,22 +768,10 @@ class Command(BaseCommand):
                     Livraison.objects.create(
                         commande=commande,
                         transporteur=t_assignee,
-                        depart=fondateur.location,
-                        arrivee=Point(lon, lat, srid=4326),
-                        distance_km=round(random.uniform(1.0, 12.0), 2),
-                        duree_estimee_min=random.randint(10, 55),
-                        statut_livraison='LIVREE' if statut == 'LIVREE' else 'EN_ROUTE',
-                        date_debut=created + timedelta(minutes=random.randint(15, 45)),
-                        date_livraison=created + timedelta(hours=random.randint(1, 4)) if statut == 'LIVREE' else None,
-                        gain_transporteur=round(frais * 0.85, 2),
-                        commission_plateforme=round(frais * 0.15, 2),
-                    code_confirmation=None,
-                    est_validee=True if statut == 'LIVREE' else False,
-                    notes=''
+                        depart=fondateur.localisation,
+                        arrivee=commande.client.localisation if commande.client and hasattr(commande.client, "localisation") else fondateur.localisation,
                     )
                 except Exception:
                     pass
 
-        commandes.append(commande)
-
-        return commandes
+        self.stdout.write(self.style.SUCCESS("Seed completed successfully."))

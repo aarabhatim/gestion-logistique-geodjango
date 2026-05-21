@@ -1,10 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import PositionVehiculeViewSet
-
-router = DefaultRouter()
-router.register(r'positions', PositionVehiculeViewSet, basename='position')
+from django.urls import path
+from .views import HistoriquePositionsView, DernierePositionView
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('commandes/<int:commande_id>/positions/', HistoriquePositionsView.as_view(), name='historique-positions'),
+    path('commandes/<int:commande_id>/position/', DernierePositionView.as_view(), name='derniere-position'),
 ]

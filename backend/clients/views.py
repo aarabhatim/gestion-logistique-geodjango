@@ -1,95 +1,90 @@
-from django.contrib.auth import get_user_model
-from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, status, filters, permissions
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-
-from accounts.permissions import IsAdminRole
 from .models import Client
-from .serializers import ClientSerializer, ClientDetailSerializer, ClientGeoSerializer
-
-User = get_user_model()
+from .serializers import ClientSerializer, ClientGeoSerializer
 
 
-class ClientViewSet(viewsets.ModelViewSet):
-    """
-    CRUD complet pour les clients.
+class IsAdminRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'ADMIN'
 
-    Endpoints :
-      GET    /api/clients/              → liste paginée (admin)
-      POST   /api/clients/              → créer un client
-      GET    /api/clients/{id}/         → détail simple
-      PUT    /api/clients/{id}/         → mise à jour complète
-      PATCH  /api/clients/{id}/         → mise à jour partielle
-      DELETE /api/clients/{id}/         → suppression (soft : actif=False)
-      GET    /api/clients/{id}/detail/  → détail + historique commandes
-      GET    /api/clients/geojson/      → liste GeoJSON (pour carte)
-      POST   /api/clients/{id}/activer/ → réactiver un client désactivé
-    """
-    queryset = Client.objects.all().order_by('-date_inscription')
-    permission_classes = [IsAuthenticated, IsAdminRole]
+
+class ClientListCreateView(generics.ListCreateAPIView):
+    """Liste tous les clients ou cree un nouveau."""
+    serializer_class = ClientSerializer
+    permission_classes = [IsAdminRole]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['actif', 'note_fidelite', 'entreprise']
-    search_fields = ['nom', 'prenom', 'email', 'telephone', 'adresse', 'entreprise']
-    ordering_fields = ['nom', 'date_inscription', 'note_fidelite']
-
-    def get_serializer_class(self):
-        if self.action == 'detail_complet':
-            return ClientDetailSerializer
-        if self.action == 'geojson':
-            return ClientGeoSerializer
-        return ClientSerializer
+    filterset_fields = ['actif', 'note_fidelite']
+    search_fields = ['nom', 'prenom', 'email', 'telephone', 'entreprise', 'adresse']
+    ordering_fields = ['date_inscription', 'note_fidelite', 'nom']
+    ordering = ['-date_inscription']
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        actif = self.request.query_params.get('actif')
-        if actif is not None:
-            qs = qs.filter(actif=actif.lower() in ('true', '1', 'yes'))
+        qs = Client.objects.all()
+        min_note = self.request.query_params.get('min_note')
+        if min_note:
+            qs = qs.filter(note_fidelite__gte=int(min_note))
         return qs
 
+
+class ClientDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Detail, mise a jour et suppression d un client."""
+    serializer_class = ClientSerializer
+    permission_classes = [IsAdminRole]
+    queryset = Client.objects.all()
+
     def destroy(self, request, *args, **kwargs):
-        """Soft delete : marque le client comme inactif au lieu de le supprimer."""
-        instance = self.get_object()
-        instance.actif = False
-        instance.save(update_fields=['actif'])
-        return Response({'detail': 'Client désactivé.'}, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['get'], url_path='detail')
-    def detail_complet(self, request, pk=None):
-        """Détail complet avec historique des commandes."""
         client = self.get_object()
-        serializer = ClientDetailSerializer(client, context={'request': request})
-        return Response(serializer.data)
+        client.actif = False
+        client.save()
+        return Response({'detail': 'Client desactive.'}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'], url_path='geojson')
-    def geojson(self, request):
-        """Retourne tous les clients actifs en GeoJSON (pour affichage carte)."""
-        qs = Client.objects.filter(actif=True).exclude(localisation__isnull=True)
-        serializer = ClientGeoSerializer(qs, many=True)
-        return Response({
-            'type': 'FeatureCollection',
-            'features': serializer.data,
-        })
 
-    @action(detail=True, methods=['post'], url_path='activer')
-    def activer(self, request, pk=None):
-        """Réactiver un client précédemment désactivé."""
-        client = self.get_object()
-        client.actif = True
-        client.save(update_fields=['actif'])
-        return Response({'detail': 'Client réactivé.', 'id': client.pk})
+class ClientGeoListView(generics.ListAPIView):
+    """Liste des clients avec position GPS (GeoJSON)."""
+    serializer_class = ClientGeoSerializer
+    permission_classes = [IsAdminRole]
 
-    @action(detail=False, methods=['get'], url_path='stats')
-    def stats(self, request):
-        """KPIs clients pour le dashboard admin."""
+    def get_queryset(self):
+        return Client.objects.filter(localisation__isnull=False, actif=True)
+
+
+class ClientStatsView(APIView):
+    """Statistiques sur les clients."""
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
         total = Client.objects.count()
         actifs = Client.objects.filter(actif=True).count()
-        inactifs = total - actifs
-        fideles = Client.objects.filter(actif=True, note_fidelite__gte=4).count()
+        notes = Client.objects.values_list('note_fidelite', flat=True)
+        avg_note = round(sum(notes) / len(notes), 2) if notes else 0
+        par_note = {}
+        for n in range(1, 6):
+            par_note[str(n)] = Client.objects.filter(note_fidelite=n).count()
         return Response({
             'total': total,
             'actifs': actifs,
-            'inactifs': inactifs,
-            'fideles': fideles,
+            'inactifs': total - actifs,
+            'note_moyenne_fidelite': avg_note,
+            'repartition_notes': par_note,
+        })
+
+
+class ClientToggleActifView(APIView):
+    """Active ou desactive un client."""
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk):
+        try:
+            client = Client.objects.get(pk=pk)
+        except Client.DoesNotExist:
+            return Response({'detail': 'Client introuvable.'}, status=404)
+        client.actif = not client.actif
+        client.save()
+        return Response({
+            'id': client.pk,
+            'actif': client.actif,
+            'detail': 'Client active.' if client.actif else 'Client desactive.',
         })

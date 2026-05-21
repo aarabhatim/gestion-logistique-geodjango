@@ -304,3 +304,38 @@ class StockAlertesView(APIView):
             'stock_bas': bas,
             'total_alertes': len(ruptures) + len(bas),
         })
+
+
+# ─── Galerie boutique ─────────────────────────────────────────────────────────
+from rest_framework import viewsets as media_viewsets
+from rest_framework.parsers import MultiPartParser, FormParser
+
+
+class FondateurMediaViewSet(media_viewsets.ModelViewSet):
+    serializer_class = None  # inline serializer below
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        from fondateurs.models import FondateurMedia
+        fondateur = Fondateur.objects.filter(user=self.request.user).first()
+        if fondateur:
+            return FondateurMedia.objects.filter(fondateur=fondateur)
+        return FondateurMedia.objects.none()
+
+    def get_serializer_class(self):
+        from rest_framework import serializers
+        from fondateurs.models import FondateurMedia
+
+        class FondateurMediaSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = FondateurMedia
+                fields = ['id', 'type', 'image', 'ordre', 'created_at']
+                read_only_fields = ['fondateur']
+
+        return FondateurMediaSerializer
+
+    def perform_create(self, serializer):
+        from fondateurs.models import FondateurMedia
+        fondateur = Fondateur.objects.get(user=self.request.user)
+        serializer.save(fondateur=fondateur)

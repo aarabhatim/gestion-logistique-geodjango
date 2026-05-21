@@ -1,25 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Truck, MapPin, Navigation, Star, CheckCircle, Clock, LogOut,
   Package, TrendingUp, Bell, ChevronRight, ToggleLeft, ToggleRight,
   DollarSign, Award, AlertTriangle, Map, List, User, Zap,
-  ArrowRight, Phone, RefreshCw,
+  ArrowRight, Phone, RefreshCw, MessageSquare, History, Target,
+  Send, QrCode, Crosshair, ShieldAlert,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../contexts/AuthContext';
-import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi } from '../../services/api';
+import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi, chauffeurApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { SignalerIncidentPanel } from './SignalerIncident';
 
-// ─── Leaflet icon fix ─────────────────────────────────────────────────────────
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// ─── Inline SVG icons — no external CDN ──────────────────────────────────────
+import '../../utils/leafletIcons'; // applies the L.Icon.Default patch
 
 const makeIcon = (color, emoji, size = 36) => L.divIcon({
   className: '',
@@ -414,6 +410,17 @@ const ChauffeurDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [objectifs, setObjectifs]   = useState(null);
+  const [historique, setHistorique] = useState([]);
+  const [chatCommande, setChatCommande] = useState(null);   // commande active for chat
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput]   = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [sosLoading, setSosLoading] = useState(false);
+  const [sosModalOpen, setSosModalOpen] = useState(false);
+  const [qrInput, setQrInput]       = useState('');
+  const [qrMission, setQrMission]   = useState(null);
+  const chatBottomRef = useRef(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -548,15 +555,112 @@ const ChauffeurDashboard = () => {
     navigate('/login');
   };
 
+  // ── SOS / Urgence ────────────────────────────────────────────────────────
+  const handleSOS = () => setSosModalOpen(true);
+
+  const SOS_OPTIONS = [
+    { id: 'accident',    emoji: '🚗💥', label: 'Accident de véhicule',       message: 'ACCIDENT — Véhicule impliqué dans un accident' },
+    { id: 'panne',       emoji: '🔧',   label: 'Panne / Crevaison',           message: 'PANNE — Véhicule immobilisé (panne ou crevaison)' },
+    { id: 'agression',   emoji: '🆘',   label: 'Agression / Insécurité',      message: 'URGENCE SÉCURITÉ — Chauffeur en danger / agression' },
+    { id: 'medical',     emoji: '🏥',   label: 'Urgence médicale',            message: 'URGENCE MÉDICALE — Chauffeur nécessite secours' },
+    { id: 'perdu',       emoji: '🗺️',   label: 'Perdu / Problème itinéraire', message: 'NAVIGATION — Chauffeur perdu, besoin d\'assistance' },
+    { id: 'autre',       emoji: '⚠️',   label: 'Autre urgence',               message: 'URGENCE — Chauffeur signale une situation critique' },
+  ];
+
+  const sendSOS = async (option) => {
+    setSosModalOpen(false);
+    setSosLoading(true);
+    const sendWithPos = async (lat, lng) => {
+      await chauffeurApi.sos({ latitude: lat, longitude: lng, message: option.message });
+    };
+    try {
+      await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => { try { await sendWithPos(pos.coords.latitude, pos.coords.longitude); resolve(); } catch (e) { reject(e); } },
+          async () => { try { await chauffeurApi.sos({ message: option.message + ' (position inconnue)' }); resolve(); } catch (e) { reject(e); } },
+          { timeout: 5000 }
+        );
+      });
+      showToast(`🚨 SOS "${option.label}" envoyé aux admins !`, 'success');
+    } catch {
+      showToast('Erreur lors de l\'envoi SOS', 'error');
+    } finally {
+      setSosLoading(false);
+    }
+  };
+
+  // ── Objectifs ────────────────────────────────────────────────────────────
+  const loadObjectifs = useCallback(async () => {
+    try {
+      const r = await chauffeurApi.objectifs();
+      setObjectifs(r.data);
+    } catch (_) {}
+  }, []);
+
+  // ── Historique ───────────────────────────────────────────────────────────
+  const loadHistorique = useCallback(async () => {
+    try {
+      const r = await chauffeurApi.historique({ page_size: 30 });
+      const arr = r.data?.results || r.data || [];
+      setHistorique(arr);
+    } catch (_) {}
+  }, []);
+
+  // ── Chat livraison ────────────────────────────────────────────────────────
+  const openChat = async (commande) => {
+    setChatCommande(commande);
+    setChatLoading(true);
+    setTab('chat');
+    try {
+      const r = await chauffeurApi.chatGet(commande.id);
+      setChatMessages(r.data || []);
+    } catch (_) { setChatMessages([]); }
+    finally { setChatLoading(false); }
+  };
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || !chatCommande) return;
+    const text = chatInput.trim();
+    setChatInput('');
+    try {
+      const r = await chauffeurApi.chatSend(chatCommande.id, text);
+      setChatMessages(prev => [...prev, r.data]);
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (_) {}
+  };
+
+  // ── QR confirmation ───────────────────────────────────────────────────────
+  const handleQrConfirm = async () => {
+    if (!qrMission || !qrInput.trim()) return;
+    try {
+      await commandesApi.avancer(qrMission.id, { code_confirmation: qrInput.trim() });
+      showToast('✅ Livraison confirmée par QR code !');
+      setQrInput(''); setQrMission(null);
+      fetchData();
+    } catch (e) {
+      showToast(e.response?.data?.error || 'Code incorrect', 'error');
+    }
+  };
+
+  // Load extras when tabs open
+  useEffect(() => {
+    if (tab === 'objectifs') loadObjectifs();
+    if (tab === 'historique') loadHistorique();
+  }, [tab]);
+
   // Derived stats
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'T';
   const noteColor = !profile?.note_moyenne ? '#64748b' : profile.note_moyenne >= 4.5 ? '#10b981' : profile.note_moyenne >= 3.5 ? '#f59e0b' : '#ef4444';
 
   const TABS = [
-    { id: 'dashboard', label: 'Accueil', icon: Zap },
-    { id: 'missions', label: 'Missions', icon: Package, badge: proposees.length },
-    { id: 'map', label: 'Carte', icon: Map },
-    { id: 'profil', label: 'Profil', icon: User },
+    { id: 'dashboard',  label: 'Accueil',    icon: Zap },
+    { id: 'missions',   label: 'Missions',   icon: Package, badge: proposees.length },
+    { id: 'map',        label: 'Carte',      icon: Map },
+    { id: 'objectifs',  label: 'Objectifs',  icon: Target },
+    { id: 'historique', label: 'Historique', icon: History },
+    { id: 'conduite',   label: 'Conduite',   icon: Crosshair },
+    { id: 'support',    label: 'Support',    icon: MessageSquare },
+    { id: 'profil',     label: 'Profil',     icon: User },
   ];
 
   return (
@@ -600,6 +704,20 @@ const ChauffeurDashboard = () => {
             }}>
             {profile?.is_available ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
             {profile?.is_available ? 'Disponible' : 'Indisponible'}
+          </button>
+          {/* SOS Button */}
+          <button
+            onClick={handleSOS}
+            disabled={sosLoading}
+            title="Envoyer une alerte SOS aux admins"
+            style={{
+              background: 'rgba(239,68,68,0.9)', border: 'none', color: '#fff',
+              borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+              fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', gap: 5,
+              animation: 'none', boxShadow: '0 0 10px rgba(239,68,68,0.5)',
+            }}
+          >
+            <ShieldAlert size={15} /> SOS
           </button>
           {/* Notifications */}
           <div style={{ position: 'relative', cursor: 'pointer' }}
@@ -839,8 +957,32 @@ const ChauffeurDashboard = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {missions.map(cmd => (
-                    <ActiveMissionCard key={cmd.id} mission={cmd}
-                      myPosition={myPosition} onAdvance={handleAdvance} />
+                    <div key={cmd.id}>
+                      <ActiveMissionCard mission={cmd}
+                        myPosition={myPosition} onAdvance={handleAdvance} />
+                      {cmd.statut === 'EN_ROUTE' && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <button onClick={() => openChat(cmd)} style={{
+                            flex: 1, background: 'rgba(99,102,241,0.1)',
+                            border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc',
+                            borderRadius: 8, padding: '8px', cursor: 'pointer',
+                            fontSize: 12, fontWeight: 600, display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', gap: 6
+                          }}>
+                            <MessageSquare size={13} /> Chat client
+                          </button>
+                          <button onClick={() => { setQrMission(cmd); setTab('conduite'); }} style={{
+                            flex: 1, background: 'rgba(16,185,129,0.1)',
+                            border: '1px solid rgba(16,185,129,0.3)', color: '#86efac',
+                            borderRadius: 8, padding: '8px', cursor: 'pointer',
+                            fontSize: 12, fontWeight: 600, display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', gap: 6
+                          }}>
+                            <QrCode size={13} /> QR Code
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -938,6 +1080,224 @@ const ChauffeurDashboard = () => {
           </div>
         )}
 
+        {/* ── OBJECTIFS TAB ─────────────────────────────────────────────── */}
+        {tab === 'objectifs' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={18} color="#f59e0b" /> Objectifs hebdomadaires
+            </h3>
+            {!objectifs ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>Chargement…</div>
+            ) : (
+              <>
+                <div className="glass-card" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                    Semaine du {objectifs.semaine || '—'}
+                  </div>
+                  <div style={{ position: 'relative', width: 120, height: 120, margin: '0 auto 16px' }}>
+                    <svg viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                      <circle cx="60" cy="60" r="50" fill="none"
+                        stroke={objectifs.taux_completion >= 100 ? '#22c55e' : '#f59e0b'}
+                        strokeWidth="10"
+                        strokeDasharray={`${(objectifs.taux_completion / 100) * 314} 314`}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                      />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: objectifs.taux_completion >= 100 ? '#22c55e' : '#f59e0b' }}>
+                        {Math.round(objectifs.taux_completion || 0)}%
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>accompli</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>
+                    {objectifs.livraisons_effectuees || 0}
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+                      {' '}/ {objectifs.objectif_livraisons || 10} livraisons
+                    </span>
+                  </div>
+                  {objectifs.taux_completion >= 100 && (
+                    <div style={{ marginTop: 16, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 12, padding: '12px 20px', color: '#86efac', fontWeight: 700 }}>
+                      🏆 Objectif atteint ! Bonus débloqué 🎉
+                    </div>
+                  )}
+                </div>
+                <div className="glass-card">
+                  <h4 style={{ fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Award size={16} color="#f59e0b" /> Badges débloqués
+                  </h4>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    {[
+                      { emoji: '🚀', label: '10 livraisons',   achieved: (profile?.nombre_livraisons || 0) >= 10 },
+                      { emoji: '⭐', label: '50 livraisons',   achieved: (profile?.nombre_livraisons || 0) >= 50 },
+                      { emoji: '💎', label: '100 livraisons',  achieved: (profile?.nombre_livraisons || 0) >= 100 },
+                      { emoji: '🏅', label: 'Objectif semaine', achieved: (objectifs.taux_completion || 0) >= 100 },
+                      { emoji: '📈', label: 'Note 4.5+',       achieved: (profile?.note_moyenne || 0) >= 4.5 },
+                      { emoji: '⚡', label: 'Zéro incident',   achieved: (profile?.incidents_total || 0) === 0 },
+                    ].map((b, i) => (
+                      <div key={i} style={{ textAlign: 'center', padding: '12px 16px', background: b.achieved ? 'rgba(245,158,11,0.15)' : 'rgba(71,85,105,0.15)', border: `1px solid ${b.achieved ? 'rgba(245,158,11,0.4)' : 'rgba(71,85,105,0.2)'}`, borderRadius: 12, opacity: b.achieved ? 1 : 0.4, minWidth: 90 }}>
+                        <div style={{ fontSize: 28 }}>{b.emoji}</div>
+                        <div style={{ fontSize: 11, color: b.achieved ? '#fcd34d' : '#64748b', marginTop: 4 }}>{b.label}</div>
+                        {b.achieved && <div style={{ fontSize: 10, color: '#22c55e', marginTop: 2 }}>✓ Obtenu</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+                  <MiniStat icon={Package} label="Total livraisons" value={profile?.nombre_livraisons || 0} color="#3b82f6" />
+                  <MiniStat icon={Star}    label="Note moyenne"    value={(profile?.note_moyenne || 0).toFixed(1)} color="#f59e0b" />
+                  <MiniStat icon={Award}   label="Taux réussite"   value={`${profile?.taux_reussite || 0}%`} color="#22c55e" />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── HISTORIQUE TAB ────────────────────────────────────────────── */}
+        {tab === 'historique' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <History size={18} /> Historique des livraisons
+              </h3>
+              <button className="btn btn-secondary btn-sm" onClick={loadHistorique}><RefreshCw size={14} /></button>
+            </div>
+            {historique.length === 0 ? (
+              <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                <History size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <div>Aucune livraison dans l'historique</div>
+              </div>
+            ) : historique.map(cmd => {
+              const s = STATUT_STYLE[cmd.statut] || STATUT_STYLE.EN_ATTENTE;
+              const note = cmd.avis?.note;
+              return (
+                <div key={cmd.id} className="glass-card animate-fade-in" style={{ borderLeft: `3px solid ${s.color}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>#{cmd.reference}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {cmd.created_at ? new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>{Math.round(cmd.frais_livraison || 0)} MAD</div>
+                      <span style={{ background: s.bg, color: s.color, fontSize: 10, padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>{s.label}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <MapPin size={11} /> {cmd.adresse_livraison || '—'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {note && <span style={{ fontSize: 12, color: '#f59e0b' }}>{'★'.repeat(Math.round(note))}{'☆'.repeat(5 - Math.round(note))} {note}/5</span>}
+                    {cmd.incidents?.length > 0 && <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderRadius: 5, padding: '1px 7px' }}>⚠ {cmd.incidents.length} incident{cmd.incidents.length > 1 ? 's' : ''}</span>}
+                    {cmd.duree_minutes && <span style={{ fontSize: 11, color: '#64748b' }}>⏱ {cmd.duree_minutes} min</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── MODE CONDUITE TAB ─────────────────────────────────────────── */}
+        {tab === 'conduite' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Crosshair size={18} color="#10b981" /> Mode conduite
+            </h3>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: -10 }}>Interface simplifiée — grands boutons, actions en 1 clic</div>
+            {missions.filter(m => m.statut === 'EN_ROUTE').length > 0 ? (
+              missions.filter(m => m.statut === 'EN_ROUTE').slice(0, 1).map(m => (
+                <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ background: 'rgba(16,185,129,0.1)', border: '2px solid rgba(16,185,129,0.4)', borderRadius: 16, padding: '18px 22px' }}>
+                    <div style={{ fontSize: 13, color: '#86efac', marginBottom: 4 }}>🚚 EN ROUTE</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9', marginBottom: 6 }}>#{m.reference}</div>
+                    <div style={{ fontSize: 16, color: '#cbd5e1', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <MapPin size={18} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+                      {m.adresse_livraison}
+                    </div>
+                  </div>
+                  <button onClick={() => handleAdvance(m)} style={{ background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none', color: '#fff', borderRadius: 16, padding: '22px', cursor: 'pointer', fontWeight: 800, fontSize: 20, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
+                    <CheckCircle size={28} /> Livraison confirmée
+                  </button>
+                  <div style={{ background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 14, padding: '16px 18px' }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <QrCode size={18} color="#a5b4fc" /> Confirmation QR Code
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input value={qrInput} onChange={e => { setQrInput(e.target.value); setQrMission(m); }}
+                        placeholder="Scanner ou saisir le code client…"
+                        style={{ flex: 1, padding: '12px 14px', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, color: '#f1f5f9', fontSize: 15, outline: 'none' }} />
+                      <button onClick={() => { setQrMission(m); handleQrConfirm(); }} disabled={!qrInput.trim()} style={{ background: 'rgba(99,102,241,0.3)', border: '1px solid rgba(99,102,241,0.5)', color: '#a5b4fc', borderRadius: 10, padding: '12px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 15 }}>OK</button>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#475569', marginTop: 6 }}>Code optionnel — confirme la livraison directement</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <button onClick={() => openChat(m)} style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc', borderRadius: 14, padding: '18px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <MessageSquare size={28} /> Chat client
+                    </button>
+                    <button onClick={() => { const dest = m.latitude_livraison && m.longitude_livraison ? `${m.latitude_livraison},${m.longitude_livraison}` : encodeURIComponent(m.adresse_livraison || ''); window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`, '_blank'); }} style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.4)', color: '#86efac', borderRadius: 14, padding: '18px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <Navigation size={28} /> GPS
+                    </button>
+                  </div>
+                  <button onClick={handleSOS} disabled={sosLoading} style={{ background: 'rgba(239,68,68,0.15)', border: '2px solid rgba(239,68,68,0.5)', color: '#fca5a5', borderRadius: 14, padding: '18px', cursor: 'pointer', fontWeight: 800, fontSize: 18, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 0 20px rgba(239,68,68,0.2)' }}>
+                    <ShieldAlert size={24} /> 🚨 SOS Urgence
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                <Crosshair size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <div style={{ fontWeight: 600 }}>Aucune mission en route</div>
+                <div style={{ fontSize: 13, marginTop: 6 }}>Le mode conduite s'active lors d'une livraison EN_ROUTE</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CHAT TAB ──────────────────────────────────────────────────── */}
+        {tab === 'chat' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)', gap: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <button onClick={() => setTab('conduite')} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}>←</button>
+              <h3 style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <MessageSquare size={18} color="#6366f1" />
+                Chat — {chatCommande ? `#${chatCommande.reference}` : 'Livraison'}
+              </h3>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(15,23,42,0.5)', borderRadius: 14, padding: 16, border: '1px solid rgba(99,102,241,0.2)', minHeight: 300 }}>
+              {chatLoading && <div style={{ color: '#64748b', textAlign: 'center' }}>Chargement…</div>}
+              {!chatLoading && chatMessages.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#475569', fontSize: 13, margin: 'auto' }}>
+                  Pas encore de messages — dites bonjour au client !
+                </div>
+              )}
+              {chatMessages.map((msg, i) => {
+                const isMe = msg.auteur_role === 'TRANSPORTEUR';
+                return (
+                  <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMe ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(30,41,59,0.8)', border: isMe ? 'none' : '1px solid rgba(99,102,241,0.2)', color: '#f1f5f9', fontSize: 14, lineHeight: 1.5 }}>
+                      {msg.contenu}
+                      <div style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,0.6)' : '#475569', marginTop: 4, textAlign: 'right' }}>
+                        {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatBottomRef} />
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()} placeholder="Message au client…"
+                style={{ flex: 1, padding: '12px 16px', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 12, color: '#f1f5f9', fontSize: 14, outline: 'none' }} />
+              <button onClick={sendChat} disabled={!chatInput.trim()} style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', borderRadius: 12, padding: '12px 18px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                <Send size={16} /> Envoyer
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── PROFIL TAB ────────────────────────────────────────────────── */}
         {tab === 'profil' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -961,24 +1321,21 @@ const ChauffeurDashboard = () => {
 
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              <MiniStat icon={Package}    label="Livraisons"  value={profile?.nombre_livraisons || 0} color="#3b82f6" />
-              <MiniStat icon={Star}       label="Note moy."   value={profile?.note_moyenne?.toFixed(1) || '–'} color={noteColor} sub={`${profile?.nombre_avis || 0} avis`} />
-              <MiniStat icon={DollarSign} label="Revenus tot." value={`${Math.round(profile?.revenus_total || 0)} MAD`} color="#10b981" />
+              <MiniStat icon={Package}    label="Livraisons"   value={profile?.nombre_livraisons || 0}                    color="#3b82f6" />
+              <MiniStat icon={Star}       label="Note moy."    value={profile?.note_moyenne?.toFixed(1) || '–'}           color={noteColor} sub={`${profile?.nombre_avis || 0} avis`} />
+              <MiniStat icon={DollarSign} label="Revenus tot." value={`${Math.round(profile?.revenus_total || 0)} MAD`}   color="#10b981" />
             </div>
 
-            {/* Working hours breakdown */}
-            <WorkingHoursCard profile={profile} />
-
-            {/* Revenus breakdown */}
+            {/* Revenus */}
             <div className="glass-card">
               <h4 style={{ fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TrendingUp size={16} color="#10b981" /> Revenus
               </h4>
               {[
-                { label: "Aujourd'hui", value: profile?.revenus_jour || 0, color: '#10b981', icon: '📅' },
+                { label: "Aujourd'hui",  value: profile?.revenus_jour    || 0, color: '#10b981', icon: '📅' },
                 { label: 'Cette semaine', value: profile?.revenus_semaine || 0, color: '#3b82f6', icon: '📆' },
-                { label: 'Ce mois', value: profile?.revenus_mois || 0, color: '#8b5cf6', icon: '🗓️' },
-                { label: 'Total cumulé', value: profile?.revenus_total || 0, color: '#f59e0b', icon: '💰' },
+                { label: 'Ce mois',       value: profile?.revenus_mois    || 0, color: '#8b5cf6', icon: '🗓️' },
+                { label: 'Total cumulé',  value: profile?.revenus_total   || 0, color: '#f59e0b', icon: '💰' },
               ].map(({ label, value, color, icon }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{icon} {label}</span>
@@ -987,45 +1344,119 @@ const ChauffeurDashboard = () => {
               ))}
             </div>
 
-            {/* Vehicle info */}
+            {/* Véhicule */}
             {profile && (
               <div className="glass-card">
                 <h4 style={{ fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Truck size={16} color="#8b5cf6" /> Informations véhicule
+                  <Truck size={16} color="#3b82f6" /> Véhicule
                 </h4>
-                {[
-                  { label: 'Type', value: profile.vehicule_type },
-                  { label: 'Plaque', value: profile.plaque },
-                  { label: 'Numéro de permis', value: profile.permis },
-                  { label: 'Ville', value: profile.ville },
-                ].filter(r => r.value).map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-                    <span style={{ fontWeight: 600 }}>{value}</span>
-                  </div>
-                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    { label: 'Type',     value: profile.vehicule_type || profile.type_vehicule || '—' },
+                    { label: 'Plaque',   value: profile.plaque || profile.plaque_immatriculation || '—' },
+                    { label: 'Capacité', value: profile.capacite_kg ? `${profile.capacite_kg} kg` : '—' },
+                    { label: 'Ville',    value: profile.ville || '—' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            <button className="btn btn-secondary" onClick={handleLogout}
-              style={{ color: '#ef4444', border: '1px solid #ef444430', display: 'flex', justifyContent: 'center', gap: 8 }}>
-              <LogOut size={16} /> Se déconnecter
+            {/* Déconnexion */}
+            <button
+              onClick={() => { logout(); navigate('/login'); }}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <LogOut size={18} /> Se déconnecter
             </button>
           </div>
         )}
+
+        {/* ── SUPPORT TAB ───────────────────────────────────────────────── */}
+        {tab === 'support' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontWeight: 700 }}>Mes tickets de support</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => navigate('/tickets')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ChevronRight size={14} /> Voir tout
+              </button>
+            </div>
+            <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🎫</div>
+              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Centre de support</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, maxWidth: 340, margin: '0 auto 24px' }}>
+                Signalez un problème, posez une question ou suivez l'avancement de vos tickets.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 360, margin: '0 auto' }}>
+                <button className="btn btn-primary" onClick={() => navigate('/tickets')} style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 700 }}>
+                  🎫 Mes tickets
+                </button>
+                <button className="btn btn-secondary" onClick={() => navigate('/tickets?action=nouveau')} style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 700 }}>
+                  ✏️ Ouvrir un nouveau ticket
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowIncidentModal(true)} style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 700 }}>
+                  ⚠️ Signaler un incident
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
+      {/* Incident modal */}
       {showIncidentModal && (
-        <SignalerIncidentPanel
-          embedded
-          commandes={missions.filter(m => ['EN_PREPARATION', 'EN_ROUTE'].includes(m.statut))}
-          onClose={() => setShowIncidentModal(false)}
-          onSuccess={() => {
-            setShowIncidentModal(false);
-            showToast('Incident signalé avec succès');
-          }}
-        />
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 16 }}>Signaler un incident</h3>
+              <button onClick={() => setShowIncidentModal(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>✕</button>
+            </div>
+            <SignalerIncidentPanel onClose={() => setShowIncidentModal(false)} />
+          </div>
+        </div>
       )}
+
+      {/* SOS modal */}
+      {sosModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'rgba(20,10,10,0.98)', border: '2px solid rgba(239,68,68,0.5)', borderRadius: 20, padding: '2rem', width: '100%', maxWidth: 440, boxShadow: '0 0 60px rgba(239,68,68,0.3)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>🚨</div>
+              <h3 style={{ color: '#ef4444', fontWeight: 800, fontSize: 20, margin: 0 }}>Alerte SOS</h3>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 6 }}>Choisissez le type d&apos;urgence — les admins seront notifiés immédiatement</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {SOS_OPTIONS.map(opt => (
+                <button key={opt.id} onClick={() => sendSOS(opt)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                    borderRadius: 12, cursor: 'pointer', color: 'white', textAlign: 'left',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.25)'; }}
+                >
+                  <span style={{ fontSize: 28, flexShrink: 0 }}>{opt.emoji}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{opt.label}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{opt.message}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setSosModalOpen(false)}
+              style={{ width: '100%', marginTop: '1.25rem', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: 13 }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

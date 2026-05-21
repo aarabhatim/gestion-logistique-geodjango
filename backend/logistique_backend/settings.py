@@ -35,7 +35,7 @@ if os.name == 'nt':
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'delivermap-secret-key-change-in-production-2025')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -69,6 +69,10 @@ INSTALLED_APPS = [
     'clients',
     'tracking',
     'chatbot',
+    'zones',
+    'promotions',
+    'bannieres',
+    'blacklist',
 ]
 
 MIDDLEWARE = [
@@ -141,6 +145,34 @@ except ImportError:
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TIMEZONE = 'Africa/Casablanca'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Periodic tasks (used with celery beat)
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    # Daily at 08:00 -- expire contrats
+    'verifier-expirations-contrats': {
+        'task': 'tasks.verifier_expirations_contrats',
+        'schedule': crontab(hour=8, minute=0),
+    },
+    # Every 15 minutes -- retard livraisons
+    'alertes-retard-livraisons': {
+        'task': 'tasks.alertes_retard_livraisons',
+        'schedule': crontab(minute='*/15'),
+    },
+    # Every Sunday at 03:00 -- clean old notifications
+    'nettoyer-notifications': {
+        'task': 'tasks.nettoyer_notifications',
+        'schedule': crontab(hour=3, minute=0, day_of_week=0),
+    },
+    # Every 30 minutes -- SLA ticket alerts
+    'alertes-sla-tickets': {
+        'task': 'tasks.alertes_sla_tickets',
+        'schedule': crontab(minute='*/30'),
+    },
+}
 
 # --- Django REST Framework ----------------------------------------------------
 REST_FRAMEWORK = {
@@ -172,14 +204,18 @@ SIMPLE_JWT = {
 }
 
 # --- CORS --------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://localhost:3000',
-]
-CORS_ALLOW_ALL_ORIGINS = True
+_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://localhost:3000',
+    ]
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
 # --- Stripe ------------------------------------------------------------------
@@ -187,8 +223,18 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 # --- Email -------------------------------------------------------------------
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@delivermap.ma'
+# --- Email -------------------------------------------------------------------
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend'  # dev default
+)
+EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS       = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'DeliverMap <noreply@delivermap.ma>')
+SERVER_EMAIL        = DEFAULT_FROM_EMAIL
 
 # --- Commission plateforme (%) ------------------------------------------------
 PLATFORM_COMMISSION_RATE = float(os.environ.get('COMMISSION_RATE', '0.15'))

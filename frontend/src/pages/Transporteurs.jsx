@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Pagination from '../components/Pagination';
 import {
   Truck, Star, MapPin, CheckCircle, XCircle, RefreshCw,
   Clock, AlertTriangle, Shield, UserCheck, UserX, Search,
@@ -194,18 +195,84 @@ const ScoreTab = ({ transporteurId }) => {
   );
 };
 
+// ─── Transporteur Card ────────────────────────────────────────────────────────
+const TransporteurCard = ({ t, onSelect }) => {
+  const vColor = VEHICULE_COLORS[t.vehicule_type] || '#64748b';
+  const vIcon  = VEHICULE_ICONS[t.vehicule_type]  || '🚗';
+  return (
+    <div className="glass-card animate-fade-in"
+      onClick={() => onSelect(t)}
+      style={{ cursor: 'pointer', padding: '1rem', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.25)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 28 }}>{vIcon}</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>
+              {t.nom_complet || `${t.user_first_name || ''} ${t.user_last_name || ''}`}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.user_email || t.email}</div>
+          </div>
+        </div>
+        <span style={{
+          fontSize: 10, padding: '3px 8px', borderRadius: 20, fontWeight: 600,
+          background: t.is_on_delivery ? '#f59e0b20' : t.is_available ? '#10b98120' : '#47556920',
+          color:      t.is_on_delivery ? '#f59e0b'   : t.is_available ? '#10b981'   : '#94a3b8',
+        }}>
+          {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Dispo' : '⭕ Hors ligne'}
+        </span>
+      </div>
+
+      {/* Véhicule + vérification */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 8,
+          background: `${vColor}20`, color: vColor }}>
+          {t.vehicule_type}
+        </span>
+        {t.plaque && (
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+            {t.plaque}
+          </span>
+        )}
+        {t.is_verified
+          ? <span style={{ fontSize: 10, color: '#10b981', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><CheckCircle size={11} /> Vérifié</span>
+          : <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={11} /> En attente</span>
+        }
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+        {[
+          { label: 'Livraisons', value: t.nombre_livraisons || 0,                              icon: Truck,      color: '#3b82f6' },
+          { label: 'Note',       value: t.note_moyenne?.toFixed(1) || '–',                     icon: Star,       color: '#f59e0b' },
+          { label: 'Avis',       value: t.nombre_avis || 0,                                    icon: Award,      color: '#8b5cf6' },
+          { label: 'Revenus',    value: `${Math.round((t.revenus_total || 0) / 1000)}k`,       icon: DollarSign, color: '#10b981' },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+            <Icon size={12} color={color} style={{ display: 'block', margin: '0 auto 2px' }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color }}>{value}</div>
+            <div style={{ fontSize: 9, color: 'var(--text-secondary)' }}>{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DETAIL_TABS = [
   { key: 'info',  label: 'Infos',  icon: Eye },
   { key: 'score', label: 'Score',  icon: BarChart2 },
 ];
 
-const DetailModal = ({ t, onClose, onAction }) => {
+// TransporteurDetail: contenu sans overlay (l'appelant fournit déjà le backdrop)
+const TransporteurDetail = ({ t, onClose, onAction }) => {
   const [activeTab, setActiveTab] = useState('info');
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 580, maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.25rem 1.25rem 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -333,7 +400,6 @@ const DetailModal = ({ t, onClose, onAction }) => {
           )}
         </div>
       </div>
-    </div>
   );
 };
 
@@ -346,15 +412,17 @@ const Transporteurs = () => {
   const [filterDispo, setFilterDispo] = useState('');
   const [search, setSearch] = useState('');
   const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => setToast({ msg, type });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { page: p, page_size: ps };
       if (filterType) params.vehicule_type = filterType;
       if (filterDispo !== '') params.is_available = filterDispo;
       if (filterVerified !== '') params.is_verified = filterVerified;
@@ -368,8 +436,9 @@ const Transporteurs = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterDispo, filterVerified, search]);
+  }, [filterType, filterDispo, filterVerified, search, page, pageSize]);
 
+  useEffect(() => { setPage(1); }, [filterType, filterDispo, filterVerified, search]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Auto-refresh every 60s to update working hours
@@ -461,159 +530,87 @@ const Transporteurs = () => {
             onClick={() => setFilterVerified('false')}>
             Voir
           </button>
+
         </div>
       )}
 
-      {/* Filters */}
-      <div className="glass-card animate-fade-in" style={{ padding: '1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 240px' }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-          <input className="glass-input" placeholder="Nom, email, plaque..." value={search}
-            onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 36, width: '100%' }} />
-        </div>
-        <select className="glass-input" value={filterType} onChange={e => setFilterType(e.target.value)} style={{ maxWidth: 170 }}>
-          <option value="">Tous véhicules</option>
-          <option value="MOTO">🛵 Moto</option>
-          <option value="VOITURE">🚗 Voiture</option>
-          <option value="CAMIONNETTE">🚐 Camionnette</option>
-          <option value="CAMION">🚛 Camion</option>
+      {/* Search & Filters */}
+      <div className="glass-card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          className="glass-input"
+          placeholder="Rechercher un chauffeur..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ flex: 1, minWidth: 180, padding: '6px 10px', fontSize: 13 }}
+        />
+        <select className="glass-input" value={filterType} onChange={e => setFilterType(e.target.value)}
+          style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
+          <option value="">Tous types</option>
+          {['moto', 'voiture', 'van', 'camion'].map(t => (
+            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          ))}
         </select>
-        <select className="glass-input" value={filterDispo} onChange={e => setFilterDispo(e.target.value)} style={{ maxWidth: 170 }}>
-          <option value="">Toute disponibilité</option>
+        <select className="glass-input" value={filterVerified} onChange={e => setFilterVerified(e.target.value)}
+          style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
+          <option value="">Verification</option>
+          <option value="true">Verifies</option>
+          <option value="false">En attente</option>
+        </select>
+        <select className="glass-input" value={filterDispo} onChange={e => setFilterDispo(e.target.value)}
+          style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
+          <option value="">Disponibilite</option>
           <option value="true">Disponibles</option>
-          <option value="false">Indisponibles</option>
+          <option value="false">Hors ligne</option>
         </select>
-        <select className="glass-input" value={filterVerified} onChange={e => setFilterVerified(e.target.value)} style={{ maxWidth: 170 }}>
-          <option value="">Tous</option>
-          <option value="true">✓ Vérifiés</option>
-          <option value="false">⏳ En attente</option>
-        </select>
-        {(filterType || filterDispo !== '' || filterVerified !== '' || search) && (
-          <button className="btn btn-secondary btn-sm"
-            onClick={() => { setFilterType(''); setFilterDispo(''); setFilterVerified(''); setSearch(''); }}>
-            × Effacer
+        {(search || filterType || filterVerified || filterDispo) && (
+          <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setFilterType(''); setFilterVerified(''); setFilterDispo(''); }}>
+            Effacer
           </button>
         )}
       </div>
 
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem' }}>
-        {loading ? (
-          Array(6).fill(0).map((_, i) => (
-            <div key={i} className="glass-card" style={{ height: 220, opacity: 0.4 }} />
-          ))
-        ) : transporteurs.length === 0 ? (
-          <div className="glass-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-            <Truck size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <div>Aucun transporteur trouvé</div>
+      {/* List */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          <div className="spinner" style={{ margin: '0 auto 12px' }} />
+          Chargement des transporteurs...
+        </div>
+      ) : transporteurs.length === 0 ? (
+        <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          <Truck size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <div>Aucun transporteur trouve.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+          {transporteurs.map(t => (
+            <TransporteurCard key={t.id} t={t} onSelect={setSelected} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={count}
+        onPageChange={(p) => { setPage(p); fetchData(p, pageSize); }}
+        onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); fetchData(1, ps); }}
+      />
+
+      {/* Detail panel */}
+      {selected && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: '1rem',
+        }} onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
+          <div style={{ maxWidth: 600, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <TransporteurDetail t={selected} onClose={() => setSelected(null)} onAction={handleAction} />
           </div>
-        ) : transporteurs.map(t => {
-          const vColor = VEHICULE_COLORS[t.vehicule_type] || '#64748b';
-          const heuresJour = (t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0);
-          return (
-            <div key={t.id} className="glass-card animate-fade-in" style={{ padding: '1.1rem', position: 'relative', borderTop: `3px solid ${t.is_available ? '#10b981' : vColor + '60'}`, transition: 'all 0.2s' }}>
-              {/* Badges top-right */}
-              <div style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', display: 'flex', gap: 5, flexDirection: 'column', alignItems: 'flex-end' }}>
-                {t.is_verified ? (
-                  <span style={{ background: '#10b98115', color: '#10b981', fontSize: 10, padding: '2px 8px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Shield size={9} /> Vérifié
-                  </span>
-                ) : (
-                  <span style={{ background: '#f59e0b15', color: '#f59e0b', fontSize: 10, padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
-                    ⏳ En attente
-                  </span>
-                )}
-                <span style={{
-                  background: t.is_on_delivery ? '#f59e0b15' : t.is_available ? '#10b98115' : '#47556915',
-                  color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#94a3b8',
-                  fontSize: 10, padding: '2px 8px', borderRadius: 12, fontWeight: 700,
-                }}>
-                  {t.is_on_delivery ? '🚚 Mission' : t.is_available ? '● Dispo' : '○ Off'}
-                </span>
-              </div>
-
-              {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem', paddingRight: 80 }}>
-                <div style={{ fontSize: 32 }}>{VEHICULE_ICONS[t.vehicule_type] || '🚗'}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {t.nom_complet || `${t.user_first_name || ''} ${t.user_last_name || ''}`}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                    {t.user_email || t.email}
-                  </div>
-                  <div style={{ fontSize: 11, color: vColor, fontWeight: 600, marginTop: 2 }}>
-                    {t.vehicule_type} · {t.plaque}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats compact */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10, fontSize: 12 }}>
-                <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '6px 4px' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 10 }}>Livraisons</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#3b82f6' }}>{t.nombre_livraisons || 0}</div>
-                </div>
-                <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '6px 4px' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 10 }}>Note</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#f59e0b' }}>
-                    {t.note_moyenne ? `${t.note_moyenne.toFixed(1)}⭐` : '–'}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '6px 4px' }}>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 10 }}>Revenus</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#10b981' }}>
-                    {Math.round((t.revenus_total || 0) / 1000)}k
-                  </div>
-                </div>
-              </div>
-
-              {/* Heures de travail mini-display */}
-              <div style={{
-                background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 8,
-                padding: '8px 10px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
-                  <Clock size={11} color="#a78bfa" />
-                  <span>Travail aujourd'hui</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontWeight: 700, color: '#a78bfa', fontSize: 13 }}>
-                    {formatDuration(heuresJour)}
-                  </span>
-                  {t.is_available && (
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-sm btn-secondary" style={{ flex: 1, fontSize: 11, justifyContent: 'center' }}
-                  onClick={() => setSelected(t)}>
-                  <Eye size={12} /> Détails
-                </button>
-                {!t.is_verified ? (
-                  <button className="btn btn-sm btn-primary" style={{ flex: 1, fontSize: 11, justifyContent: 'center' }}
-                    onClick={() => handleAction(t, 'approuver')}>
-                    <Shield size={12} /> Vérifier
-                  </button>
-                ) : (
-                  <button className="btn btn-sm btn-secondary"
-                    style={{ flex: 1, fontSize: 11, justifyContent: 'center', color: '#ef4444', border: '1px solid #ef444430' }}
-                    onClick={() => handleAction(t, 'rejeter')}>
-                    <UserX size={12} /> Retirer
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {selected && <DetailModal t={selected} onClose={() => setSelected(null)} onAction={handleAction} />}
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default Transporteurs;

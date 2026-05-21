@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Pagination from '../components/Pagination';
 import {
   FileText, Download, CheckSquare, Power, XCircle, RefreshCw,
   Plus, Eye, AlertCircle, Calendar, User,
@@ -29,18 +30,28 @@ const Contrats = () => {
   const [filtreType, setFiltreType] = useState('');
   const [downloading, setDownloading] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
-  const fetchContrats = async () => {
+  const fetchContrats = async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
-      const res = await contratsApi.list({ statut: filtreStatut || undefined, type_contrat: filtreType || undefined });
-      const items = res.data.results || res.data;
-      setContrats(Array.isArray(items) ? items : []);
+      const res = await contratsApi.list({
+        statut: filtreStatut || undefined,
+        type_contrat: filtreType || undefined,
+        page: p,
+        page_size: ps,
+      });
+      const data = res.data;
+      const items = data.results ?? (Array.isArray(data) ? data : []);
+      setTotal(data.count ?? items.length);
+      setContrats(items);
     } catch { setContrats([]); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchContrats(); }, [filtreStatut, filtreType]);
+  useEffect(() => { setPage(1); fetchContrats(1, pageSize); }, [filtreStatut, filtreType]);
 
   const handleGenererPdf = async (id) => {
     setActionLoading(id + '_pdf');
@@ -299,6 +310,15 @@ const Contrats = () => {
           onCreated={() => { setShowCreate(false); fetchContrats(); }}
         />
       )}
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={(p) => { setPage(p); fetchContrats(p, pageSize); }}
+        onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); fetchContrats(1, ps); }}
+      />
     </div>
   );
 };
@@ -358,13 +378,13 @@ const CreateContratModal = ({ onClose, onCreated }) => {
             <button onClick={onClose} className="btn btn-secondary">Annuler</button>
             <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={13} /> {submitting ? 'Création...' : 'Créer'}
+              {submitting ? 'Création...' : 'Créer le contrat'}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default Contrats;

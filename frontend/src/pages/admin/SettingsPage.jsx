@@ -377,7 +377,7 @@ const SettingsPage = () => {
                   </select>
                 </div>
                 <div style={{ marginTop: 10, padding: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  📊 Aperçu : <strong>{i18n.formatPrice(1234.56, { currency: draftApparence.devise }) || '1 234,56 ' + draftApparence.devise}</strong>
+                  📊 Aperçu : <strong>{new Intl.NumberFormat(draftApparence.langue === 'ar' ? 'ar-MA' : draftApparence.langue === 'en' ? 'en-US' : draftApparence.langue === 'es' ? 'es-ES' : 'fr-FR', { style: 'currency', currency: draftApparence.devise || 'MAD', maximumFractionDigits: 2 }).format(1234.56)}</strong>
                   · langue : <strong>{ {fr: 'Français', ar: 'العربية', en: 'English', es: 'Español'}[draftApparence.langue] }</strong>
                 </div>
               </SectionCard>

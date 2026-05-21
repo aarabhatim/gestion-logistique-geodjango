@@ -5,6 +5,7 @@ import {
   ArrowRight, MapPin, Clock, Star, Search, Download,
 } from 'lucide-react';
 import { commandesApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
 const exportCSV = (rows) => {
@@ -276,6 +277,7 @@ const Toast = ({ msg, type, onHide }) => {
 
 // ─── Commandes principale ─────────────────────────────────────────────────────
 const Commandes = () => {
+  const { user } = useAuth();
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatut, setFilterStatut] = useState('');
@@ -446,32 +448,33 @@ const Commandes = () => {
                   {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
                 </td>
                 <td>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     {/* Voir détail */}
-                    <button className="btn btn-sm btn-secondary" onClick={() => setSelected(cmd)} title="Voir détail">
+                    <button className="btn btn-sm btn-secondary" onClick={() => setSelected(cmd)} title="Voir détail" style={{ padding: '4px 8px' }}>
                       <Eye size={13} />
                     </button>
 
                     {/* Avancer statut */}
                     {NEXT_LABEL[cmd.statut] && (
                       <button className="btn btn-sm btn-primary" onClick={() => handleAvancer(cmd)}
-                        style={{ fontSize: 11 }} title={NEXT_LABEL[cmd.statut]}>
-                        <ArrowRight size={12} /> {NEXT_LABEL[cmd.statut]}
+                        title={NEXT_LABEL[cmd.statut]} style={{ padding: '4px 8px' }}>
+                        <ArrowRight size={13} />
                       </button>
                     )}
 
                     {/* Assigner transporteur */}
-                    {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION'].includes(cmd.statut) && (
-                      <button className="btn btn-sm" style={{ background: '#8b5cf620', color: '#a78bfa', border: '1px solid #8b5cf630', fontSize: 11 }}
-                        onClick={() => setAssigning(cmd)} title="Assigner transporteur">
-                        <UserCheck size={12} /> {cmd.transporteur_detail ? 'Réassigner' : 'Assigner'}
+                    {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'EN_ROUTE'].includes(cmd.statut) && user?.role === 'ADMIN' && !cmd.transporteur && (
+                      <button className="btn btn-secondary btn-sm" onClick={() => setAssigning(cmd)}
+                        title="Assigner un transporteur" style={{ padding: '4px 8px' }}>
+                        <UserCheck size={13} />
                       </button>
                     )}
 
                     {/* Annuler */}
-                    {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && (
-                      <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }}
-                        onClick={() => handleAnnuler(cmd)} title="Annuler">
+                    {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && user?.role === 'ADMIN' && (
+                      <button className="btn btn-sm" onClick={() => handleAnnuler(cmd)}
+                        title="Annuler la commande"
+                        style={{ padding: '4px 8px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6 }}>
                         <X size={13} />
                       </button>
                     )}
@@ -484,29 +487,34 @@ const Commandes = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => changePage(page - 1)}>
-              <ChevronLeft size={15} />
-            </button>
-            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Page {page} / {totalPages}</span>
-            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => changePage(page + 1)}>
-              <ChevronRight size={15} />
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button key={i} onClick={() => setPage(i + 1)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: page === i + 1 ? '#6366f1' : 'rgba(255,255,255,0.08)',
+                  color: 'white', fontWeight: page === i + 1 ? 700 : 400,
+                }}>
+                {i + 1}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Modals */}
-      {selected && <DetailModal commande={selected} onClose={() => setSelected(null)} />}
+      {/* ── Modals ── */}
+      {selected && (
+        <DetailModal commande={selected} onClose={() => setSelected(null)} />
+      )}
       {assigning && (
         <AssignerModal
           commande={assigning}
           onClose={() => setAssigning(null)}
-          onSuccess={(msg) => { showToast(msg); fetchCommandes(); }}
+          onSuccess={(msg) => { showToast(msg || 'Transporteur assigné !'); fetchCommandes(); }}
         />
       )}
     </div>
   );
-};
+}
 
 export default Commandes;

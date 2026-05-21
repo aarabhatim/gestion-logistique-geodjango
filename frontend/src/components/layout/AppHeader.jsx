@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, Globe, Search, Sun, Moon } from 'lucide-react';
-import { notificationsApi } from '@/services/api';
+import { Bell, Check, Globe, Search, Sun, Moon, Trash2, CheckCheck, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -27,24 +27,29 @@ const LANGS = [
 export function AppHeader() {
   const { t, langue, setLangue } = useI18n();
   const { mode, toggleMode } = useTheme();
-  const [notifications, setNotifications] = useState([]);
+  
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    hasMore,
+    fetchNotifications,
+    fetchNextPage,
+    marquerLue,
+    supprimer,
+    toutLire,
+    supprimerLues,
+  } = useNotifications();
+
   const [openNotif, setOpenNotif] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const notifRef = useRef(null);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await notificationsApi.nonLues();
-      setNotifications(res.data.results || res.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(id);
-  }, []);
+    if (openNotif) {
+      fetchNotifications(true, showAll);
+    }
+  }, [openNotif, showAll, fetchNotifications]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -53,17 +58,6 @@ export function AppHeader() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const markAll = async () => {
-    await notificationsApi.toutLire();
-    await fetchNotifications();
-    setOpenNotif(false);
-  };
-
-  const markOne = async (id) => {
-    await notificationsApi.marquerLue(id);
-    await fetchNotifications();
-  };
 
   const currentLang = LANGS.find(l => l.code === langue) || LANGS[0];
 
@@ -99,9 +93,9 @@ export function AppHeader() {
         <div className="relative" ref={notifRef}>
           <Button variant="outline" size="icon" onClick={() => setOpenNotif(s => !s)} className="relative">
             <Bell className="h-[18px] w-[18px]" />
-            {notifications.length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                {notifications.length > 9 ? '9+' : notifications.length}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </Button>
@@ -113,40 +107,112 @@ export function AppHeader() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.96 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border bg-card shadow-lg"
+                className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-xl border bg-card shadow-lg flex flex-col"
+                style={{ maxHeight: 'calc(80vh - 64px)' }}
               >
-                <div className="flex items-center justify-between border-b px-4 py-3">
-                  <span className="font-semibold">{t('notifications')}</span>
-                  {notifications.length > 0 && (
-                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={markAll}>
-                      {t('mark_all_read')}
+                {/* Header */}
+                <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
+                  <span className="font-semibold text-sm flex items-center gap-2">
+                    {t('notifications')}
+                    {unreadCount > 0 && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-[10px] font-bold">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={toutLire} title={t('mark_all_read')}>
+                        <CheckCheck className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={supprimerLues} title="Supprimer les lues">
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpenNotif(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
+
+                {/* Filter tabs */}
+                <div className="flex border-b text-xs font-medium shrink-0">
+                  <button
+                    onClick={() => setShowAll(false)}
+                    className={cn(
+                      "flex-1 py-2 text-center border-b-2 transition-all",
+                      !showAll ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Non lues
+                  </button>
+                  <button
+                    onClick={() => setShowAll(true)}
+                    className={cn(
+                      "flex-1 py-2 text-center border-b-2 transition-all",
+                      showAll ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Toutes
+                  </button>
+                </div>
+
+                {/* Scrollable list */}
+                <div className="overflow-y-auto flex-1 divide-y divide-border/50">
                   {notifications.length === 0 ? (
-                    <p className="p-6 text-center text-sm text-muted-foreground">{t('no_notifications')}</p>
+                    <div className="p-8 text-center">
+                      <Bell className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-sm text-muted-foreground">{t('no_notifications')}</p>
+                    </div>
                   ) : (
-                    notifications.map(n => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={() => markOne(n.id)}
-                        className="flex w-full gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-                      >
-                        <span className={cn(
-                          'mt-1.5 h-2 w-2 shrink-0 rounded-full',
-                          n.type_notif === 'WARNING' ? 'bg-amber-500' : n.type_notif === 'LIVRAISON' ? 'bg-emerald-500' : 'bg-primary',
-                        )} />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{n.titre}</p>
-                          <p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p>
-                          <p className="mt-1 text-[10px] text-muted-foreground">
-                            {new Date(n.date_creation).toLocaleString('fr-FR')}
-                          </p>
+                    <>
+                      {notifications.map(n => (
+                        <div
+                          key={n.id}
+                          className={cn(
+                            "flex gap-3 px-4 py-3 items-start relative group transition-colors",
+                            n.lue ? "bg-card hover:bg-muted/30" : "bg-primary/5 hover:bg-primary/10"
+                          )}
+                        >
+                          <span className={cn(
+                            'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                            n.type_notif === 'WARNING' || n.type === 'WARNING' ? 'bg-amber-500' : 
+                            n.type_notif === 'DANGER' || n.type === 'DANGER' ? 'bg-destructive' :
+                            n.type_notif === 'SUCCESS' || n.type_notif === 'LIVRAISON' ? 'bg-emerald-500' : 'bg-primary',
+                          )} />
+                          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => !n.lue && marquerLue(n.id)}>
+                            <p className={cn("text-xs font-semibold truncate", !n.lue ? "text-foreground" : "text-muted-foreground")}>{n.titre}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                            <p className="mt-1 text-[9px] text-muted-foreground">
+                              {new Date(n.date_creation).toLocaleString('fr-FR')}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => supprimer(n.id)}
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                      </button>
-                    ))
+                      ))}
+
+                      {showAll && hasMore && (
+                        <div className="p-3 text-center border-t shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs"
+                            onClick={fetchNextPage}
+                            disabled={loading}
+                          >
+                            {loading ? "Chargement..." : "Charger plus"}
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </motion.div>

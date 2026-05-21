@@ -390,10 +390,76 @@ class HeatmapTraficView(APIView):
             try:
                 lat = round(t.position_actuelle.y, 6)
                 lng = round(t.position_actuelle.x, 6)
-                points.append(_point_geo(
-                    lat, lng, weight=1,
-                    disponible=t.is_available, en_livraison=t.is_on_delivery,
-                ))
+                points.append(_point(lat, lng, weight=1.0))
             except Exception:
                 continue
         return Response({'type': 'trafic', 'periode': periode, 'points': points, 'count': len(points)})
+
+
+# ─── Prévisions de demande ────────────────────────────────────────────────────
+class PrevisionDemandeView(APIView):
+    """Régression lineaire simple sur historique commandes + alertes pics."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from commandes.models import Commande
+        from django.db.models import Count
+        from django.utils import timezone
+        from datetime import timedelta, date
+        import json
+
+        # Historique 90 jours
+        today = timezone.now().date()
+        history = []
+        counts = (
+            Commande.objects
+            .filter(created_at__date__gte=today - timedelta(days=90))
+            .extra(select={'day': 'DATE(created_at)'})
+            .values('day')
+            .annotate(n=Count('id'))
+            .order_by('day')
+        )
+        by_day = {str(r['day']): r['n'] for r in counts}
+
+        for i in range(90, 0, -1):
+            d = today - timedelta(days=i)
+            history.append({'date': str(d), 'commandes': by_day.get(str(d), 0)})
+
+        # Régression linéaire simple (moindres carrés)
+        n = len(history)
+        xs = list(range(n))
+        ys = [h['commandes'] for h in history]
+        if n >= 2:
+            x_mean = sum(xs) / n
+            y_mean = sum(ys) / n
+            num = sum((xs[i] - x_mean) * (ys[i] - y_mean) for i in range(n))
+            den = sum((xs[i] - x_mean) ** 2 for i in range(n))
+            slope = num / den if den != 0 else 0
+            intercept = y_mean - slope * x_mean
+        else:
+            slope, intercept = 0, 0
+
+        # Prévisions 14 jours
+        previsions = []
+        for i in range(1, 15):
+            d = today + timedelta(days=i)
+            predicted = max(0, round(slope * (n + i) + intercept))
+            # Alerte pic: weekend ou predicted > moyenne * 1.5
+            avg = y_mean if n > 0 else 1
+            is_pic = (d.weekday() >= 5) or (predicted > avg * 1.5)
+            previsions.append({
+                'date': str(d),
+                'prevision': predicted,
+                'alerte_pic': is_pic,
+                'jour_semaine': ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][d.weekday()],
+            })
+
+        return Response({
+            'historique': history[-30:],  # 30 derniers jours pour le graphe
+            'previsions': previsions,
+            'tendance': {
+                'slope': round(slope, 3),
+                'direction': 'hausse' if slope > 0.1 else 'baisse' if slope < -0.1 else 'stable',
+                'moyenne_7j': round(sum(ys[-7:]) / 7, 1) if len(ys) >= 7 else 0,
+            },
+        })

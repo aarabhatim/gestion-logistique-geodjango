@@ -158,3 +158,37 @@ class AdminResetPasswordView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'message': 'Mot de passe réinitialisé.'})
+
+
+# ─── Impersonation ────────────────────────────────────────────────────────────
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+class ImpersonateUserView(APIView):
+    """Admin only: retourne des tokens JWT valides pour un autre utilisateur."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if getattr(request.user, 'role', None) != 'ADMIN':
+            return Response({'error': 'Acces admin requis'}, status=403)
+        target_id = request.data.get('user_id')
+        if not target_id:
+            return Response({'error': 'user_id requis'}, status=400)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target = User.objects.get(pk=target_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Utilisateur introuvable'}, status=404)
+        refresh = RefreshToken.for_user(target)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': {
+                'id': target.id,
+                'email': target.email,
+                'role': getattr(target, 'role', None),
+                'full_name': target.get_full_name(),
+            }
+        })

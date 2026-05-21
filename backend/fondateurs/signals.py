@@ -33,10 +33,16 @@ def auto_desactiver_produit_stock_zero(sender, instance, **kwargs):
             from notifications.models import envoyer_notification
             envoyer_notification(
                 instance.fondateur.user,
-                titre=f"📦 Stock bas — {instance.nom}",
-                message=f"Le produit '{instance.nom}' n'a plus que {instance.stock} unité(s) en stock (seuil d'alerte : {instance.stock_alerte}).",
+                titre=f"Stock bas -- {instance.nom}",
+                message=f"Le produit '{instance.nom}' n'a plus que {instance.stock} unite(s) en stock (seuil : {instance.stock_alerte}).",
                 type_notif='WARNING',
             )
+        except Exception:
+            pass
+        # Email d'alerte stock au fondateur
+        try:
+            from utils.emails import email_alerte_stock
+            email_alerte_stock(instance, instance.fondateur.user)
         except Exception:
             pass
 
