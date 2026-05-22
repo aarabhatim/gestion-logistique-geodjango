@@ -100,43 +100,77 @@ a:hover { color: var(--accent-secondary); }
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow-md);
-  transition: all var(--transition-base);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  will-change: transform;
 }
 .glass-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   background: var(--bg-card-hover);
 }
 
+/* Inputs rapides */
+.glass-input, select.glass-input {
+  transition: border-color 0.13s ease, box-shadow 0.13s ease, background 0.13s ease;
+}
+
+/* Badges cliquables */
+.badge[onClick], .badge[style*="cursor: pointer"] {
+  transition: opacity 0.13s ease, transform 0.1s ease;
+}
+.badge[style*="cursor: pointer"]:hover { opacity: 0.85; transform: scale(1.04); }
+.badge[style*="cursor: pointer"]:active { transform: scale(0.97); }
+
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
-  gap: 0.5rem; padding: 0.7rem 1.4rem; border-radius: var(--radius-md);
-  font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.95rem;
-  cursor: pointer; transition: all var(--transition-base);
+  gap: 0.45rem; padding: 0.65rem 1.3rem; border-radius: var(--radius-md);
+  font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.93rem;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease,
+              transform 0.12s ease, box-shadow 0.14s ease, opacity 0.14s ease;
   border: none; outline: none; white-space: nowrap;
+  user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+.btn:active:not(:disabled) { transform: scale(0.96) !important; }
+
 .btn-primary {
   background: var(--gradient-primary); color: white;
-  box-shadow: 0 6px 18px rgba(79,140,255,0.35);
+  box-shadow: 0 4px 14px rgba(79,140,255,0.3);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--gradient-primary-hover); transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(79,140,255,0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(79,140,255,0.45);
+  filter: brightness(1.08);
 }
+
 .btn-secondary {
   background: rgba(255,255,255,0.06); color: var(--text-primary);
   border: 1px solid rgba(255,255,255,0.1);
 }
-.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
-.btn-success { background: var(--gradient-success); color: white; box-shadow: 0 6px 18px rgba(16,185,129,0.35); }
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.18);
+}
+
+.btn-success { background: var(--gradient-success); color: white; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
+.btn-success:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 8px 20px rgba(16,185,129,0.4); }
+
 .btn-warning { background: var(--gradient-warning); color: white; }
+.btn-warning:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+
 .btn-danger { background: var(--gradient-danger); color: white; }
+.btn-danger:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 8px 20px rgba(239,68,68,0.4); }
+
 .btn-ghost { background: transparent; color: var(--text-primary); border: 1px solid rgba(255,255,255,0.08); }
-.btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
+.btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+
 .btn-full { width: 100%; }
-.btn-sm { padding: 0.45rem 0.9rem; font-size: 0.82rem; border-radius: var(--radius-sm); }
-.btn-icon { padding: 0.55rem; border-radius: var(--radius-sm); }
+.btn-sm { padding: 0.38rem 0.82rem; font-size: 0.8rem; border-radius: var(--radius-sm); }
+.btn-icon { padding: 0.48rem; border-radius: var(--radius-sm); }
+
+/* Spinner intégré dans les boutons */
+.btn .spin-icon { animation: spin 0.65s linear infinite; }
 
 .input-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
 .input-label { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }

@@ -275,20 +275,36 @@ const Toast = ({ msg, type, onHide }) => {
   );
 };
 
+// ─── Shared button styles ─────────────────────────────────────────────────────
+const BTN_ICON = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  padding: '5px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)',
+  cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, transform 0.1s',
+  lineHeight: 1,
+};
+const BTN_PRIMARY = {
+  background: 'rgba(99,102,241,0.2)', borderColor: 'rgba(99,102,241,0.4)', color: '#a5b4fc',
+};
+const BTN_DANGER = {
+  background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171',
+};
+
 // ─── Commandes principale ─────────────────────────────────────────────────────
 const Commandes = () => {
   const { user } = useAuth();
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingIds, setPendingIds] = useState(new Set()); // boutons en cours
   const [filterStatut, setFilterStatut] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
-  const [selected, setSelected] = useState(null);       // commande dans détail modal
-  const [assigning, setAssigning] = useState(null);     // commande dans modal assigner
+  const [selected, setSelected] = useState(null);
+  const [assigning, setAssigning] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const showToast = (msg, type = 'success') => setToast({ msg, type });
+  const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
   const fetchCommandes = useCallback(async (statut = filterStatut, q = search, p = page) => {
     setLoading(true);
@@ -309,26 +325,50 @@ const Commandes = () => {
 
   useEffect(() => { fetchCommandes(); }, []);
 
-  const handleAction = async (apiFn, id, label) => {
-    try {
-      await apiFn(id);
-      showToast(`${label} avec succès !`);
-      fetchCommandes();
-    } catch (e) {
-      showToast(e.response?.data?.error || e.response?.data?.detail || `Erreur: ${label}`, 'error');
-    }
+  // ── Optimistic update : change le statut localement immédiatement ────────────
+  const NEXT_STATUT = {
+    EN_ATTENTE: 'VALIDEE', VALIDEE: 'EN_PREPARATION',
+    EN_PREPARATION: 'EN_ROUTE', EN_ROUTE: 'LIVREE',
   };
 
-  const handleAvancer = (cmd) => handleAction(commandesApi.avancer, cmd.id, NEXT_LABEL[cmd.statut] || 'Avancé');
-  const handleAnnuler = (cmd) => {
+  const handleAvancer = useCallback(async (cmd) => {
+    const nextStatut = NEXT_STATUT[cmd.statut];
+    if (!nextStatut || pendingIds.has(cmd.id)) return;
+    // Optimistic update — UI réagit immédiatement
+    setPendingIds(s => new Set(s).add(cmd.id));
+    setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: nextStatut } : c));
+    try {
+      await commandesApi.avancer(cmd.id);
+      showToast(`${NEXT_LABEL[cmd.statut] || 'Avancé'} avec succès !`);
+    } catch (e) {
+      // Rollback si erreur
+      setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
+      showToast(e.response?.data?.error || e.response?.data?.detail || 'Erreur', 'error');
+    } finally {
+      setPendingIds(s => { const n = new Set(s); n.delete(cmd.id); return n; });
+    }
+  }, [pendingIds, showToast]);
+
+  const handleAnnuler = useCallback(async (cmd) => {
     if (!window.confirm(`Annuler la commande ${cmd.reference} ?`)) return;
-    handleAction(commandesApi.adminAnnuler, cmd.id, 'Annulé');
-  };
+    if (pendingIds.has(cmd.id)) return;
+    setPendingIds(s => new Set(s).add(cmd.id));
+    setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: 'ANNULEE' } : c));
+    try {
+      await commandesApi.adminAnnuler(cmd.id);
+      showToast('Commande annulée');
+    } catch (e) {
+      setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
+      showToast(e.response?.data?.error || 'Erreur annulation', 'error');
+    } finally {
+      setPendingIds(s => { const n = new Set(s); n.delete(cmd.id); return n; });
+    }
+  }, [pendingIds, showToast]);
 
   const totalPages = Math.ceil(count / 20);
-  const changePage = (np) => { setPage(np); fetchCommandes(filterStatut, search, np); };
-  const changeFilter = (statut) => { setFilterStatut(statut); setPage(1); fetchCommandes(statut, search, 1); };
-  const changeSearch = (q) => { setSearch(q); setPage(1); fetchCommandes(filterStatut, q, 1); };
+  const changePage = useCallback((np) => { setPage(np); fetchCommandes(filterStatut, search, np); }, [filterStatut, search, fetchCommandes]);
+  const changeFilter = useCallback((statut) => { setFilterStatut(statut); setPage(1); fetchCommandes(statut, search, 1); }, [search, fetchCommandes]);
+  const changeSearch = useCallback((q) => { setSearch(q); setPage(1); fetchCommandes(filterStatut, q, 1); }, [filterStatut, fetchCommandes]);
 
   // Quick stats per status
   const countByStatut = (s) => commandes.filter(c => c.statut === s).length;
@@ -450,31 +490,48 @@ const Commandes = () => {
                 <td>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     {/* Voir détail */}
-                    <button className="btn btn-sm btn-secondary" onClick={() => setSelected(cmd)} title="Voir détail" style={{ padding: '4px 8px' }}>
+                    <button
+                      onClick={() => setSelected(cmd)}
+                      title="Voir détail"
+                      style={BTN_ICON}
+                    >
                       <Eye size={13} />
                     </button>
 
                     {/* Avancer statut */}
                     {NEXT_LABEL[cmd.statut] && (
-                      <button className="btn btn-sm btn-primary" onClick={() => handleAvancer(cmd)}
-                        title={NEXT_LABEL[cmd.statut]} style={{ padding: '4px 8px' }}>
-                        <ArrowRight size={13} />
+                      <button
+                        onClick={() => handleAvancer(cmd)}
+                        disabled={pendingIds.has(cmd.id)}
+                        title={NEXT_LABEL[cmd.statut]}
+                        style={{ ...BTN_ICON, ...BTN_PRIMARY, opacity: pendingIds.has(cmd.id) ? 0.6 : 1 }}
+                      >
+                        {pendingIds.has(cmd.id)
+                          ? <RefreshCw size={12} style={{ animation: 'spin 0.7s linear infinite' }} />
+                          : <ArrowRight size={13} />
+                        }
                       </button>
                     )}
 
                     {/* Assigner transporteur */}
                     {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'EN_ROUTE'].includes(cmd.statut) && user?.role === 'ADMIN' && !cmd.transporteur && (
-                      <button className="btn btn-secondary btn-sm" onClick={() => setAssigning(cmd)}
-                        title="Assigner un transporteur" style={{ padding: '4px 8px' }}>
+                      <button
+                        onClick={() => setAssigning(cmd)}
+                        title="Assigner un transporteur"
+                        style={BTN_ICON}
+                      >
                         <UserCheck size={13} />
                       </button>
                     )}
 
                     {/* Annuler */}
                     {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && user?.role === 'ADMIN' && (
-                      <button className="btn btn-sm" onClick={() => handleAnnuler(cmd)}
+                      <button
+                        onClick={() => handleAnnuler(cmd)}
+                        disabled={pendingIds.has(cmd.id)}
                         title="Annuler la commande"
-                        style={{ padding: '4px 8px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6 }}>
+                        style={{ ...BTN_ICON, ...BTN_DANGER, opacity: pendingIds.has(cmd.id) ? 0.6 : 1 }}
+                      >
                         <X size={13} />
                       </button>
                     )}

@@ -1816,6 +1816,23 @@ const ClientDashboard = () => {
   const [groupMembers, setGroupMembers] = useState(1);
   const [activeChatCommande, setActiveChatCommande] = useState(null);
 
+  // Commande EN_ROUTE avec transporteur → floating chat button
+  const [activeDelivery, setActiveDelivery] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await commandesApi.list({ statut: 'EN_ROUTE', page_size: 5 });
+        const rows = res.data.results || res.data || [];
+        const withDriver = rows.find(c => c.transporteur_detail);
+        if (!cancelled) setActiveDelivery(withDriver || null);
+      } catch { /* ignore */ }
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary,#0f1422)', color: 'var(--text-primary,#f1f5f9)', fontFamily: 'system-ui,sans-serif' }}>
 
@@ -1883,6 +1900,40 @@ const ClientDashboard = () => {
           onClose={() => setActiveChatCommande(null)}
         />
       )}
+
+      {/* ── Floating chat button — visible sur tous les onglets quand livraison active ── */}
+      {activeDelivery && !activeChatCommande && (
+        <button
+          onClick={() => setActiveChatCommande(activeDelivery)}
+          title={`Chat avec ${activeDelivery.transporteur_detail?.first_name || 'le livreur'}`}
+          style={{
+            position: 'fixed', bottom: 90, right: 22, zIndex: 500,
+            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+            border: 'none', borderRadius: 28, padding: '10px 18px',
+            color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+            display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 4px 24px rgba(99,102,241,0.45)',
+            transition: 'transform 0.18s, box-shadow 0.18s',
+            animation: 'chatPulse 2.5s ease-in-out infinite',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; e.currentTarget.style.boxShadow = '0 6px 32px rgba(99,102,241,0.6)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(99,102,241,0.45)'; }}
+        >
+          <MessageSquare size={16} />
+          <span>Chat livreur</span>
+          <span style={{
+            background: '#10b981', borderRadius: '50%', width: 8, height: 8,
+            display: 'inline-block', boxShadow: '0 0 6px #10b981',
+          }} />
+        </button>
+      )}
+      <style>{`
+        @keyframes chatPulse {
+          0%, 100% { box-shadow: 0 4px 24px rgba(99,102,241,0.45); }
+          50%       { box-shadow: 0 4px 32px rgba(99,102,241,0.7), 0 0 0 6px rgba(99,102,241,0.15); }
+        }
+      `}</style>
+
       <ChatbotWidget />
     </div>
   );
