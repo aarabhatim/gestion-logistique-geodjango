@@ -114,7 +114,7 @@ export default function BannieresPage() {
           onClick={openCreate}
           style={{
             marginLeft: 'auto',
-            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+            background: 'linear-gradient(135deg,#16a34a,#22c55e)',
             border: 'none', color: '#fff', borderRadius: 10,
             padding: '9px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14
           }}
@@ -128,7 +128,7 @@ export default function BannieresPage() {
         <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>Chargement…</div>
       ) : list.length === 0 ? (
         <div style={{
-          background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(99,102,241,0.2)',
+          background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.12)',
           borderRadius: 14, padding: 40, textAlign: 'center', color: '#64748b'
         }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>📢</div>
@@ -140,7 +140,7 @@ export default function BannieresPage() {
             const s = TYPE_STYLES[b.type] || TYPE_STYLES.info;
             return (
               <div key={b.id} style={{
-                background: 'rgba(30,41,59,0.7)',
+                background: 'rgba(13,32,21,0.88)',
                 border: `1px solid ${b.active ? s.border : 'rgba(71,85,105,0.3)'}`,
                 borderRadius: 14, padding: '16px 20px',
                 opacity: b.active ? 1 : 0.6,
@@ -158,8 +158,8 @@ export default function BannieresPage() {
                         color: s.color, borderRadius: 6, padding: '2px 8px', fontSize: 11
                       }}>{b.type}</span>
                       <span style={{
-                        background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
-                        color: '#a5b4fc', borderRadius: 6, padding: '2px 8px', fontSize: 11
+                        background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)',
+                        color: '#22c55e', borderRadius: 6, padding: '2px 8px', fontSize: 11
                       }}>🎯 {b.role_cible}</span>
                       {b.dismissible && (
                         <span style={{
@@ -190,8 +190,8 @@ export default function BannieresPage() {
                     <button
                       onClick={() => openEdit(b)}
                       style={{
-                        background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
-                        color: '#a5b4fc', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13
+                        background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)',
+                        color: '#22c55e', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13
                       }}
                     >✏️</button>
                     <button
@@ -216,7 +216,7 @@ export default function BannieresPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div style={{
-            background: '#0f172a', border: '1px solid rgba(99,102,241,0.35)',
+            background: '#070e09', border: '1px solid rgba(34,197,94,0.25)',
             borderRadius: 18, padding: '28px 32px', width: '100%', maxWidth: 560
           }}>
             <h2 style={{ margin: '0 0 20px', color: '#f1f5f9', fontSize: 17 }}>
@@ -238,7 +238,7 @@ export default function BannieresPage() {
                 rows={3}
                 style={{
                   width: '100%', padding: '8px 12px',
-                  background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                  background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.22)',
                   borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box'
                 }}
@@ -254,7 +254,7 @@ export default function BannieresPage() {
                   onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                   style={{
                     width: '100%', padding: '8px 12px',
-                    background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                    background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.22)',
                     borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
                   }}
                 >
@@ -268,7 +268,7 @@ export default function BannieresPage() {
                   onChange={e => setForm(f => ({ ...f, role_cible: e.target.value }))}
                   style={{
                     width: '100%', padding: '8px 12px',
-                    background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                    background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.22)',
                     borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
                   }}
                 >
@@ -286,7 +286,7 @@ export default function BannieresPage() {
                   onChange={e => setForm(f => ({ ...f, date_debut: e.target.value }))}
                   style={{
                     width: '100%', padding: '8px 12px',
-                    background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                    background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.22)',
                     borderRadius: 8, color: '#f1f5f9', fontSize: 13, outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -300,7 +300,7 @@ export default function BannieresPage() {
                   onChange={e => setForm(f => ({ ...f, date_fin: e.target.value }))}
                   style={{
                     width: '100%', padding: '8px 12px',
-                    background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                    background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.22)',
                     borderRadius: 8, color: '#f1f5f9', fontSize: 13, outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -341,7 +341,7 @@ export default function BannieresPage() {
                 onClick={handleSave}
                 disabled={saving || !form.message.trim()}
                 style={{
-                  background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                  background: 'linear-gradient(135deg,#16a34a,#22c55e)',
                   border: 'none', color: '#fff', borderRadius: 9,
                   padding: '9px 22px', cursor: saving ? 'not-allowed' : 'pointer',
                   fontWeight: 600, fontSize: 14, opacity: saving ? 0.7 : 1

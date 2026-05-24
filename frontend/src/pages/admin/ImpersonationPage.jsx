@@ -13,7 +13,7 @@ export default function ImpersonationPage() {
   const { user: adminUser } = useAuthStore();
 
   const ROLE_COLORS = {
-    ADMIN: '#6366f1', FONDATEUR: '#f59e0b',
+    ADMIN: '#22c55e', FONDATEUR: '#f59e0b',
     TRANSPORTEUR: '#22c55e', CLIENT: '#38bdf8',
   };
   const ROLE_ICONS = {
@@ -60,7 +60,7 @@ export default function ImpersonationPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
         <div style={{
           width: 46, height: 46, borderRadius: 12,
-          background: 'linear-gradient(135deg,#8b5cf6,#6366f1)',
+          background: 'linear-gradient(135deg,#16a34a,#22c55e)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
         }}>🕵️</div>
         <div>
@@ -96,7 +96,7 @@ export default function ImpersonationPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
-              background: ROLE_COLORS[active.role] || '#6366f1',
+              background: ROLE_COLORS[active.role] || '#22c55e',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 22
             }}>
@@ -148,7 +148,7 @@ export default function ImpersonationPage() {
 
       {/* Search */}
       <div style={{
-        background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(99,102,241,0.2)',
+        background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.15)',
         borderRadius: 16, padding: '20px 24px'
       }}>
         <h3 style={{ margin: '0 0 14px', color: '#e2e8f0', fontSize: 15 }}>
@@ -161,7 +161,7 @@ export default function ImpersonationPage() {
             placeholder="Nom, email ou username…"
             style={{
               width: '100%', padding: '10px 14px',
-              background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+              background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.25)',
               borderRadius: 10, color: '#f1f5f9', fontSize: 14, outline: 'none',
               boxSizing: 'border-box'
             }}
@@ -169,7 +169,7 @@ export default function ImpersonationPage() {
           {searching && (
             <div style={{
               position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-              color: '#6366f1', fontSize: 12
+              color: '#22c55e', fontSize: 12
             }}>Recherche…</div>
           )}
         </div>
@@ -179,13 +179,13 @@ export default function ImpersonationPage() {
             {results.map(u => (
               <div key={u.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(99,102,241,0.15)',
+                background: 'rgba(10,24,15,0.7)', border: '1px solid rgba(34,197,94,0.12)',
                 borderRadius: 10, padding: '12px 16px',
                 transition: 'border-color 0.2s'
               }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: '50%',
-                  background: ROLE_COLORS[u.role] || '#6366f1',
+                  background: ROLE_COLORS[u.role] || '#22c55e',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 18, flexShrink: 0
                 }}>
@@ -210,9 +210,9 @@ export default function ImpersonationPage() {
                     onClick={() => handleImpersonate(u)}
                     disabled={!!active}
                     style={{
-                      background: active ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.2)',
-                      border: '1px solid rgba(99,102,241,0.4)',
-                      color: active ? '#64748b' : '#a5b4fc',
+                      background: active ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.15)',
+                      border: '1px solid rgba(34,197,94,0.35)',
+                      color: active ? '#64748b' : '#22c55e',
                       borderRadius: 8, padding: '7px 14px',
                       cursor: active ? 'not-allowed' : 'pointer',
                       fontWeight: 600, fontSize: 13

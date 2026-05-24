@@ -43,7 +43,7 @@ const Clients = () => {
     return (f + l).toUpperCase() || u.username?.[0]?.toUpperCase() || '?';
   };
 
-  const avatarColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+  const avatarColors = ['#22c55e', '#10b981', '#f59e0b', '#ef4444', '#16a34a', '#ec4899', '#06b6d4'];
   const avatarColor = (id) => avatarColors[id % avatarColors.length];
 
   return (

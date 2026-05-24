@@ -89,7 +89,7 @@ export default function PromotionsPage() {
             <tbody>
               {promos.map(p => (
                 <tr key={p.id}>
-                  <td><code style={{ background: 'rgba(99,102,241,0.15)', padding: '2px 8px', borderRadius: 6, fontSize: 12 }}>{p.code}</code></td>
+                  <td><code style={{ background: 'rgba(34,197,94,0.12)', padding: '2px 8px', borderRadius: 6, fontSize: 12 }}>{p.code}</code></td>
                   <td style={{ fontWeight: 600, fontSize: 13 }}>{p.nom}</td>
                   <td style={{ fontSize: 12 }}>{p.type_reduction}</td>
                   <td style={{ fontWeight: 700, color: '#10b981' }}>{p.type_reduction === 'pourcentage' ? `${p.valeur}%` : `${p.valeur} DH`}</td>

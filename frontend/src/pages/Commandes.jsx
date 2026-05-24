@@ -42,7 +42,7 @@ const exportCSV = (rows) => {
 const STATUT_CONFIG = {
   EN_ATTENTE:     { label: 'En attente',     cls: 'badge-warning', dot: '#f59e0b', next: 'Valider', icon: Check },
   VALIDEE:        { label: 'Validée',        cls: 'badge-info',    dot: '#3b82f6', next: 'Préparer', icon: Package },
-  EN_PREPARATION: { label: 'En préparation', cls: 'badge-primary', dot: '#8b5cf6', next: 'En route', icon: Truck },
+  EN_PREPARATION: { label: 'En préparation', cls: 'badge-primary', dot: '#22c55e', next: 'En route', icon: Truck },
   EN_ROUTE:       { label: 'En route',       cls: 'badge-success', dot: '#06b6d4', next: 'Livrer', icon: Check },
   LIVREE:         { label: 'Livrée',         cls: 'badge-success', dot: '#10b981', next: null, icon: Check },
   ANNULEE:        { label: 'Annulée',        cls: 'badge-danger',  dot: '#ef4444', next: null, icon: X },
@@ -286,7 +286,7 @@ const BTN_ICON = {
   lineHeight: 1,
 };
 const BTN_PRIMARY = {
-  background: 'rgba(99,102,241,0.2)', borderColor: 'rgba(99,102,241,0.4)', color: '#a5b4fc',
+  background: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.35)', color: '#22c55e',
 };
 const BTN_DANGER = {
   background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171',

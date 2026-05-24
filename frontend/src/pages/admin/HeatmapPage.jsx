@@ -25,7 +25,7 @@ const VILLES_COORDS = {
 };
 
 const STATUT_COLORS = {
-  EN_ATTENTE: '#f59e0b', VALIDEE: '#3b82f6', EN_PREPARATION: '#8b5cf6',
+  EN_ATTENTE: '#f59e0b', VALIDEE: '#3b82f6', EN_PREPARATION: '#22c55e',
   EN_ROUTE: '#06b6d4', LIVREE: '#10b981', ANNULEE: '#ef4444',
 };
 
@@ -238,9 +238,9 @@ const HeatmapPage = () => {
           {PERIODES.map(p => (
             <button key={p.value} onClick={() => setPeriode(p.value)}
               style={{
-                padding: '8px 14px', borderRadius: 8, border: `1px solid ${periode === p.value ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.1)'}`,
-                background: periode === p.value ? 'rgba(99,102,241,0.15)' : 'transparent',
-                color: periode === p.value ? '#a5b4fc' : 'var(--text-secondary)',
+                padding: '8px 14px', borderRadius: 8, border: `1px solid ${periode === p.value ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                background: periode === p.value ? 'rgba(34,197,94,0.12)' : 'transparent',
+                color: periode === p.value ? '#22c55e' : 'var(--text-secondary)',
                 cursor: 'pointer', fontSize: 12,
               }}>
               {p.label}

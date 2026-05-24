@@ -13,7 +13,7 @@ const RAISON_COLORS = {
   fraude:        { bg: 'rgba(239,68,68,0.15)',  border: 'rgba(239,68,68,0.4)',  color: '#fca5a5' },
   inaccessible:  { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.4)', color: '#fcd34d' },
   dangereux:     { bg: 'rgba(239,68,68,0.15)',  border: 'rgba(239,68,68,0.4)',  color: '#fca5a5' },
-  faux:          { bg: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.4)', color: '#a5b4fc' },
+  faux:          { bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.35)', color: '#22c55e' },
   autre:         { bg: 'rgba(71,85,105,0.2)',   border: 'rgba(71,85,105,0.4)',  color: '#94a3b8' },
 };
 
@@ -114,7 +114,7 @@ export default function BlacklistPage() {
       {/* Add form */}
       {showForm && (
         <div style={{
-          background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(239,68,68,0.3)',
+          background: 'rgba(13,32,21,0.90)', border: '1px solid rgba(239,68,68,0.3)',
           borderRadius: 14, padding: '20px 24px', marginBottom: 24
         }}>
           <h3 style={{ margin: '0 0 16px', color: '#f1f5f9', fontSize: 15 }}>
@@ -135,7 +135,7 @@ export default function BlacklistPage() {
                 placeholder="Ex: 12 Rue Hassan II, Casablanca"
                 style={{
                   width: '100%', padding: '9px 13px',
-                  background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                  background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
                   borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none',
                   boxSizing: 'border-box'
                 }}
@@ -148,7 +148,7 @@ export default function BlacklistPage() {
                 onChange={e => setForm(f => ({ ...f, raison: e.target.value }))}
                 style={{
                   width: '100%', padding: '9px 13px',
-                  background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                  background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
                   borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
                 }}
               >
@@ -166,7 +166,7 @@ export default function BlacklistPage() {
               placeholder="Contexte supplémentaire…"
               style={{
                 width: '100%', padding: '9px 13px',
-                background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+                background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
                 borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -189,7 +189,7 @@ export default function BlacklistPage() {
 
       {/* Verify tool */}
       <div style={{
-        background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(99,102,241,0.2)',
+        background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.12)',
         borderRadius: 14, padding: '16px 20px', marginBottom: 24
       }}>
         <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 8 }}>
@@ -203,7 +203,7 @@ export default function BlacklistPage() {
             placeholder="Entrer une adresse…"
             style={{
               flex: 1, padding: '8px 12px',
-              background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+              background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
               borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
             }}
           />
@@ -211,7 +211,7 @@ export default function BlacklistPage() {
             onClick={handleVerify}
             disabled={verifying}
             style={{
-              background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)',
+              background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.35)',
               color: '#a5b4fc', borderRadius: 8, padding: '8px 18px',
               cursor: 'pointer', fontWeight: 600, fontSize: 14
             }}
@@ -236,7 +236,7 @@ export default function BlacklistPage() {
 
       {/* Search + list */}
       <div style={{
-        background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(99,102,241,0.2)',
+        background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.12)',
         borderRadius: 16, padding: '20px 24px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -249,7 +249,7 @@ export default function BlacklistPage() {
             placeholder="Filtrer par adresse…"
             style={{
               padding: '7px 12px',
-              background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(99,102,241,0.3)',
+              background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
               borderRadius: 8, color: '#f1f5f9', fontSize: 13, outline: 'none', width: 220
             }}
           />
@@ -269,7 +269,7 @@ export default function BlacklistPage() {
               return (
                 <div key={a.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(71,85,105,0.25)',
+                  background: 'rgba(7,18,11,0.55)', border: '1px solid rgba(34,197,94,0.10)',
                   borderRadius: 10, padding: '12px 16px'
                 }}>
                   <span style={{ fontSize: 20 }}>{rInfo.icon}</span>

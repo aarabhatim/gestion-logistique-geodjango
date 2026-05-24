@@ -41,7 +41,7 @@ const ProductCard = ({ p, onAdd }) => {
   const promo = p.prix_promo && parseFloat(p.prix_promo) < parseFloat(p.prix);
   return (
     <div style={{ display: 'flex', gap: 10, padding: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', marginTop: 6 }}>
-      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🛍️</div>
+      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg,#16a34a,#22c55e)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🛍️</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: 'white' }}>{p.nom}</div>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>🏪 {p.fondateur_nom}</div>
@@ -51,7 +51,7 @@ const ProductCard = ({ p, onAdd }) => {
             <span style={{ fontWeight: 800, color: '#34d399', fontSize: 14 }}>{p.prix_effectif ?? p.prix} MAD</span>
           </div>
           {onAdd && (
-            <button onClick={() => onAdd(p)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', cursor: 'pointer', color: 'white', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>
+            <button onClick={() => onAdd(p)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', cursor: 'pointer', color: 'white', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>
               <Plus size={11} /> Panier
             </button>
           )}
@@ -263,10 +263,10 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
         onClick={() => setOpen(o => !o)}
         style={{
           width: 54, height: 54, borderRadius: '50%', border: 'none',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          background: 'linear-gradient(135deg, #16a34a, #22c55e)',
           color: 'white', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 24px rgba(99,102,241,0.55)',
+          boxShadow: '0 4px 24px rgba(34,197,94,0.45)',
           transition: 'transform 0.2s',
           fontSize: open ? 20 : 24,
         }}
@@ -290,10 +290,10 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
           <div style={{
             padding: '14px 16px',
             borderBottom: '1px solid rgba(255,255,255,0.07)',
-            background: 'linear-gradient(135deg,rgba(99,102,241,0.18),rgba(139,92,246,0.18))',
+            background: 'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(22,163,74,0.12))',
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            <div style={{ width: 36, height: 36, borderRadius: 12, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
+            <div style={{ width: 36, height: 36, borderRadius: 12, background: 'linear-gradient(135deg,#16a34a,#22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, color: 'white', fontSize: 14 }}>Assistant DeliverMap</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
@@ -315,7 +315,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
                   borderBottomRightRadius: msg.role === 'user' ? 4 : 14,
                   borderBottomLeftRadius: msg.role === 'user' ? 14 : 4,
                   background: msg.role === 'user'
-                    ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
+                    ? 'linear-gradient(135deg,#16a34a,#22c55e)'
                     : 'rgba(255,255,255,0.07)',
                   color: 'white', fontSize: 13, lineHeight: 1.55,
                   whiteSpace: 'pre-wrap',
@@ -373,7 +373,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
               {suggestions.map((s, i) => (
                 <button key={i} onClick={() => sendMessage(s.text)}
                   style={{
-                    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+                    background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)',
                     color: 'rgba(255,255,255,0.75)', borderRadius: 20, padding: '5px 10px',
                     fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                   }}>
@@ -413,7 +413,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
               disabled={loading || !input.trim()}
               style={{
                 padding: '8px 13px', borderRadius: 10, border: 'none',
-                background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                background: 'linear-gradient(135deg,#16a34a,#22c55e)',
                 color: 'white', cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
                 opacity: loading || !input.trim() ? 0.45 : 1,
                 display: 'flex', alignItems: 'center',

@@ -7,7 +7,7 @@ const CATEGORIE_COLORS = {
   PHARMACIE:   '#3b82f6',
   RESTAURATION:'#f59e0b',
   BOUTIQUE:    '#ec4899',
-  ELECTRONIQUE:'#8b5cf6',
+  ELECTRONIQUE:'#22c55e',
 };
 
 const CATEGORIE_ICONS = {
