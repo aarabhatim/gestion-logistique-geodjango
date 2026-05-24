@@ -18,15 +18,18 @@ export function AdminShell({ children, fullBleed = false }) {
   }, [setAdminRole, setDefaultRole, setDark]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#080E09' }}>
       <AppSidebar />
-      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <AppHeader />
         <motion.main
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25 }}
-          className={cn('flex-1 overflow-auto', fullBleed ? 'p-0' : 'p-6')}
+          style={{
+            flex: 1, overflow: 'auto',
+            padding: fullBleed ? 0 : '24px',
+          }}
         >
           {children}
         </motion.main>

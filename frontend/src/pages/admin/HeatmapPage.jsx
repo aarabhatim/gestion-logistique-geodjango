@@ -299,14 +299,23 @@ const HeatmapPage = () => {
             ref={mapRef}
             whenCreated={(m) => { mapRef.current = m; }}>
             <LayersControl position="topright">
-              <BaseLayer checked name="OpenStreetMap">
-                <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <BaseLayer name="Streets (MapTiler)">
+                <TileLayer
+                  url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+                />
               </BaseLayer>
-              <BaseLayer name="Satellite (Esri)">
-                <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+              <BaseLayer name="Satellite (MapTiler)">
+                <TileLayer
+                  url="https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=5d2tALzIlgsl0ucJYKZL"
+                  attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+                />
               </BaseLayer>
-              <BaseLayer name="Sombre (CartoDB)">
-                <TileLayer attribution='&copy; CartoDB' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+              <BaseLayer checked name="Sombre (MapTiler)">
+                <TileLayer
+                  url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+                />
               </BaseLayer>
             </LayersControl>
 

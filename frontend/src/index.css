@@ -192,3 +192,132 @@ a:hover { color: var(--accent-secondary); }
 @keyframes typing-bounce { 0%,60%,100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-6px); opacity: 1; } }
 @keyframes shrinkBar { from { width: 100%; } to { width: 0%; } }
 @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.3); } 50% { transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN THEME OVERRIDES  [data-role="admin"]
+   Applies to all pages rendered inside AdminShell
+   ═══════════════════════════════════════════════════════════════ */
+[data-role="admin"] {
+  --bg-main:      #080E09;
+  --bg-card:      rgba(15, 29, 18, 0.92);
+  --bg-card-hover:rgba(18, 34, 22, 0.98);
+  --bg-elevated:  rgba(20, 38, 26, 0.95);
+  --text-primary: #f0faf2;
+  --text-secondary:#6B7280;
+  --text-muted:   #4B5563;
+  --accent-primary:    #22C55E;
+  --accent-primary-soft: rgba(34,197,94,0.15);
+  --accent-secondary:  #16A34A;
+  --gradient-primary:  linear-gradient(135deg, #16A34A 0%, #22C55E 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #15803D 0%, #16A34A 50%, #22C55E 100%);
+  --border-color:  rgba(34,197,94,0.1);
+  --border-strong: rgba(34,197,94,0.2);
+  --glass-border:  1px solid rgba(34,197,94,0.1);
+  --shadow-md:  0 8px 24px rgba(0,0,0,0.4);
+  --shadow-lg:  0 20px 50px rgba(0,0,0,0.55);
+  --shadow-glow: 0 0 22px rgba(34,197,94,0.3);
+  --scrollbar-color: rgba(34,197,94,0.25);
+}
+
+/* Body background for admin */
+[data-role="admin"] body,
+[data-role="admin"] #root {
+  background: #080E09;
+}
+
+/* Glass card — admin green variant */
+[data-role="admin"] .glass-card {
+  background: rgba(15, 29, 18, 0.88);
+  border: 1px solid rgba(34,197,94,0.1);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+[data-role="admin"] .glass-card:hover {
+  background: rgba(20, 38, 26, 0.94);
+  border-color: rgba(34,197,94,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+/* Dashboard layout helpers */
+[data-role="admin"] .dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1600px;
+}
+[data-role="admin"] .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+[data-role="admin"] .page-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #f0faf2;
+  letter-spacing: -0.03em;
+  margin-bottom: 0;
+}
+[data-role="admin"] .page-subtitle {
+  font-size: 0.85rem;
+  color: #6B7280;
+  margin-top: 4px;
+}
+
+/* Buttons — admin green theme */
+[data-role="admin"] .btn-primary {
+  background: linear-gradient(135deg, #16A34A, #22C55E);
+  box-shadow: 0 4px 14px rgba(34,197,94,0.3);
+  color: white;
+}
+[data-role="admin"] .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 8px 22px rgba(34,197,94,0.45);
+  transform: translateY(-1px);
+}
+[data-role="admin"] .btn-secondary {
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.18);
+  color: #22C55E;
+}
+[data-role="admin"] .btn-secondary:hover:not(:disabled) {
+  background: rgba(34,197,94,0.14);
+  border-color: rgba(34,197,94,0.28);
+}
+
+/* Table rows — admin */
+[data-role="admin"] .data-table tbody tr:hover {
+  background-color: rgba(34,197,94,0.04);
+}
+[data-role="admin"] .data-table th {
+  color: rgba(34,197,94,0.55);
+}
+
+/* Inputs */
+[data-role="admin"] .glass-input {
+  background: rgba(15, 29, 18, 0.7);
+  border-color: rgba(34,197,94,0.12);
+}
+[data-role="admin"] .glass-input:focus {
+  border-color: #22C55E;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+}
+
+/* Scrollbar — admin */
+[data-role="admin"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34,197,94,0.3), rgba(22,163,74,0.3));
+}
+
+/* Badges — use accent for primary badges */
+[data-role="admin"] .badge-primary {
+  background: rgba(34,197,94,0.15);
+  color: #22C55E;
+  border: 1px solid rgba(34,197,94,0.25);
+}
+
+/* Text gradient — admin */
+[data-role="admin"] .text-gradient {
+  background: linear-gradient(135deg, #22C55E, #86EFAC);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

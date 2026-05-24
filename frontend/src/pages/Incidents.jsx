@@ -159,8 +159,10 @@ const Incidents = () => {
             <MapPin size={12} /> Carte des incidents ({incidentsGeo.length} avec position GPS)
           </div>
           <MapContainer center={[33.5731, -7.5898]} zoom={6} style={{ height: 'calc(100% - 38px)', width: '100%' }}>
-            <TileLayer attribution='&copy; CartoDB'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
+            <TileLayer
+              url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+            />
             {incidentsGeo.map((inc) => {
               const props = getProps(inc);
               const coords = getCoords(inc);

@@ -90,7 +90,10 @@ export default function ZonesPage() {
         {/* Carte */}
         <div className="glass-card animate-fade-in" style={{ overflow: 'hidden', borderRadius: 14 }}>
           <MapContainer center={[33.589886, -7.603869]} zoom={11} style={{ height: 500 }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer
+              url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+            />
             {zones.map(z => z.polygone?.coordinates && (
               <Polygon key={z.id}
                 positions={z.polygone.coordinates[0].map(([lng, lat]) => [lat, lng])}

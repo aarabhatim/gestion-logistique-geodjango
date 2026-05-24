@@ -126,7 +126,10 @@ const CommandeFormModal = ({ onClose, onSuccess }) => {
             <label><MapPin size={16}/> Cliquez sur la carte pour définir la géolocalisation de destination</label>
             <div className="form-map-container">
               <MapContainer center={[35.7595, -5.8340]} zoom={11} style={{ height: '250px', width: '100%', borderRadius: '8px' }}>
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                <TileLayer
+                  url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+                />
                 <LocationPicker position={pointDestination} setPosition={setPointDestination} />
               </MapContainer>
             </div>

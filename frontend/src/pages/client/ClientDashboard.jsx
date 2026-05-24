@@ -1242,7 +1242,10 @@ const SuiviTab = ({ user, onOpenChat }) => {
           </div>
         ) : (
           <MapContainer center={userPos || [33.5731, -7.5898]} zoom={userPos ? 13 : 6} style={{ height: '100%', width: '100%', borderRadius: 12 }}>
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; CARTO' />
+            <TileLayer
+              url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
+            />
             {layers.maPosition.active && userPos && (
               <>
                 <Marker position={userPos} icon={iconBlue}><Popup><div><strong>📍 Votre position</strong><br />{user?.first_name} {user?.last_name}</div></Popup></Marker>

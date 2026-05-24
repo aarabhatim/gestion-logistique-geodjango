@@ -1,73 +1,81 @@
 /**
- * Page Gamification du chauffeur.
+ * Page Gamification du chauffeur — thème Transporteur orange.
  * Route : /chauffeur/gamification
- *
- * Affiche :
- *  - Niveau actuel (Bronze → Platine) avec jauge circulaire
- *  - 4 jauges linéaires des sous-dimensions du score
- *  - Grille des badges obtenus (avec effet brillance sur les récents)
- *  - Grille de tous les badges disponibles (grisés si non obtenus)
- *  - Classement top 20 transporteurs
  */
 import { useState, useEffect } from 'react';
 import { Trophy, Star, Award, Users, RefreshCw, Zap } from 'lucide-react';
 import { chauffeurApi } from '../../services/api';
 import { motion } from 'framer-motion';
 
-// ─── Jauge circulaire SVG ─────────────────────────────────────────────────────
-function JaugeCirculaire({ pct = 0, niveau, couleur, size = 120 }) {
-  const r = 44;
+// ─── Theme tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg:      '#0B0B0B',
+  surface: '#161616',
+  primary: '#FF8A00',
+  primary2:'#FF6B00',
+  text:    '#FFFFFF',
+  text2:   '#A3A3A3',
+  border:  'rgba(255,255,255,0.05)',
+  success: '#22C55E',
+  danger:  '#EF4444',
+  warning: '#FACC15',
+};
+const gradient   = `linear-gradient(90deg, ${T.primary}, ${T.primary2})`;
+const glowOrange = `0 8px 24px rgba(255,138,0,0.2)`;
+
+// Niveau → couleur orange dégradée
+const NIVEAU_COLORS = {
+  BRONZE:  '#CD7F32',
+  ARGENT:  '#C0C0C0',
+  OR:      '#FBBF24',
+  PLATINE: T.primary,
+};
+const NIVEAU_EMOJIS = { BRONZE: '🥉', ARGENT: '🥈', OR: '🥇', PLATINE: '💎' };
+
+// ─── Circular gauge ───────────────────────────────────────────────────────────
+function JaugeCirculaire({ pct = 0, niveau, size = 130 }) {
+  const r    = 48;
   const circ = 2 * Math.PI * r;
   const dash = circ * (pct / 100);
-  const NIVEAU_COLORS = {
-    BRONZE: '#cd7f32', ARGENT: '#c0c0c0', OR: '#fbbf24', PLATINE: '#818cf8',
-  };
-  const NIVEAU_EMOJIS = { BRONZE: '🥉', ARGENT: '🥈', OR: '🥇', PLATINE: '💎' };
-  const c = NIVEAU_COLORS[niveau] || couleur || '#6366f1';
-
+  const c    = NIVEAU_COLORS[niveau] || T.primary;
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke="rgba(255,255,255,0.06)" strokeWidth={8} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={9} />
         <motion.circle
-          cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke={c} strokeWidth={8}
-          strokeLinecap="round"
+          cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={c} strokeWidth={9} strokeLinecap="round"
           strokeDasharray={circ}
           initial={{ strokeDashoffset: circ }}
           animate={{ strokeDashoffset: circ - dash }}
           transition={{ duration: 1.2, ease: 'easeOut' }}
+          style={{ filter: `drop-shadow(0 0 6px ${c}80)` }}
         />
       </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 2,
-      }}>
-        <div style={{ fontSize: 24 }}>{NIVEAU_EMOJIS[niveau] || '🏅'}</div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: c }}>{niveau}</div>
-        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{pct}%</div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <div style={{ fontSize: 26 }}>{NIVEAU_EMOJIS[niveau] || '🏅'}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, color: c }}>{niveau}</div>
+        <div style={{ fontSize: 10, color: T.text2 }}>{pct}%</div>
       </div>
     </div>
   );
 }
 
-// ─── Jauge linéaire ───────────────────────────────────────────────────────────
+// ─── Linear gauge ─────────────────────────────────────────────────────────────
 function JaugeLineaire({ label, valeur, max = 100, couleur }) {
   const pct = Math.min(100, Math.round((valeur / max) * 100));
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-        <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
+        <span style={{ color: T.text2 }}>{label}</span>
         <span style={{ color: couleur, fontWeight: 700 }}>{valeur?.toFixed ? valeur.toFixed(1) : valeur}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.9, ease: 'easeOut' }}
-          style={{ height: '100%', background: couleur, borderRadius: 3 }}
+          style={{ height: '100%', background: `linear-gradient(90deg, ${couleur}, ${couleur}99)`, borderRadius: 4, boxShadow: `0 0 8px ${couleur}60` }}
         />
       </div>
     </div>
@@ -82,46 +90,34 @@ function BadgeCard({ badge, obtenu, estNouveau }) {
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.04 }}
       style={{
-        background: obtenu ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${obtenu ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)'}`,
-        borderRadius: 12,
-        padding: '0.875rem',
-        textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden',
+        background: obtenu ? T.surface : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${obtenu ? `${T.primary}30` : T.border}`,
+        borderRadius: 14, padding: '14px 12px',
+        textAlign: 'center', position: 'relative', overflow: 'hidden',
         cursor: 'default',
         filter: obtenu ? 'none' : 'grayscale(0.8)',
-        opacity: obtenu ? 1 : 0.5,
+        opacity: obtenu ? 1 : 0.45,
+        boxShadow: obtenu ? `0 4px 16px ${T.primary}10` : 'none',
       }}
     >
-      {/* Effet brillance pour les nouveaux badges */}
+      {/* Shimmer for new badges */}
       {estNouveau && (
         <motion.div
           animate={{ x: ['-100%', '200%'] }}
           transition={{ duration: 1.5, repeat: 3, repeatDelay: 0.5 }}
-          style={{
-            position: 'absolute', inset: 0, width: '40%',
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
-            pointerEvents: 'none',
-          }}
+          style={{ position: 'absolute', inset: 0, width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)', pointerEvents: 'none' }}
         />
       )}
-
       {estNouveau && (
-        <div style={{
-          position: 'absolute', top: 6, right: 6,
-          background: '#f59e0b', color: 'black', fontSize: 8, fontWeight: 800,
-          padding: '2px 5px', borderRadius: 4,
-        }}>
+        <div style={{ position: 'absolute', top: 7, right: 7, background: gradient, color: 'white', fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 5 }}>
           NOUVEAU
         </div>
       )}
-
-      <div style={{ fontSize: 32, marginBottom: 4 }}>{badge.icone}</div>
-      <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 2 }}>{badge.nom}</div>
-      <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.3 }}>{badge.description}</div>
+      <div style={{ fontSize: 34, marginBottom: 6 }}>{badge.icone}</div>
+      <div style={{ fontWeight: 700, fontSize: 11, color: T.text, marginBottom: 3 }}>{badge.nom}</div>
+      <div style={{ fontSize: 10, color: T.text2, lineHeight: 1.4 }}>{badge.description}</div>
       {obtenu && badge.obtenu_le && (
-        <div style={{ fontSize: 9, color: '#6366f1', marginTop: 6 }}>
+        <div style={{ fontSize: 9, color: T.primary, marginTop: 7, fontWeight: 600 }}>
           {new Date(badge.obtenu_le).toLocaleDateString('fr-FR')}
         </div>
       )}
@@ -129,15 +125,14 @@ function BadgeCard({ badge, obtenu, estNouveau }) {
   );
 }
 
-// ─── Composant principal ──────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function GamificationPage() {
-  const [badges, setBadges] = useState(null);
-  const [niveau, setNiveau] = useState(null);
+  const [badges, setBadges]         = useState(null);
+  const [niveau, setNiveau]         = useState(null);
   const [classement, setClassement] = useState([]);
-  const [score, setScore] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('badges'); // 'badges' | 'classement'
-  const [verifying, setVerifying] = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab]   = useState('badges');
+  const [verifying, setVerifying]   = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -151,11 +146,8 @@ export default function GamificationPage() {
         setBadges(bRes.data);
         setNiveau(nRes.data);
         setClassement(cRes.data?.classement || []);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
     };
     load();
   }, []);
@@ -165,149 +157,160 @@ export default function GamificationPage() {
     try {
       const res = await chauffeurApi.badgesVerifier();
       if (res.data.nb_nouveaux > 0) {
-        // Recharger les badges
-        const bRes = await chauffeurApi.badges();
-        setBadges(bRes.data);
-        const nRes = await chauffeurApi.niveau();
-        setNiveau(nRes.data);
+        const [bRes, nRes] = await Promise.all([chauffeurApi.badges(), chauffeurApi.niveau()]);
+        setBadges(bRes.data); setNiveau(nRes.data);
       }
       alert(res.data.message);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setVerifying(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setVerifying(false); }
   };
 
-  const niveauColors = {
-    BRONZE: '#cd7f32', ARGENT: '#c0c0c0', OR: '#fbbf24', PLATINE: '#818cf8',
-  };
-  const nc = niveau ? niveauColors[niveau.niveau] || '#6366f1' : '#6366f1';
+  const nc = niveau ? NIVEAU_COLORS[niveau.niveau] || T.primary : T.primary;
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, color: 'var(--text-secondary)' }}>
-        <RefreshCw size={24} className="spin" />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, color: T.text2 }}>
+        <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 2rem' }}>
+    <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🏆 Gamification & Badges</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '4px 0 0' }}>
-            Progression, badges et classement
-          </p>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: T.text }}>🏆 Gamification & Badges</h1>
+          <p style={{ color: T.text2, fontSize: 13, margin: '5px 0 0' }}>Progression, badges et classement</p>
         </div>
         <button
           onClick={verifierBadges}
           disabled={verifying}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', borderRadius: 10,
-            border: '1px solid rgba(251,191,36,0.3)',
-            background: 'rgba(251,191,36,0.1)', color: '#fbbf24',
-            cursor: 'pointer', fontSize: 13, fontWeight: 600,
-          }}>
-          {verifying ? <RefreshCw size={14} className="spin" /> : <Zap size={14} />}
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 18px', borderRadius: 12,
+            border: `1px solid ${T.warning}40`,
+            background: `${T.warning}12`, color: T.warning,
+            cursor: 'pointer', fontSize: 13, fontWeight: 700,
+            boxShadow: verifying ? 'none' : `0 4px 14px ${T.warning}20`,
+          }}
+        >
+          {verifying
+            ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
+            : <Zap size={15} />}
           Vérifier mes badges
         </button>
       </div>
 
-      {/* Niveau + progression */}
+      {/* ── Niveau card ── */}
       {niveau && (
-        <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <JaugeCirculaire
-              pct={niveau.progression_pct}
-              niveau={niveau.niveau}
-              couleur={nc}
-              size={130}
-            />
+        <div style={{
+          background: T.surface, borderRadius: 20, padding: '24px 28px',
+          border: `1px solid ${nc}25`,
+          background: `linear-gradient(135deg, ${T.surface}, ${nc}08)`,
+        }}>
+          <div style={{ display: 'flex', gap: 28, alignItems: 'center', flexWrap: 'wrap' }}>
+            <JaugeCirculaire pct={niveau.progression_pct} niveau={niveau.niveau} size={140} />
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: nc, marginBottom: 4 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: nc, marginBottom: 6 }}>
                 Niveau {niveau.niveau}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                {niveau.points?.toLocaleString()} points
-                {niveau.prochain_niveau && ` · ${niveau.points_vers_prochain} pts vers ${niveau.prochain_niveau}`}
+              <div style={{ fontSize: 13, color: T.text2, marginBottom: 16 }}>
+                <strong style={{ color: T.text }}>{niveau.points?.toLocaleString()}</strong> points
+                {niveau.prochain_niveau && (
+                  <span> · <span style={{ color: T.primary }}>{niveau.points_vers_prochain} pts</span> vers {niveau.prochain_niveau}</span>
+                )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(niveau.avantages || []).map((av, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ color: nc }}>✓</span> {av}
-                  </div>
-                ))}
-              </div>
+
+              {/* Sub-dimension gauges */}
+              {niveau.scores_details && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                  {Object.entries(niveau.scores_details).map(([key, val]) => (
+                    <JaugeLineaire key={key} label={key} valeur={val} max={100} couleur={T.primary} />
+                  ))}
+                </div>
+              )}
+
+              {/* Avantages */}
+              {(niveau.avantages || []).length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {niveau.avantages.map((av, i) => (
+                    <span key={i} style={{ fontSize: 12, color: T.text2, background: `${nc}12`, border: `1px solid ${nc}20`, borderRadius: 20, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ color: nc }}>✓</span> {av}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: '1rem', background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4 }}>
+      {/* ── Tabs ── */}
+      <div style={{ display: 'flex', gap: 4, background: '#1A1A1A', borderRadius: 14, padding: 5, border: `1px solid ${T.border}` }}>
         {[
-          { key: 'badges', label: `🏅 Mes badges (${badges?.total_obtenus || 0})` },
-          { key: 'tous', label: `📋 Tous (${badges?.total_disponibles || 0})` },
-          { key: 'classement', label: `🏆 Classement` },
+          { key: 'badges',      label: `🏅 Mes badges (${badges?.total_obtenus || 0})` },
+          { key: 'tous',        label: `📋 Tous (${badges?.total_disponibles || 0})` },
+          { key: 'classement',  label: `🏆 Classement` },
         ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            style={{
-              flex: 1, padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: activeTab === t.key ? 'rgba(99,102,241,0.25)' : 'transparent',
-              color: activeTab === t.key ? '#818cf8' : 'var(--text-secondary)',
-              fontSize: 13, fontWeight: activeTab === t.key ? 700 : 400,
-            }}>
+          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+            flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: activeTab === t.key ? gradient : 'transparent',
+            color: activeTab === t.key ? 'white' : T.text2,
+            fontSize: 13, fontWeight: activeTab === t.key ? 700 : 500,
+            transition: 'all 0.2s',
+            boxShadow: activeTab === t.key ? glowOrange : 'none',
+          }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Badges obtenus */}
+      {/* ── Badges obtenus ── */}
       {activeTab === 'badges' && (
-        <>
-          {(badges?.obtenus || []).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)' }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🏅</div>
-              <div style={{ fontWeight: 600 }}>Aucun badge obtenu pour l'instant</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Continuez vos livraisons pour débloquer vos premiers badges !</div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.875rem' }}>
-              {(badges?.obtenus || []).map(b => (
-                <BadgeCard key={b.id} badge={b} obtenu estNouveau={b.est_nouveau} />
-              ))}
-            </div>
-          )}
-        </>
+        (badges?.obtenus || []).length === 0 ? (
+          <div style={{ background: T.surface, borderRadius: 20, padding: '3rem', textAlign: 'center', color: T.text2, border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🏅</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>Aucun badge obtenu pour l'instant</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>Continuez vos livraisons pour débloquer vos premiers badges !</div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
+            {(badges?.obtenus || []).map(b => (
+              <BadgeCard key={b.id} badge={b} obtenu estNouveau={b.est_nouveau} />
+            ))}
+          </div>
+        )
       )}
 
-      {/* Tous les badges */}
+      {/* ── Tous les badges ── */}
       {activeTab === 'tous' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.875rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
           {(badges?.tous || []).map(b => (
             <BadgeCard key={b.id} badge={b} obtenu={b.obtenu} estNouveau={false} />
           ))}
         </div>
       )}
 
-      {/* Classement */}
+      {/* ── Classement ── */}
       {activeTab === 'classement' && (
-        <div className="glass-card" style={{ padding: '1rem' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Users size={16} /> Top 20 ce mois
+        <div style={{ background: T.surface, borderRadius: 20, padding: '22px 24px', border: `1px solid ${T.border}` }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${T.primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={18} color={T.primary} />
+            </div>
+            Top 20 ce mois
           </div>
+
           {classement.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)' }}>Aucune donnée</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: T.text2 }}>Aucune donnée</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {classement.map((t, i) => {
-                const medals = ['🥇', '🥈', '🥉'];
-                const niveauC = niveauColors[t.niveau] || '#64748b';
+                const medals  = ['🥇', '🥈', '🥉'];
+                const niveauC = NIVEAU_COLORS[t.niveau] || '#64748b';
+                const isTop3  = i < 3;
                 return (
                   <motion.div
                     key={t.id}
@@ -315,29 +318,43 @@ export default function GamificationPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '0.625rem 0.875rem',
-                      background: i < 3 ? 'rgba(251,191,36,0.06)' : 'rgba(255,255,255,0.02)',
-                      borderRadius: 10,
-                      border: i < 3 ? '1px solid rgba(251,191,36,0.12)' : '1px solid rgba(255,255,255,0.04)',
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '12px 16px', borderRadius: 14,
+                      background: isTop3 ? `${T.primary}08` : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isTop3 ? `${T.primary}20` : T.border}`,
+                      transition: 'background 0.2s',
                     }}
+                    onMouseEnter={e => e.currentTarget.style.background = `${T.primary}10`}
+                    onMouseLeave={e => e.currentTarget.style.background = isTop3 ? `${T.primary}08` : 'rgba(255,255,255,0.02)'}
                   >
-                    <div style={{ width: 28, textAlign: 'center', fontSize: i < 3 ? 20 : 13, color: 'var(--text-secondary)', fontWeight: 700 }}>
-                      {i < 3 ? medals[i] : t.rang}
+                    {/* Rank */}
+                    <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+                      {isTop3 ? (
+                        <span style={{ fontSize: 22 }}>{medals[i]}</span>
+                      ) : (
+                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text2 }}>{t.rang}</span>
+                      )}
                     </div>
+
+                    {/* Avatar */}
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: isTop3 ? gradient : '#2A2A2A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: 'white', flexShrink: 0 }}>
+                      {(t.nom || '?')[0].toUpperCase()}
+                    </div>
+
+                    {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.nom}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {t.nom}
+                      </div>
+                      <div style={{ fontSize: 11, color: T.text2, display: 'flex', gap: 10, marginTop: 2 }}>
                         <span>⭐ {t.note_moyenne?.toFixed(1)}</span>
-                        <span>{t.livraisons_periode} livraisons ce mois</span>
+                        <span>📦 {t.livraisons_periode} livraisons</span>
                       </div>
                     </div>
-                    <div style={{
-                      fontSize: 11, fontWeight: 700, color: niveauC,
-                      background: `${niveauC}15`, border: `1px solid ${niveauC}25`,
-                      padding: '3px 8px', borderRadius: 6,
-                    }}>
-                      {t.niveau}
+
+                    {/* Niveau badge */}
+                    <div style={{ fontSize: 11, fontWeight: 700, color: niveauC, background: `${niveauC}15`, border: `1px solid ${niveauC}30`, padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {NIVEAU_EMOJIS[t.niveau] || '🏅'} {t.niveau}
                     </div>
                   </motion.div>
                 );

@@ -14,7 +14,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet
  *   onSOS       — callback bouton SOS
  */
 
-const DARK_TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const DARK_TILE = 'https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL';
 
 const RecenterMap = ({ position }) => {
   const map = useMap();
@@ -73,7 +73,7 @@ const DrivingMode = ({ mission, onComplete, onSOS }) => {
           className="w-full h-full"
           zoomControl={false}
         >
-          <TileLayer url={DARK_TILE} />
+          <TileLayer url={DARK_TILE} attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
           {position && <RecenterMap position={position} />}
 
           {/* Route animée */}

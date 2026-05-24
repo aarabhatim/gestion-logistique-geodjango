@@ -64,8 +64,8 @@ const MapComponent = () => {
       zoomControl={true}
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+        attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
       />
 
       {/* Transporteurs */}

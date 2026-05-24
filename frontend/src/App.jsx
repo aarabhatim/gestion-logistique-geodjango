@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { I18nProvider } from './contexts/I18nContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AdminShell } from './components/layout/AdminShell';
+import TransporteurLayout from './layouts/TransporteurLayout';
 
 // Auth
 import Login    from './pages/auth/Login';
@@ -144,12 +145,16 @@ function AppRoutes() {
         } />
         <Route path="/chauffeur/finances" element={
           <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
-            <AdminShell><DashboardFinancier /></AdminShell>
+            <TransporteurLayout pageTitle="Tableau de bord financier" pageIcon="💰">
+              <DashboardFinancier />
+            </TransporteurLayout>
           </ProtectedRoute>
         } />
         <Route path="/chauffeur/gamification" element={
           <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
-            <AdminShell><GamificationPage /></AdminShell>
+            <TransporteurLayout pageTitle="Gamification & Badges" pageIcon="🏆">
+              <GamificationPage />
+            </TransporteurLayout>
           </ProtectedRoute>
         } />
 
