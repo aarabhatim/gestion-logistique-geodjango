@@ -89,8 +89,8 @@ export default function CalendrierPage() {
                       onClick={() => setSelectedDay(isSelected ? null : d)}
                       style={{
                         minHeight: 70, padding: '6px 4px', borderRadius: 10, cursor: 'pointer',
-                        background: isSelected ? 'rgba(99,102,241,0.18)' : isToday ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.03)',
-                        border: isSelected ? '1px solid rgba(99,102,241,0.5)' : isToday ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
+                        background: isSelected ? 'rgba(34,197,94,0.18)' : isToday ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: isSelected ? '1px solid rgba(34,197,94,0.5)' : isToday ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
                         transition: 'all 0.15s',
                       }}>
                       <div style={{ fontSize: 12, fontWeight: isToday ? 900 : 600, color: isToday ? 'var(--accent-primary)' : undefined, marginBottom: 4 }}>{d}</div>

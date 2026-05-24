@@ -9,7 +9,7 @@ import { contratsApi } from '../services/api';
 const TYPE_CONFIG = {
   transporteur: { label: 'Transporteur', color: '#3b82f6' },
   fondateur:    { label: 'Fondateur',    color: '#10b981' },
-  partenaire:   { label: 'Partenaire',   color: '#8b5cf6' },
+  partenaire:   { label: 'Partenaire',   color: '#22c55e' },
 };
 
 const STATUT_CONFIG = {
@@ -177,7 +177,7 @@ const Contrats = () => {
                   const isExpiringSoon = c.statut === 'actif' && c.jours_avant_expiration <= 30 && c.jours_avant_expiration > 0;
                   return (
                     <tr key={c.id} onClick={() => setSelected(isSelected ? null : c)}
-                      style={{ cursor: 'pointer', background: isSelected ? 'rgba(99,102,241,0.1)' : '' }}>
+                      style={{ cursor: 'pointer', background: isSelected ? 'rgba(34,197,94,0.08)' : '' }}>
                       <td>
                         <span style={{ fontWeight: 600, fontSize: 12 }}>{c.titre || c.reference || `#${c.id}`}</span>
                         {c.commande_reference && (

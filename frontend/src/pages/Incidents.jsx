@@ -11,7 +11,7 @@ import { incidentsApi } from '../services/api';
 const TYPE_CONFIG = {
   accident:        { label: 'Accident',          color: '#ef4444', emoji: '🚨' },
   panne:           { label: 'Panne vehicule',     color: '#f59e0b', emoji: '🔧' },
-  vol:             { label: 'Vol / Tentative',    color: '#8b5cf6', emoji: '🔓' },
+  vol:             { label: 'Vol / Tentative',    color: '#22c55e', emoji: '🔓' },
   colis_endommage: { label: 'Colis endommagé',   color: '#f97316', emoji: '📦' },
   retard:          { label: 'Retard majeur',      color: '#06b6d4', emoji: '⏱' },
   client_absent:   { label: 'Client absent',     color: '#64748b', emoji: '🚪' },

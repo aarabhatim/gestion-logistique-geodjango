@@ -8,13 +8,14 @@ import ChatbotWidget from '@/components/ChatbotWidget';
 import { cn } from '@/lib/utils';
 
 export function AdminShell({ children, fullBleed = false }) {
-  const { setAdminRole, setDefaultRole } = useTheme();
+  const { setAdminRole, setDefaultRole, setDark } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
     setAdminRole();
+    setDark();
     return () => setDefaultRole();
-  }, [setAdminRole, setDefaultRole]);
+  }, [setAdminRole, setDefaultRole, setDark]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -25,10 +26,7 @@ export function AdminShell({ children, fullBleed = false }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25 }}
-          className={cn(
-            'flex-1 overflow-auto',
-            fullBleed ? 'p-0' : 'p-6',
-          )}
+          className={cn('flex-1 overflow-auto', fullBleed ? 'p-0' : 'p-6')}
         >
           {children}
         </motion.main>

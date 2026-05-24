@@ -56,7 +56,7 @@ const VEHICULE_COLORS = {
   MOTO: '#10b981',
   VOITURE: '#3b82f6',
   CAMIONNETTE: '#f59e0b',
-  CAMION: '#8b5cf6',
+  CAMION: '#22c55e',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ const ScoreTab = ({ transporteurId }) => {
     { key: 'score_ponctualite', label: 'Ponctualité', color: '#3b82f6', fullMark: 100 },
     { key: 'score_fiabilite',   label: 'Fiabilité',   color: '#10b981', fullMark: 100 },
     { key: 'score_satisfaction',label: 'Satisfaction', color: '#f59e0b', fullMark: 100 },
-    { key: 'score_rapidite',    label: 'Rapidité',    color: '#8b5cf6', fullMark: 100 },
+    { key: 'score_rapidite',    label: 'Rapidité',    color: '#22c55e', fullMark: 100 },
   ];
 
   const radarData = dims.map(d => ({
@@ -161,7 +161,7 @@ const ScoreTab = ({ transporteurId }) => {
             <PolarGrid stroke="rgba(255,255,255,0.08)" />
             <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-            <Radar name="Score" dataKey="score" stroke="#4f8cff" fill="#4f8cff" fillOpacity={0.25} strokeWidth={2} />
+            <Radar name="Score" dataKey="score" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} strokeWidth={2} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
@@ -247,7 +247,7 @@ const TransporteurCard = ({ t, onSelect }) => {
         {[
           { label: 'Livraisons', value: t.nombre_livraisons || 0,                              icon: Truck,      color: '#3b82f6' },
           { label: 'Note',       value: t.note_moyenne?.toFixed(1) || '–',                     icon: Star,       color: '#f59e0b' },
-          { label: 'Avis',       value: t.nombre_avis || 0,                                    icon: Award,      color: '#8b5cf6' },
+          { label: 'Avis',       value: t.nombre_avis || 0,                                    icon: Award,      color: '#22c55e' },
           { label: 'Revenus',    value: `${Math.round((t.revenus_total || 0) / 1000)}k`,       icon: DollarSign, color: '#10b981' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} style={{ flex: 1, textAlign: 'center' }}>
@@ -338,7 +338,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
                 {[
                   { label: 'Livraisons', value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
                   { label: 'Note', value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
-                  { label: 'Avis', value: t.nombre_avis || 0, color: '#8b5cf6', icon: Award },
+                  { label: 'Avis', value: t.nombre_avis || 0, color: '#22c55e', icon: Award },
                   { label: 'Revenus', value: `${Math.round((t.revenus_total || 0) / 1000)}k`, color: '#10b981', icon: DollarSign },
                 ].map(({ label, value, color, icon: Icon }) => (
                   <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
@@ -350,14 +350,14 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
               </div>
 
               {/* Heures de travail */}
-              <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
-                <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Clock size={12} /> HEURES DE TRAVAIL
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Aujourd'hui</div>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: '#a78bfa' }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#22c55e' }}>
                       {formatDuration((t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0))}
                     </div>
                   </div>

@@ -11,7 +11,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(99,102,241,0.4)',
+      background: 'rgba(7,18,11,0.97)', border: '1px solid rgba(34,197,94,0.35)',
       borderRadius: 10, padding: '10px 14px', fontSize: 13
     }}>
       <div style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</div>
@@ -92,7 +92,7 @@ export default function PrevisionsPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
         <div style={{
           width: 46, height: 46, borderRadius: 12,
-          background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+          background: 'linear-gradient(135deg,#16a34a,#22c55e)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
         }}>📈</div>
         <div>
@@ -118,12 +118,12 @@ export default function PrevisionsPage() {
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 28 }}>
         {[
-          { label: 'Moy. 30 derniers jours', value: data?.moyenne_historique ?? '—', icon: '📊', color: '#6366f1' },
-          { label: 'Prévision semaine prochaine', value: data?.total_semaine_prochaine ?? '—', icon: '🔮', color: '#8b5cf6' },
+          { label: 'Moy. 30 derniers jours', value: data?.moyenne_historique ?? '—', icon: '📊', color: '#22c55e' },
+          { label: 'Prévision semaine prochaine', value: data?.total_semaine_prochaine ?? '—', icon: '🔮', color: '#16a34a' },
           { label: 'Pics détectés (14j)', value: alertes.length, icon: '⚠️', color: alertes.length ? '#ef4444' : '#22c55e' },
         ].map((k, i) => (
           <div key={i} style={{
-            background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(99,102,241,0.2)',
+            background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.15)',
             borderRadius: 14, padding: '18px 22px',
             borderLeft: `3px solid ${k.color}`
           }}>
@@ -144,14 +144,14 @@ export default function PrevisionsPage() {
         </h3>
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={combined} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(34,197,94,0.1)" />
             <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
             <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: 13, color: '#94a3b8' }} />
             <Line
               type="monotone" dataKey="commandes" name="Historique"
-              stroke="#6366f1" strokeWidth={2} dot={false}
+              stroke="#22c55e" strokeWidth={2} dot={false}
               connectNulls={false}
             />
             <Line

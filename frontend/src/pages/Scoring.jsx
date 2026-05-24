@@ -10,7 +10,7 @@ const DIMENSIONS = [
   { key: 'ponctualite', label: 'Ponctualité', color: '#3b82f6' },
   { key: 'fiabilite',   label: 'Fiabilité',   color: '#10b981' },
   { key: 'satisfaction', label: 'Satisfaction', color: '#f59e0b' },
-  { key: 'rapidite',   label: 'Rapidité',    color: '#8b5cf6' },
+  { key: 'rapidite',   label: 'Rapidité',    color: '#22c55e' },
 ];
 
 const ScoreBadge = ({ score }) => {
@@ -37,7 +37,7 @@ const ScoreRadar = ({ data }) => {
         <PolarGrid stroke="rgba(255,255,255,0.1)" />
         <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 9 }} />
-        <Radar name="Score" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+        <Radar name="Score" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} strokeWidth={2} />
         <Tooltip
           contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
           formatter={(v) => [`${v}/100`, '']}
@@ -159,7 +159,7 @@ const Scoring = () => {
                   return (
                     <tr key={s.id}
                       onClick={() => setSelected(isSelected ? null : s)}
-                      style={{ cursor: 'pointer', background: isSelected ? 'rgba(99,102,241,0.1)' : '' }}>
+                      style={{ cursor: 'pointer', background: isSelected ? 'rgba(34,197,94,0.1)' : '' }}>
                       <td>
                         {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                       </td>
