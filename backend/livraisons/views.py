@@ -160,3 +160,127 @@ class MettreAJourPositionView(APIView):
                 pass
 
         return Response({'status': 'ok'})
+
+
+class ReporterLivraisonView(APIView):
+    """Transporteur reporte une livraison avec motif (sans créer d'incident)."""
+    permission_classes = [IsTransporteurRole]
+
+    def post(self, request, pk):
+        try:
+            livraison = Livraison.objects.get(pk=pk, transporteur=request.user.transporteur_profile)
+        except Livraison.DoesNotExist:
+            return Response({'error': 'Livraison introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if livraison.statut_livraison not in ('EN_ATTENTE', 'EN_ROUTE'):
+            return Response({'error': 'Impossible de reporter cette livraison.'}, status=400)
+
+        motif = request.data.get('motif', 'AUTRE')
+        commentaire = request.data.get('commentaire', '')
+        livraison.reporter(motif, commentaire)
+
+        # Notifier le fondateur et le client
+        try:
+            from notifications.models import Notification
+            nom = request.user.get_full_name()
+            if livraison.commande.fondateur:
+                Notification.objects.create(
+                    destinataire=livraison.commande.fondateur.user,
+                    titre='Livraison reportée',
+                    message=f'La livraison #{livraison.commande.reference} a été reportée par {nom}. Motif : {dict(livraison.REPORT_MOTIF_CHOICES).get(motif, motif)}',
+                    type_notif='WARNING',
+                )
+            if livraison.commande.client:
+                Notification.objects.create(
+                    destinataire=livraison.commande.client,
+                    titre='Votre livraison a été reportée',
+                    message=f'Votre commande #{livraison.commande.reference} n\'a pas pu être livrée. Motif : {dict(livraison.REPORT_MOTIF_CHOICES).get(motif, motif)}. Un nouveau créneau sera planifié.',
+                    type_notif='WARNING',
+                )
+        except Exception:
+            pass
+
+        return Response({
+            'message': 'Livraison reportée.',
+            'motif': motif,
+            'commentaire': commentaire,
+        })
+
+
+class MettreAJourColisView(APIView):
+    """Mettre à jour le nombre de colis livrés (livraison partielle)."""
+    permission_classes = [IsTransporteurRole]
+
+    def patch(self, request, pk):
+        try:
+            livraison = Livraison.objects.get(pk=pk, transporteur=request.user.transporteur_profile)
+        except Livraison.DoesNotExist:
+            return Response({'error': 'Livraison introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        nb = int(request.data.get('nb_colis_livres', 0))
+        if nb < 0 or nb > livraison.nb_colis_total:
+            return Response({'error': f'Valeur invalide (max {livraison.nb_colis_total}).'}, status=400)
+
+        livraison.nb_colis_livres = nb
+        livraison.save(update_fields=['nb_colis_livres'])
+
+        return Response({
+            'nb_colis_total': livraison.nb_colis_total,
+            'nb_colis_livres': livraison.nb_colis_livres,
+            'taux_livraison_colis': livraison.taux_livraison_colis,
+            'est_partielle': livraison.est_partielle,
+        })
+
+
+class AjouterPhotoPreuveView(APIView):
+    """Ajouter une photo de preuve de livraison."""
+    permission_classes = [IsTransporteurRole]
+
+    def post(self, request, pk):
+        try:
+            livraison = Livraison.objects.get(pk=pk, transporteur=request.user.transporteur_profile)
+        except Livraison.DoesNotExist:
+            return Response({'error': 'Livraison introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        photo = request.FILES.get('photo_preuve')
+        if not photo:
+            return Response({'error': 'Fichier photo requis.'}, status=400)
+
+        livraison.photo_preuve = photo
+        livraison.save(update_fields=['photo_preuve'])
+
+        return Response({
+            'message': 'Photo de preuve enregistrée.',
+            'photo_url': request.build_absolute_uri(livraison.photo_preuve.url) if livraison.photo_preuve else None,
+        })
+
+
+class NotifDepartView(APIView):
+    """Envoyer la notification de départ au client (10 min avant arrivée)."""
+    permission_classes = [IsTransporteurRole]
+
+    def post(self, request, pk):
+        try:
+            livraison = Livraison.objects.get(pk=pk, transporteur=request.user.transporteur_profile)
+        except Livraison.DoesNotExist:
+            return Response({'error': 'Livraison introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if livraison.notif_depart_envoyee:
+            return Response({'message': 'Notification déjà envoyée.'})
+
+        try:
+            from notifications.models import Notification
+            nom = request.user.get_full_name()
+            if livraison.commande.client:
+                Notification.objects.create(
+                    destinataire=livraison.commande.client,
+                    titre='Votre chauffeur arrive dans ~10 minutes',
+                    message=f'{nom} est en route et sera à votre adresse dans environ 10 minutes. Préparez-vous à recevoir votre commande #{livraison.commande.reference}.',
+                    type_notif='INFO',
+                )
+            livraison.notif_depart_envoyee = True
+            livraison.save(update_fields=['notif_depart_envoyee'])
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+        return Response({'message': 'Notification envoyée au client.'})

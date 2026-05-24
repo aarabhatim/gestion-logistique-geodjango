@@ -47,6 +47,37 @@ class Livraison(models.Model):
     code_confirmation = models.CharField(max_length=6, blank=True)
     signature_client = models.TextField(blank=True)
 
+    # ── Gestion avancée des livraisons ──
+    # Preuve de livraison enrichie
+    photo_preuve = models.ImageField(
+        upload_to='livraisons/preuves/', null=True, blank=True,
+        help_text='Photo prise à la livraison (porte, boite aux lettres...)'
+    )
+    # Instructions spéciales (digicode, étage, chien…)
+    instructions_speciales = models.TextField(
+        blank=True,
+        help_text='Instructions du client : code digicode, étage, animaux...'
+    )
+    # Report de livraison
+    REPORT_MOTIF_CHOICES = [
+        ('CLIENT_ABSENT', 'Client absent'),
+        ('ACCES_BLOQUE', 'Accès bloqué'),
+        ('ADRESSE_INTROUVABLE', 'Adresse introuvable'),
+        ('METEO', 'Conditions météo'),
+        ('AUTRE', 'Autre'),
+    ]
+    est_reportee = models.BooleanField(default=False)
+    report_motif = models.CharField(
+        max_length=20, choices=REPORT_MOTIF_CHOICES, blank=True
+    )
+    report_commentaire = models.TextField(blank=True)
+    date_report = models.DateTimeField(null=True, blank=True)
+    # Livraison partielle (commande multi-colis)
+    nb_colis_total = models.PositiveSmallIntegerField(default=1)
+    nb_colis_livres = models.PositiveSmallIntegerField(default=0)
+    # Notification de départ (10 min avant)
+    notif_depart_envoyee = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = 'Livraison'
         verbose_name_plural = 'Livraisons'
@@ -54,6 +85,16 @@ class Livraison(models.Model):
 
     def __str__(self):
         return f'Livraison #{self.pk} - {self.commande.reference}'
+
+    @property
+    def est_partielle(self):
+        return self.nb_colis_total > 1 and 0 < self.nb_colis_livres < self.nb_colis_total
+
+    @property
+    def taux_livraison_colis(self):
+        if self.nb_colis_total == 0:
+            return 0
+        return round(self.nb_colis_livres / self.nb_colis_total * 100)
 
     def calculer_gains(self):
         from django.conf import settings
@@ -71,12 +112,25 @@ class Livraison(models.Model):
     def terminer(self):
         self.statut_livraison = 'LIVREE'
         self.date_livraison = timezone.now()
-        self.save(update_fields=['statut_livraison', 'date_livraison'])
+        self.nb_colis_livres = self.nb_colis_total
+        self.save(update_fields=['statut_livraison', 'date_livraison', 'nb_colis_livres'])
         # Mettre à jour les revenus du transporteur
         if self.transporteur:
             from django.db.models import F
             self.transporteur.revenus_total = F('revenus_total') + self.gain_transporteur
             self.transporteur.save(update_fields=['revenus_total'])
+
+    def reporter(self, motif, commentaire=''):
+        """Reporter une livraison avec un motif sans créer d'incident."""
+        self.est_reportee = True
+        self.report_motif = motif
+        self.report_commentaire = commentaire
+        self.date_report = timezone.now()
+        self.statut_livraison = 'ECHEC'
+        self.save(update_fields=[
+            'est_reportee', 'report_motif', 'report_commentaire',
+            'date_report', 'statut_livraison'
+        ])
 
 
 class PositionTracking(models.Model):

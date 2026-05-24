@@ -48,8 +48,10 @@ import GaleriePage from './pages/store/GaleriePage';
 import AvisPage    from './pages/store/AvisPage';
 
 // Chauffeur
-import ChauffeurDashboard from './pages/chauffeur/ChauffeurDashboard';
-import SignalerIncident   from './pages/chauffeur/SignalerIncident';
+import ChauffeurDashboard   from './pages/chauffeur/ChauffeurDashboard';
+import SignalerIncident      from './pages/chauffeur/SignalerIncident';
+import DashboardFinancier   from './pages/chauffeur/DashboardFinancier';
+import GamificationPage     from './pages/chauffeur/GamificationPage';
 
 // Client
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -138,6 +140,16 @@ function AppRoutes() {
         <Route path="/chauffeur/signaler-incident" element={
           <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
             <AdminShell><SignalerIncident /></AdminShell>
+          </ProtectedRoute>
+        } />
+        <Route path="/chauffeur/finances" element={
+          <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
+            <AdminShell><DashboardFinancier /></AdminShell>
+          </ProtectedRoute>
+        } />
+        <Route path="/chauffeur/gamification" element={
+          <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
+            <AdminShell><GamificationPage /></AdminShell>
           </ProtectedRoute>
         } />
 

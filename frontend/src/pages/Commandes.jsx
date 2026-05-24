@@ -3,9 +3,11 @@ import {
   Package, Check, Truck, X, RefreshCw, Filter,
   ChevronLeft, ChevronRight, Eye, UserCheck, AlertTriangle,
   ArrowRight, MapPin, Clock, Star, Search, Download,
+  LayoutList, Kanban,
 } from 'lucide-react';
 import { commandesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { KanbanCommandes } from '../components/KanbanCommandes';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
 const exportCSV = (rows) => {
@@ -303,6 +305,7 @@ const Commandes = () => {
   const [selected, setSelected] = useState(null);
   const [assigning, setAssigning] = useState(null);
   const [toast, setToast] = useState(null);
+  const [viewMode, setViewMode] = useState('liste'); // 'liste' | 'kanban'
 
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
@@ -382,7 +385,30 @@ const Commandes = () => {
           <h2 className="page-title text-gradient">Gestion des Commandes</h2>
           <p className="page-subtitle">{count} commandes · Page {page}/{Math.max(1, totalPages)}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Toggle Liste / Kanban */}
+          <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button
+              onClick={() => setViewMode('liste')}
+              title="Vue liste"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: 'none', cursor: 'pointer',
+                background: viewMode === 'liste' ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
+                color: viewMode === 'liste' ? '#818cf8' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+              }}>
+              <LayoutList size={14} /> Liste
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              title="Vue Kanban"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: 'none', cursor: 'pointer',
+                background: viewMode === 'kanban' ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
+                color: viewMode === 'kanban' ? '#818cf8' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+              }}>
+              <Kanban size={14} /> Kanban
+            </button>
+          </div>
           <button className="btn btn-secondary" onClick={() => exportCSV(commandes)}
             title="Exporter la page courante en CSV"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -420,7 +446,20 @@ const Commandes = () => {
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>{count} résultat{count !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Table */}
+      {/* ── Vue Kanban ── */}
+      {viewMode === 'kanban' && (
+        <div className="animate-fade-in" style={{ marginBottom: '1.5rem' }}>
+          <KanbanCommandes
+            commandes={commandes}
+            loading={loading}
+            onAvancer={handleAvancer}
+            onDetail={setSelected}
+          />
+        </div>
+      )}
+
+      {/* ── Vue Liste (tableau) ── */}
+      {viewMode === 'liste' && (
       <div className="glass-card animate-fade-in" style={{ animationDelay: '0.1s', overflow: 'auto' }}>
         <table className="data-table">
           <thead>
@@ -514,24 +553,17 @@ const Commandes = () => {
                     )}
 
                     {/* Assigner transporteur */}
-                    {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'EN_ROUTE'].includes(cmd.statut) && user?.role === 'ADMIN' && !cmd.transporteur && (
-                      <button
-                        onClick={() => setAssigning(cmd)}
-                        title="Assigner un transporteur"
-                        style={BTN_ICON}
-                      >
-                        <UserCheck size={13} />
+                    {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION'].includes(cmd.statut) && (
+                      <button className="btn btn-sm" style={{ background: '#8b5cf620', color: '#a78bfa', border: '1px solid #8b5cf630', fontSize: 11 }}
+                        onClick={() => setAssigning(cmd)} title="Assigner transporteur">
+                        <UserCheck size={12} /> {cmd.transporteur_detail ? 'Réassigner' : 'Assigner'}
                       </button>
                     )}
 
                     {/* Annuler */}
-                    {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && user?.role === 'ADMIN' && (
-                      <button
-                        onClick={() => handleAnnuler(cmd)}
-                        disabled={pendingIds.has(cmd.id)}
-                        title="Annuler la commande"
-                        style={{ ...BTN_ICON, ...BTN_DANGER, opacity: pendingIds.has(cmd.id) ? 0.6 : 1 }}
-                      >
+                    {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && (
+                      <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }}
+                        onClick={() => handleAnnuler(cmd)} title="Annuler">
                         <X size={13} />
                       </button>
                     )}
@@ -544,34 +576,30 @@ const Commandes = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button key={i} onClick={() => setPage(i + 1)}
-                style={{
-                  padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: page === i + 1 ? '#6366f1' : 'rgba(255,255,255,0.08)',
-                  color: 'white', fontWeight: page === i + 1 ? 700 : 400,
-                }}>
-                {i + 1}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <button className="btn btn-secondary btn-sm" disabled={page === 1} onClick={() => changePage(page - 1)}>
+              <ChevronLeft size={15} />
+            </button>
+            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Page {page} / {totalPages}</span>
+            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => changePage(page + 1)}>
+              <ChevronRight size={15} />
+            </button>
           </div>
         )}
       </div>
+      )} {/* end viewMode === liste */}
 
-      {/* ── Modals ── */}
-      {selected && (
-        <DetailModal commande={selected} onClose={() => setSelected(null)} />
-      )}
+      {/* Modals */}
+      {selected && <DetailModal commande={selected} onClose={() => setSelected(null)} />}
       {assigning && (
         <AssignerModal
           commande={assigning}
           onClose={() => setAssigning(null)}
-          onSuccess={(msg) => { showToast(msg || 'Transporteur assigné !'); fetchCommandes(); }}
+          onSuccess={(msg) => { showToast(msg); fetchCommandes(); }}
         />
       )}
     </div>
   );
-}
+};
 
 export default Commandes;

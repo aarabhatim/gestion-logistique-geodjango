@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, Package } from 'lucide-react';
 import { commandesApi } from '../../services/api';
+import '../../styles/marjane.css';
 
 const StoreOrders = () => {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = async () => {
@@ -20,14 +21,13 @@ const StoreOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-    // In a real app, use WebSocket here for live updates
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const updateStatus = async (id, newStatus) => {
     try {
-      await api.patch(`commandes/${id}/update_status/`, { statut: newStatus });
+      await commandesApi.updateStatus(id, { statut: newStatus });
       fetchOrders();
     } catch (err) {
       console.error(err);
@@ -36,76 +36,153 @@ const StoreOrders = () => {
 
   const getOrdersByStatus = (status) => orders.filter(o => o.statut === status);
 
-  const KanbanColumn = ({ title, status, icon: Icon, color, nextStatus, nextLabel }) => {
-    const columnOrders = getOrdersByStatus(status);
-    return (
-      <div className="kanban-column" style={{ background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h3 style={{ borderBottom: `2px solid ${color}`, paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Icon size={18} color={color} /> {title} ({columnOrders.length})
-        </h3>
-        
-        <div className="kanban-items" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {columnOrders.map(order => (
-            <div key={order.id} className="card kanban-card" style={{ padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span className="font-bold">Cmd #{order.id}</span>
-                <span className="text-secondary text-sm">{new Date(order.created_at).toLocaleTimeString()}</span>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <p className="text-sm">Total: <strong>{order.total_price} MAD</strong></p>
-                <p className="text-sm text-secondary">{order.produits_commande?.length || 0} articles</p>
-              </div>
-              
-              {nextStatus && (
-                <button 
-                  className="btn btn-primary w-full" 
-                  style={{ padding: '0.5rem', fontSize: '0.85rem' }}
-                  onClick={() => updateStatus(order.id, nextStatus)}
-                >
-                  {nextLabel}
-                </button>
-              )}
-            </div>
-          ))}
-          {columnOrders.length === 0 && (
-            <p className="text-secondary text-center text-sm mt-4">Aucune commande</p>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const COLUMNS = [
+    {
+      title: 'En attente',
+      status: 'EN_ATTENTE',
+      icon: Clock,
+      color: '#D97706',
+      bg: 'rgba(245,158,11,0.06)',
+      border: 'rgba(245,158,11,0.2)',
+      nextStatus: 'EN_PREPARATION',
+      nextLabel: '✅ Accepter & Préparer',
+    },
+    {
+      title: 'En préparation',
+      status: 'EN_PREPARATION',
+      icon: Package,
+      color: '#E30613',
+      bg: 'rgba(227,6,19,0.04)',
+      border: 'rgba(227,6,19,0.15)',
+      nextStatus: 'VALIDEE',
+      nextLabel: '📦 Marquer comme Prête',
+    },
+    {
+      title: 'Prête / En attente livreur',
+      status: 'VALIDEE',
+      icon: CheckCircle,
+      color: '#22C55E',
+      bg: 'rgba(34,197,94,0.04)',
+      border: 'rgba(34,197,94,0.15)',
+      nextStatus: null,
+      nextLabel: null,
+    },
+  ];
 
   return (
-    <div className="dashboard-container animate-fade-in">
-      <h1 className="text-gradient mb-4">Gestion des Commandes</h1>
-      
+    <div className="mj-page" style={{ padding: '0 0 40px' }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{
+          fontWeight: 800, fontSize: 22, margin: 0,
+          color: 'var(--mj-text)', fontFamily: 'var(--mj-font)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <Package size={22} color="var(--mj-red)" /> Gestion des Commandes
+        </h2>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--mj-text-3)' }}>
+          Suivi en temps réel — actualisé toutes les 30 secondes
+        </p>
+      </div>
+
       {loading && orders.length === 0 ? (
-        <p>Chargement des commandes...</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 60 }}>
+          <div className="mj-spin" style={{
+            width: 28, height: 28,
+            border: '3px solid var(--mj-border)', borderTopColor: 'var(--mj-red)', borderRadius: '50%',
+          }} />
+          <span style={{ color: 'var(--mj-text-3)' }}>Chargement des commandes…</span>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
-          <KanbanColumn 
-            title="Nouvelles (En attente)" 
-            status="EN_ATTENTE" 
-            icon={Clock} 
-            color="var(--warning-color)"
-            nextStatus="EN_PREPARATION"
-            nextLabel="Accepter & Préparer"
-          />
-          <KanbanColumn 
-            title="En Préparation" 
-            status="EN_PREPARATION" 
-            icon={Package} 
-            color="var(--primary-color)"
-            nextStatus="VALIDEE"
-            nextLabel="Marquer comme Prête"
-          />
-          <KanbanColumn 
-            title="Prêtes (En attente livreur)" 
-            status="VALIDEE" 
-            icon={CheckCircle} 
-            color="var(--success-color)"
-            // No next status for Store, driver will take it and change to EN_ROUTE
-          />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: 20,
+          alignItems: 'start',
+        }}>
+          {COLUMNS.map(col => {
+            const columnOrders = getOrdersByStatus(col.status);
+            return (
+              <div key={col.status} style={{
+                background: col.bg,
+                border: `1px solid ${col.border}`,
+                borderRadius: 16,
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+                {/* Column header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: `2px solid ${col.border}` }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: col.color + '15',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <col.icon size={18} color={col.color} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+                      {col.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--mj-text-3)' }}>
+                      {columnOrders.length} commande{columnOrders.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Orders */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {columnOrders.length === 0 ? (
+                    <div style={{
+                      textAlign: 'center', padding: '24px 16px',
+                      color: 'var(--mj-text-3)', fontSize: 13,
+                    }}>
+                      Aucune commande
+                    </div>
+                  ) : columnOrders.map(order => (
+                    <div key={order.id} className="mj-card" style={{ padding: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+                          Cmd #{order.reference || order.id}
+                        </span>
+                        <span style={{ color: 'var(--mj-text-3)', fontSize: 12 }}>
+                          {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, color: 'var(--mj-text-3)' }}>
+                            {order.produits_commande?.length || 0} article{(order.produits_commande?.length || 0) !== 1 ? 's' : ''}
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: '#22C55E' }}>
+                            {parseFloat(order.total_price || 0).toFixed(0)} MAD
+                          </span>
+                        </div>
+                        {order.client_nom && (
+                          <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 4 }}>
+                            👤 {order.client_nom}
+                          </div>
+                        )}
+                      </div>
+
+                      {col.nextStatus && (
+                        <button
+                          className="mj-btn mj-btn-primary mj-btn-full"
+                          style={{ fontSize: 13 }}
+                          onClick={() => updateStatus(order.id, col.nextStatus)}
+                        >
+                          {col.nextLabel}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

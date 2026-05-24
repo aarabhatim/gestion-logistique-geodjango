@@ -3,34 +3,35 @@ import {
   ShoppingCart, Package, Map as MapIcon, User, LogOut, Star, Plus, Minus,
   Trash2, MapPin, Clock, CheckCircle, Truck, Tag, X, Search, ChevronRight,
   Heart, Zap, ArrowLeft, CreditCard, Gift, RefreshCw, Navigation, TicketIcon,
-  AlertCircle, MessageSquare, Send,
+  AlertCircle, MessageSquare, Send, SlidersHorizontal, Filter,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fondateursApi, commandesApi, ticketsApi, clientApi } from '../../services/api';
+import { fondateursApi, commandesApi, ticketsApi, clientApi, mediaUrl } from '../../services/api';
 import useCartStore from '../../stores/cartStore';
 import useFavoritesStore from '../../stores/favoritesStore';
 import useLoyaltyStore from '../../stores/loyaltyStore';
 import ChatbotWidget from '../../components/ChatbotWidget';
+import SuiviTimeline from '../../components/SuiviTimeline';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import '../../styles/marjane.css';
 
-// ─── Inline SVG icons — no external CDN (avoids tracking-prevention blocks) ───
+/* ── Leaflet icon fix ─────────────────────────────────────────────────────── */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconUrl: '', shadowUrl: '', iconRetinaUrl: '' });
-
 const _pin = (color, emoji = '📍') => L.divIcon({
   className: '',
   html: `<div style="width:30px;height:30px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.9);box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:14px">${emoji}</span></div>`,
   iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -32],
 });
 const iconBlue   = _pin('#3b82f6', '🏪');
-const iconGreen  = _pin('#10b981', '✅');
-const iconOrange = _pin('#f59e0b', '🚚');
+const iconGreen  = _pin('#22c55e', '✅');
+const iconOrange = _pin('#E30613', '🚚');
 const iconRed    = _pin('#ef4444', '📍');
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+/* ── Constantes ───────────────────────────────────────────────────────────── */
 const CATEGORIES = [
   { key: '', label: 'Tout', icon: '🏪' },
   { key: 'RESTAURATION', label: 'Restauration', icon: '🍽️' },
@@ -40,92 +41,150 @@ const CATEGORIES = [
   { key: 'BOUTIQUE', label: 'Mode', icon: '👗' },
 ];
 
-// ─── Photos imaginaires (Unsplash via Picsum + gradient overlay) ─────────────
 const PRODUCT_GRADIENTS = {
-  ALIMENTAIRE:  ['#f59e0b', '#ef4444'],
-  BOISSONS:     ['#06b6d4', '#3b82f6'],
-  HYGIENE:      ['#10b981', '#22d3ee'],
-  MEDICAMENTS:  ['#3b82f6', '#8b5cf6'],
-  ELECTRONIQUE: ['#8b5cf6', '#ec4899'],
-  VETEMENTS:    ['#ec4899', '#f59e0b'],
-  AUTRE:        ['#64748b', '#94a3b8'],
+  ALIMENTAIRE:  ['#f59e0b','#ef4444'],
+  BOISSONS:     ['#06b6d4','#3b82f6'],
+  HYGIENE:      ['#10b981','#22d3ee'],
+  MEDICAMENTS:  ['#3b82f6','#8b5cf6'],
+  ELECTRONIQUE: ['#8b5cf6','#ec4899'],
+  VETEMENTS:    ['#ec4899','#f59e0b'],
+  AUTRE:        ['#94a3b8','#64748b'],
 };
 const PRODUCT_EMOJIS = {
-  ALIMENTAIRE:  ['🍕', '🍔', '🥗', '🥖', '🧀', '🍳', '🍲', '🍱', '🍜'],
-  BOISSONS:     ['🥤', '☕', '🧃', '🍵', '🥛', '🍶'],
-  HYGIENE:      ['🧴', '🧼', '🪥', '🧻', '🧽'],
-  MEDICAMENTS:  ['💊', '🩹', '🩺', '💉', '🧪'],
-  ELECTRONIQUE: ['📱', '💻', '⌚', '🎧', '📷', '🔌', '🖥️'],
-  VETEMENTS:    ['👗', '👔', '👟', '👜', '🧢', '🧥', '👖'],
-  AUTRE:        ['📦', '🛍️', '🎁', '🪴'],
+  ALIMENTAIRE:  ['🍕','🍔','🥗','🥖','🧀','🍳','🍲','🍱','🍜'],
+  BOISSONS:     ['🥤','☕','🧃','🍵','🥛','🍶'],
+  HYGIENE:      ['🧴','🧼','🪥','🧻','🧽'],
+  MEDICAMENTS:  ['💊','🩹','🩺','💉','🧪'],
+  ELECTRONIQUE: ['📱','💻','⌚','🎧','📷','🔌','🖥️'],
+  VETEMENTS:    ['👗','👔','👟','👜','🧢','🧥','👖'],
+  AUTRE:        ['📦','🛍️','🎁','🪴'],
 };
-const getProductEmoji = (categorie, id) => {
-  const list = PRODUCT_EMOJIS[categorie] || PRODUCT_EMOJIS.AUTRE;
+const getProductEmoji = (cat, id) => {
+  const list = PRODUCT_EMOJIS[cat] || PRODUCT_EMOJIS.AUTRE;
   return list[(id || 0) % list.length];
 };
+
+const STATUT_CONFIG = {
+  EN_ATTENTE:     { label: 'En attente',     color: '#F59E0B', icon: '⏳', step: 1 },
+  VALIDEE:        { label: 'Validée',         color: '#3B82F6', icon: '✅', step: 2 },
+  EN_PREPARATION: { label: 'En préparation', color: '#8B5CF6', icon: '👨‍🍳', step: 3 },
+  EN_ROUTE:       { label: 'En route',        color: '#E30613', icon: '🛵', step: 4 },
+  LIVREE:         { label: 'Livrée',          color: '#22C55E', icon: '🎉', step: 5 },
+  ANNULEE:        { label: 'Annulée',         color: '#EF4444', icon: '❌', step: 0 },
+};
+
+const TABS = [
+  { id: 'catalogue', label: 'Catalogue',      icon: ShoppingCart },
+  { id: 'commandes', label: 'Mes commandes',   icon: Package },
+  { id: 'suivi',     label: 'Suivi live',      icon: MapIcon },
+  { id: 'favoris',   label: 'Favoris',         icon: Heart },
+  { id: 'tickets',   label: 'Tickets',         icon: TicketIcon },
+  { id: 'profil',    label: 'Mon profil',      icon: User },
+];
+
+const QUARTIERS_PAR_VILLE = {
+  Casablanca: [
+    { nom: 'Maarif', lat: 33.5849, lon: -7.6336 },
+    { nom: 'Anfa', lat: 33.5897, lon: -7.6500 },
+    { nom: 'Ain Diab', lat: 33.5973, lon: -7.6900 },
+    { nom: 'Hay Hassani', lat: 33.5462, lon: -7.6620 },
+    { nom: 'Sidi Belyout', lat: 33.6020, lon: -7.6160 },
+    { nom: 'Bourgogne', lat: 33.5840, lon: -7.6240 },
+    { nom: 'Gauthier', lat: 33.5950, lon: -7.6280 },
+    { nom: 'Racine', lat: 33.5880, lon: -7.6350 },
+  ],
+  Rabat: [
+    { nom: 'Agdal', lat: 33.9930, lon: -6.8500 },
+    { nom: 'Hay Riad', lat: 34.0080, lon: -6.8420 },
+    { nom: 'Souissi', lat: 34.0090, lon: -6.8170 },
+    { nom: 'Médina', lat: 34.0245, lon: -6.8326 },
+  ],
+  Marrakech: [
+    { nom: 'Gueliz', lat: 31.6390, lon: -8.0050 },
+    { nom: 'Hivernage', lat: 31.6280, lon: -8.0080 },
+    { nom: 'Médina', lat: 31.6295, lon: -7.9811 },
+    { nom: 'Targa', lat: 31.6490, lon: -8.0290 },
+  ],
+  Tanger: [
+    { nom: 'Centre-ville', lat: 35.7595, lon: -5.8340 },
+    { nom: 'Malabata', lat: 35.7790, lon: -5.7670 },
+    { nom: 'Iberia', lat: 35.7700, lon: -5.8050 },
+  ],
+  Fès: [
+    { nom: 'Médina', lat: 34.0608, lon: -4.9777 },
+    { nom: 'Ville Nouvelle', lat: 34.0331, lon: -5.0003 },
+    { nom: 'Atlas', lat: 34.0210, lon: -5.0150 },
+  ],
+  Agadir: [
+    { nom: 'Centre', lat: 30.4278, lon: -9.5981 },
+    { nom: 'Founty', lat: 30.4040, lon: -9.5650 },
+    { nom: 'Talborjt', lat: 30.4220, lon: -9.5870 },
+  ],
+};
+
+const distanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+const calculerFrais = (distKm, baseFrais) => {
+  if (distKm <= 2) return baseFrais;
+  return Math.round(baseFrais + (distKm - 2) * 2);
+};
+
+/* ── Stars ────────────────────────────────────────────────────────────────── */
+const Stars = ({ note, size = 12 }) => (
+  <span className="mj-stars">
+    {[1,2,3,4,5].map(i => (
+      <Star key={i} size={size}
+        fill={i <= Math.round(note) ? '#F59E0B' : 'transparent'}
+        color={i <= Math.round(note) ? '#F59E0B' : '#D1D5DB'} />
+    ))}
+    <span style={{ fontSize: 11, color: 'var(--mj-text-3)', marginLeft: 3 }}>{note?.toFixed(1)}</span>
+  </span>
+);
+
+/* ── ProductImage ─────────────────────────────────────────────────────────── */
 const ProductImage = ({ produit, height = 140 }) => {
   const cat = produit.categorie || 'AUTRE';
   const [g1, g2] = PRODUCT_GRADIENTS[cat] || PRODUCT_GRADIENTS.AUTRE;
   const emoji = getProductEmoji(cat, produit.id);
+  const [imgError, setImgError] = useState(false);
+  const src = mediaUrl(produit.image_principale || produit.image);
+
+  if (src && !imgError) {
+    return (
+      <div style={{ width: '100%', height, position: 'relative', overflow: 'hidden', background: '#1A1A1A' }}>
+        <img
+          src={src}
+          alt={produit.nom}
+          onError={() => setImgError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+        {/* Subtle dark overlay at the bottom for text readability */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(transparent, rgba(0,0,0,0.5))' }} />
+      </div>
+    );
+  }
+
+  /* Fallback — emoji gradient */
   return (
     <div style={{
-      width: '100%', height, borderRadius: '12px 12px 0 0',
-      background: `linear-gradient(135deg, ${g1}, ${g2})`,
-      position: 'relative', overflow: 'hidden',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      width: '100%', height, background: `linear-gradient(135deg, ${g1}, ${g2})`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
     }}>
-      {/* Texture overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 60%)',
-      }} />
-      <span style={{ fontSize: 56, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))', position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
+      <span style={{ fontSize: 52, filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.35))', position: 'relative', zIndex: 1 }}>
         {emoji}
       </span>
-      {produit.prix_promo && parseFloat(produit.prix_promo) < parseFloat(produit.prix) && (
-        <div style={{
-          position: 'absolute', top: 8, right: 8,
-          background: 'rgba(239,68,68,0.95)', color: 'white',
-          fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
-          letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(239,68,68,0.5)',
-        }}>
-          🔥 PROMO
-        </div>
-      )}
     </div>
   );
 };
 
-const STATUT_CONFIG = {
-  EN_ATTENTE:     { label: 'En attente',     cls: 'badge-warning',   icon: '⏳', step: 1 },
-  VALIDEE:        { label: 'Validée',         cls: 'badge-info',      icon: '✅', step: 2 },
-  EN_PREPARATION: { label: 'En préparation', cls: 'badge-primary',   icon: '👨‍🍳', step: 3 },
-  EN_ROUTE:       { label: 'En route',        cls: 'badge-success',   icon: '🛵', step: 4 },
-  LIVREE:         { label: 'Livrée',          cls: 'badge-success',   icon: '🎉', step: 5 },
-  ANNULEE:        { label: 'Annulée',         cls: 'badge-danger',    icon: '❌', step: 0 },
-};
-
-// ─── TABS ────────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'catalogue', label: 'Catalogue', icon: ShoppingCart },
-  { id: 'commandes', label: 'Mes commandes', icon: Package },
-  { id: 'suivi',     label: 'Suivi live',    icon: MapIcon },
-  { id: 'favoris',   label: 'Favoris',       icon: Heart },
-  { id: 'tickets',   label: 'Tickets',       icon: TicketIcon },
-  { id: 'profil',    label: 'Mon profil',    icon: User },
-];
-
-// ─── Star Rating ─────────────────────────────────────────────────────────────
-const Stars = ({ note, size = 12 }) => (
-  <span style={{ display: 'inline-flex', gap: '2px', alignItems: 'center' }}>
-    {[1,2,3,4,5].map(i => (
-      <Star key={i} size={size} fill={i <= Math.round(note) ? '#f59e0b' : 'transparent'} color={i <= Math.round(note) ? '#f59e0b' : '#475569'} />
-    ))}
-    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '3px' }}>{note?.toFixed(1)}</span>
-  </span>
-);
-
-// ─── Chat avec le livreur ───────────────────────────────────────────────────
+/* ── ChatSidebar ──────────────────────────────────────────────────────────── */
 const ChatSidebar = ({ commande, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -136,11 +195,7 @@ const ChatSidebar = ({ commande, onClose }) => {
     try {
       const r = await clientApi.chatGet(commande.id);
       setMessages(r.data || []);
-    } catch (e) {
-      console.error('Erreur chatGet:', e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [commande.id]);
 
   useEffect(() => {
@@ -150,9 +205,7 @@ const ChatSidebar = ({ commande, onClose }) => {
     return () => clearInterval(interval);
   }, [loadMessages]);
 
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -161,99 +214,64 @@ const ChatSidebar = ({ commande, onClose }) => {
     setInput('');
     try {
       const r = await clientApi.chatSend(commande.id, text);
-      const newMsg = {
-        id: r.data.id,
-        auteur_role: 'CLIENT',
-        contenu: r.data.contenu,
-        created_at: r.data.created_at,
-      };
-      setMessages(prev => [...prev, newMsg]);
-    } catch (e) {
-      console.error('Erreur chatSend:', e);
-    }
+      setMessages(prev => [...prev, { id: r.data.id, auteur_role: 'CLIENT', contenu: r.data.contenu, created_at: r.data.created_at }]);
+    } catch (e) { console.error(e); }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(4px)' }}>
-      <div className="glass-card animate-fade-in" style={{ width: '400px', height: '100vh', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'rgba(15,20,34,0.97)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="mj-overlay">
+      <div className="mj-chat-sidebar mj-fade-in">
         {/* Header */}
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
+        <div className="mj-sidebar-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, background: 'rgba(99,102,241,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+            <div style={{ width: 42, height: 42, background: 'var(--mj-red-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
               🛵
             </div>
             <div>
-              <h3 style={{ fontWeight: 800, margin: 0, fontSize: 15 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--mj-text)' }}>
                 {commande.transporteur_detail ? `${commande.transporteur_detail.first_name} ${commande.transporteur_detail.last_name}` : 'Livreur'}
-              </h3>
-              <div style={{ fontSize: '11px', color: 'rgba(99,102,241,0.85)', marginTop: '2px', fontFamily: 'monospace', fontWeight: 600 }}>
-                #{commande.reference}
               </div>
+              <div style={{ fontSize: 12, color: 'var(--mj-red)', fontWeight: 600 }}>#{commande.reference}</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
+          <button className="mj-btn mj-btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Message list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--mj-bg)' }}>
           {loading ? (
-            <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
-              <RefreshCw size={24} className="spin" />
-              <span style={{ fontSize: 12 }}>Chargement du chat...</span>
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--mj-text-4)' }}>
+              <RefreshCw size={24} className="mj-spin" style={{ margin: '0 auto 8px' }} />
+              <div style={{ fontSize: 12 }}>Chargement...</div>
             </div>
           ) : messages.length === 0 ? (
-            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13, padding: '0 20px', lineHeight: 1.6 }}>
-              💬 Pas encore de messages.<br />Envoyez un message pour commencer la discussion avec votre livreur !
+            <div className="mj-empty" style={{ margin: 'auto' }}>
+              <div className="mj-empty-icon">💬</div>
+              <div className="mj-empty-title">Aucun message</div>
+              <div className="mj-empty-desc">Démarrez la conversation avec votre livreur</div>
             </div>
-          ) : (
-            messages.map((msg, i) => {
-              const isMe = msg.auteur_role === 'CLIENT';
-              return (
-                <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                  <div style={{
-                    maxWidth: '80%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: isMe ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.06)',
-                    border: isMe ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    color: '#f1f5f9', fontSize: 13, lineHeight: 1.5,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                  }}>
-                    <div style={{ wordBreak: 'break-word' }}>{msg.contenu}</div>
-                    <div style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)', marginTop: 4, textAlign: 'right' }}>
-                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </div>
+          ) : messages.map((msg, i) => {
+            const isMe = msg.auteur_role === 'CLIENT';
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                <div className={isMe ? 'mj-chat-bubble-me' : 'mj-chat-bubble-other'} style={{ maxWidth: '80%', padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
+                  <div style={{ wordBreak: 'break-word' }}>{msg.contenu}</div>
+                  <div style={{ fontSize: 9, marginTop: 4, textAlign: 'right', opacity: 0.6 }}>
+                    {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
                   </div>
                 </div>
-              );
-            })
-          )}
+              </div>
+            );
+          })}
           <div ref={chatBottomRef} />
         </div>
 
         {/* Input */}
-        <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
+        <div className="mj-sidebar-footer">
           <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Message pour le livreur..."
-              style={{
-                flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
-                color: '#fff', fontSize: 13, outline: 'none'
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              style={{
-                background: input.trim() ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)',
-                border: 'none', borderRadius: 10, padding: '10px 14px',
-                color: input.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
-                cursor: input.trim() ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-            >
-              <Send size={15} />
+            <input value={input} onChange={e => setInput(e.target.value)} placeholder="Votre message..." className="mj-input" style={{ fontSize: 13 }} />
+            <button type="submit" disabled={!input.trim()} className="mj-btn mj-btn-primary mj-btn-sm" style={{ padding: '10px 14px' }}>
+              <Send size={14} />
             </button>
           </form>
         </div>
@@ -262,7 +280,7 @@ const ChatSidebar = ({ commande, onClose }) => {
   );
 };
 
-// ─── Panier flottant ─────────────────────────────────────────────────────────
+/* ── CartSidebar ──────────────────────────────────────────────────────────── */
 const CartSidebar = ({ onClose, onOrder }) => {
   const { items, fondateur, updateQuantite, removeItem, clearCart } = useCartStore();
   const [codePromo, setCodePromo] = useState('');
@@ -278,119 +296,106 @@ const CartSidebar = ({ onClose, onOrder }) => {
     try {
       const res = await fondateursApi.verifierCode({ code: codePromo, fondateur_id: fondateur?.id, montant: sousTotal });
       const data = res.data;
-      if (data.valide) {
-        setDiscount(data.reduction);
-        setPromoApplied(true);
-        setPromoError('');
-      } else {
-        setPromoError(data.message || 'Code invalide');
-      }
+      if (data.valide) { setDiscount(data.reduction); setPromoApplied(true); setPromoError(''); }
+      else setPromoError(data.message || 'Code invalide');
     } catch { setPromoError('Code invalide ou expiré'); }
   };
 
   if (items.length === 0) return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
-      <div className="glass-card" style={{ width: '380px', height: '100vh', borderRadius: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-        <ShoppingCart size={48} style={{ opacity: 0.3 }} />
-        <p style={{ color: 'var(--text-secondary)' }}>Votre panier est vide</p>
-        <button className="btn btn-secondary" onClick={onClose}>Continuer les achats</button>
+    <div className="mj-overlay">
+      <div className="mj-sidebar mj-fade-in" style={{ width: 400, height: '100vh', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+        <ShoppingCart size={48} style={{ color: 'var(--mj-text-4)' }} />
+        <p style={{ color: 'var(--mj-text-3)', fontWeight: 600 }}>Votre panier est vide</p>
+        <button className="mj-btn mj-btn-secondary" onClick={onClose}>Continuer les achats</button>
       </div>
     </div>
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
-      <div className="glass-card animate-fade-in" style={{ width: '400px', height: '100vh', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="mj-overlay">
+      <div className="mj-sidebar mj-fade-in" style={{ width: 400, height: '100vh' }}>
+        <div className="mj-sidebar-header">
           <div>
-            <h3 style={{ fontWeight: 700, margin: 0 }}>Mon panier</h3>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--mj-text)' }}>Mon panier</h3>
+            <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2 }}>
               {fondateur?.nom_boutique} · {items.length} article{items.length > 1 ? 's' : ''}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
+          <button className="mj-btn mj-btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'var(--mj-bg)' }}>
           {items.map(({ produit, quantite }) => {
             const [g1, g2] = PRODUCT_GRADIENTS[produit.categorie] || PRODUCT_GRADIENTS.AUTRE;
+            const imgSrc = mediaUrl(produit.image_principale || produit.image);
             return (
-            <div key={produit.id} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', padding: '0.875rem', background: 'rgba(255,255,255,0.04)', borderRadius: '12px' }}>
-              <div style={{
-                width: 48, height: 48,
-                background: `linear-gradient(135deg, ${g1}, ${g2})`,
-                borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24, flexShrink: 0,
-              }}>
-                {getProductEmoji(produit.categorie, produit.id)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px' }}>{produit.nom}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px' }}>{produit.fondateur_nom}</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button onClick={() => updateQuantite(produit.id, quantite - 1)}
-                      style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Minus size={12} />
-                    </button>
-                    <span style={{ fontWeight: 700, minWidth: '20px', textAlign: 'center' }}>{quantite}</span>
-                    <button onClick={() => updateQuantite(produit.id, quantite + 1)}
-                      style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(59,130,246,0.3)', border: 'none', cursor: 'pointer', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Plus size={12} />
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 700, color: '#10b981' }}>{(parseFloat(produit.prix_effectif) * quantite).toFixed(2)} MAD</span>
-                    <button onClick={() => removeItem(produit.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={14} /></button>
+              <div key={produit.id} className="mj-card" style={{ display: 'flex', gap: 12, marginBottom: 12, padding: 14 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0, overflow: 'hidden', background: `linear-gradient(135deg, ${g1}, ${g2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                  {imgSrc
+                    ? <img src={imgSrc} alt={produit.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    : getProductEmoji(produit.categorie, produit.id)
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{produit.nom}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mj-text-4)', marginBottom: 6 }}>{produit.fondateur_nom}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => updateQuantite(produit.id, quantite - 1)} style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--mj-bg)', border: '1px solid var(--mj-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mj-text)' }}>
+                        <Minus size={12} />
+                      </button>
+                      <span style={{ fontWeight: 700, minWidth: 20, textAlign: 'center', fontSize: 14 }}>{quantite}</span>
+                      <button onClick={() => updateQuantite(produit.id, quantite + 1)} style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--mj-red)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--mj-red)' }}>{(parseFloat(produit.prix_effectif) * quantite).toFixed(2)} MAD</span>
+                      <button onClick={() => removeItem(produit.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mj-danger)' }}><Trash2 size={14} /></button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             );
           })}
         </div>
 
         {/* Code promo */}
-        <div style={{ padding: '0 1rem', marginBottom: '0.75rem' }}>
+        <div style={{ padding: '0 16px 12px', background: 'var(--mj-bg)' }}>
           {!promoApplied ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input className="glass-input" placeholder="Code promo..." value={codePromo}
-                onChange={e => setCodePromo(e.target.value)} style={{ flex: 1, fontSize: '13px' }} />
-              <button className="btn btn-secondary btn-sm" onClick={handlePromo}><Gift size={14} /></button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="mj-input" placeholder="Code promo..." value={codePromo} onChange={e => setCodePromo(e.target.value)} style={{ fontSize: 13 }} />
+              <button className="mj-btn mj-btn-outline-red" onClick={handlePromo} style={{ flexShrink: 0 }}><Gift size={15} /></button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '13px', padding: '0.5rem', background: 'rgba(16,185,129,0.1)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mj-green)', fontSize: 13, padding: '10px 14px', background: 'var(--mj-green-light)', borderRadius: 10 }}>
               <CheckCircle size={14} /> Code appliqué ! -{discount} MAD
             </div>
           )}
-          {promoError && <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px' }}>{promoError}</div>}
+          {promoError && <div style={{ color: 'var(--mj-danger)', fontSize: 11, marginTop: 4 }}>{promoError}</div>}
         </div>
 
-        {/* Récap */}
-        <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem', fontSize: '13px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+        <div className="mj-sidebar-footer">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14, fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)' }}>
               <span>Sous-total</span><span>{sousTotal.toFixed(2)} MAD</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)' }}>
               <span>Frais de livraison</span><span>{frais.toFixed(2)} MAD</span>
             </div>
             {discount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-green)' }}>
                 <span>Réduction</span><span>-{discount.toFixed(2)} MAD</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '16px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <span>Total</span><span style={{ color: '#10b981' }}>{total.toFixed(2)} MAD</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, paddingTop: 8, borderTop: '1px solid var(--mj-border)' }}>
+              <span>Total</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
             </div>
           </div>
-          <button className="btn btn-primary btn-full" style={{ justifyContent: 'center' }} onClick={onOrder}>
+          <button className="mj-btn mj-btn-primary mj-btn-full" onClick={onOrder}>
             <CreditCard size={16} /> Commander — {total.toFixed(2)} MAD
           </button>
-          <button onClick={clearCart} style={{ width: '100%', marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '12px' }}>
+          <button onClick={clearCart} style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mj-danger)', fontSize: 12, fontFamily: 'var(--mj-font)' }}>
             Vider le panier
           </button>
         </div>
@@ -399,75 +404,15 @@ const CartSidebar = ({ onClose, onOrder }) => {
   );
 };
 
-// ─── Quartiers du Maroc (par ville) ──────────────────────────────────────────
-const QUARTIERS_PAR_VILLE = {
-  Casablanca: [
-    { nom: 'Maarif',         lat: 33.5849, lon: -7.6336 },
-    { nom: 'Anfa',           lat: 33.5897, lon: -7.6500 },
-    { nom: 'Ain Diab',       lat: 33.5973, lon: -7.6900 },
-    { nom: 'Hay Hassani',    lat: 33.5462, lon: -7.6620 },
-    { nom: 'Sidi Belyout',   lat: 33.6020, lon: -7.6160 },
-    { nom: 'Bourgogne',      lat: 33.5840, lon: -7.6240 },
-    { nom: 'Gauthier',       lat: 33.5950, lon: -7.6280 },
-    { nom: 'Racine',         lat: 33.5880, lon: -7.6350 },
-  ],
-  Rabat: [
-    { nom: 'Agdal',          lat: 33.9930, lon: -6.8500 },
-    { nom: 'Hay Riad',       lat: 34.0080, lon: -6.8420 },
-    { nom: 'Souissi',        lat: 34.0090, lon: -6.8170 },
-    { nom: 'Médina',         lat: 34.0245, lon: -6.8326 },
-  ],
-  Marrakech: [
-    { nom: 'Gueliz',         lat: 31.6390, lon: -8.0050 },
-    { nom: 'Hivernage',      lat: 31.6280, lon: -8.0080 },
-    { nom: 'Médina',         lat: 31.6295, lon: -7.9811 },
-    { nom: 'Targa',          lat: 31.6490, lon: -8.0290 },
-  ],
-  Tanger: [
-    { nom: 'Centre-ville',   lat: 35.7595, lon: -5.8340 },
-    { nom: 'Malabata',       lat: 35.7790, lon: -5.7670 },
-    { nom: 'Iberia',         lat: 35.7700, lon: -5.8050 },
-  ],
-  Fès: [
-    { nom: 'Médina',         lat: 34.0608, lon: -4.9777 },
-    { nom: 'Ville Nouvelle', lat: 34.0331, lon: -5.0003 },
-    { nom: 'Atlas',          lat: 34.0210, lon: -5.0150 },
-  ],
-  Agadir: [
-    { nom: 'Centre',         lat: 30.4278, lon: -9.5981 },
-    { nom: 'Founty',         lat: 30.4040, lon: -9.5650 },
-    { nom: 'Talborjt',       lat: 30.4220, lon: -9.5870 },
-  ],
-};
-
-// ─── Haversine distance (km) ─────────────────────────────────────────────────
-const distanceKm = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-// ─── Calcul frais de livraison dynamique ─────────────────────────────────────
-const calculerFrais = (distKm, baseFrais = 15) => {
-  // base + 2 MAD/km au-delà de 2km
-  if (distKm <= 2) return baseFrais;
-  return Math.round(baseFrais + (distKm - 2) * 2);
-};
-
-// ─── Checkout Modal ───────────────────────────────────────────────────────────
+/* ── CheckoutModal ────────────────────────────────────────────────────────── */
 const CheckoutModal = ({ onClose, onSuccess }) => {
   const { items, fondateur, clearCart } = useCartStore();
   const { points, redeemPoints, addPoints } = useLoyaltyStore();
   const [adresse, setAdresse] = useState('');
-  const [position, setPosition] = useState(null);      // [lat, lon] de l'utilisateur
+  const [position, setPosition] = useState(null);
   const [quartier, setQuartier] = useState(null);
-  const [adresseMode, setAdresseMode] = useState('manuel'); // 'manuel' | 'gps' | 'quartier'
-  const [gpsStatus, setGpsStatus] = useState('idle');  // 'idle' | 'loading' | 'success' | 'error'
+  const [adresseMode, setAdresseMode] = useState('manuel');
+  const [gpsStatus, setGpsStatus] = useState('idle');
   const [ville, setVille] = useState(fondateur?.ville || 'Casablanca');
   const [mode, setMode] = useState('CASH');
   const [instructions, setInstructions] = useState('');
@@ -475,297 +420,175 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [usePoints, setUsePoints] = useState(false);
 
-  // Distance et frais dynamiques
-  const boutiquePos = fondateur && fondateur.latitude && fondateur.longitude
-    ? [fondateur.latitude, fondateur.longitude]
-    : null;
-
+  const boutiquePos = fondateur?.latitude && fondateur?.longitude ? [fondateur.latitude, fondateur.longitude] : null;
   let targetPos = null;
   if (adresseMode === 'gps' && position) targetPos = position;
   else if (adresseMode === 'quartier' && quartier) targetPos = [quartier.lat, quartier.lon];
 
-  const distance = (boutiquePos && targetPos)
-    ? distanceKm(boutiquePos[0], boutiquePos[1], targetPos[0], targetPos[1])
-    : 0;
-
+  const distance = (boutiquePos && targetPos) ? distanceKm(boutiquePos[0], boutiquePos[1], targetPos[0], targetPos[1]) : 0;
   const baseFrais = fondateur ? parseFloat(fondateur.frais_livraison_base) : 15;
   const fraisCalcules = targetPos ? calculerFrais(distance, baseFrais) : baseFrais;
   const sousTotal = items.reduce((s, i) => s + parseFloat(i.produit.prix_effectif) * i.quantite, 0);
-  
   const totalSansReduction = sousTotal + fraisCalcules;
   const pointsRedeemed = usePoints ? Math.min(Math.floor(points / 100) * 100, Math.floor(totalSansReduction / 10) * 100) : 0;
   const discount = (pointsRedeemed / 100) * 10;
   const total = totalSansReduction - discount;
-
-  // Estimation temps (km / 30 km/h * 60min = min)
   const tempsEstime = distance > 0 ? Math.max(15, Math.round((distance / 30) * 60) + 15) : null;
 
   const getGPSPosition = () => {
     setGpsStatus('loading');
     if (!navigator.geolocation) { setGpsStatus('error'); return; }
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        setPosition([lat, lon]);
-        setAdresse(`Position GPS : ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-        setAdresseMode('gps');
-        setGpsStatus('success');
-      },
+      pos => { setPosition([pos.coords.latitude, pos.coords.longitude]); setAdresse(`Position GPS : ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`); setAdresseMode('gps'); setGpsStatus('success'); },
       () => setGpsStatus('error'),
       { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
-  const choisirQuartier = (q) => {
-    setQuartier(q);
-    setAdresse(`${q.nom}, ${ville}`);
-    setAdresseMode('quartier');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!adresse.trim()) { setError('Veuillez sélectionner ou saisir une adresse de livraison'); return; }
+    if (!adresse.trim()) { setError('Veuillez sélectionner ou saisir une adresse'); return; }
     setLoading(true);
     try {
-      const res = await commandesApi.create({
-        fondateur_id: fondateur.id,
-        produits: items.map(i => ({ produit_id: i.produit.id, quantite: i.quantite })),
-        adresse_livraison: adresse,
-        latitude: targetPos ? targetPos[0] : null,
-        longitude: targetPos ? targetPos[1] : null,
-        mode_paiement: mode,
-        instructions_livraison: instructions,
-        livraison_immediate: true,
-      });
-      
-      const order = res.data;
-      const ref = order.reference || `#${order.id}`;
-      
-      if (pointsRedeemed > 0) {
-        redeemPoints(pointsRedeemed, ref);
-      }
+      const res = await commandesApi.create({ fondateur_id: fondateur.id, produits: items.map(i => ({ produit_id: i.produit.id, quantite: i.quantite })), adresse_livraison: adresse, latitude: targetPos?.[0] || null, longitude: targetPos?.[1] || null, mode_paiement: mode, instructions_livraison: instructions, livraison_immediate: true });
+      const ref = res.data.reference || `#${res.data.id}`;
+      if (pointsRedeemed > 0) redeemPoints(pointsRedeemed, ref);
       addPoints(total, ref);
-      
       clearCart();
       onSuccess();
-    } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Erreur lors de la commande');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.response?.data?.detail || 'Erreur lors de la commande'); }
+    finally { setLoading(false); }
   };
 
   const quartiers = QUARTIERS_PAR_VILLE[ville] || [];
   const villes = Object.keys(QUARTIERS_PAR_VILLE);
 
+  const modeBtn = (k, label, icon) => (
+    <button key={k} type="button" onClick={() => setAdresseMode(k)}
+      style={{ flex: 1, padding: '11px 8px', borderRadius: 10, border: `2px solid ${adresseMode === k ? 'var(--mj-red)' : 'var(--mj-border)'}`, background: adresseMode === k ? 'var(--mj-red-10)' : 'var(--mj-white)', cursor: 'pointer', color: adresseMode === k ? 'var(--mj-red)' : 'var(--mj-text-3)', fontWeight: adresseMode === k ? 700 : 500, fontSize: 11, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'var(--mj-ease-fast)', fontFamily: 'var(--mj-font)' }}>
+      {icon}{label}
+    </button>
+  );
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', overflowY: 'auto' }}>
-      <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 540, maxHeight: '92vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="mj-modal-overlay">
+      <div className="mj-card mj-fade-in" style={{ width: '100%', maxWidth: 540, maxHeight: '92vh', overflowY: 'auto', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            <h3 style={{ fontWeight: 700, margin: 0 }}>Finaliser la commande</h3>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{fondateur?.nom_boutique} · {fondateur?.ville}</div>
+            <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--mj-text)' }}>Finaliser la commande</h3>
+            <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2 }}>{fondateur?.nom_boutique} · {fondateur?.ville}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
+          <button className="mj-btn mj-btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
 
         <form onSubmit={handleSubmit}>
-
-          {/* ── Adresse — 3 modes ─────────────────────────────────────────── */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-              <MapPin size={13} style={{ display: 'inline', marginRight: 4 }} /> Adresse de livraison *
+          {/* Adresse */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--mj-text)', marginBottom: 8 }}>
+              <MapPin size={13} style={{ display: 'inline', marginRight: 4, color: 'var(--mj-red)' }} />
+              Adresse de livraison *
             </label>
-
-            {/* Boutons mode adresse */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
-              <button type="button" onClick={getGPSPosition}
-                style={{
-                  padding: '10px 8px', borderRadius: 10,
-                  border: `2px solid ${adresseMode === 'gps' ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
-                  background: adresseMode === 'gps' ? 'rgba(16,185,129,0.12)' : 'transparent',
-                  cursor: 'pointer', color: 'white', fontSize: 11, fontWeight: adresseMode === 'gps' ? 700 : 500,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                }}>
-                {gpsStatus === 'loading' ? <RefreshCw size={16} className="spin" /> : <Navigation size={16} color={adresseMode === 'gps' ? '#10b981' : '#94a3b8'} />}
-                <span>📍 Position live</span>
-                {gpsStatus === 'success' && <span style={{ fontSize: 9, color: '#10b981' }}>✓ Localisé</span>}
-                {gpsStatus === 'error' && <span style={{ fontSize: 9, color: '#ef4444' }}>Erreur GPS</span>}
-              </button>
-
-              <button type="button" onClick={() => setAdresseMode('quartier')}
-                style={{
-                  padding: '10px 8px', borderRadius: 10,
-                  border: `2px solid ${adresseMode === 'quartier' ? '#3b82f6' : 'rgba(255,255,255,0.08)'}`,
-                  background: adresseMode === 'quartier' ? 'rgba(59,130,246,0.12)' : 'transparent',
-                  cursor: 'pointer', color: 'white', fontSize: 11, fontWeight: adresseMode === 'quartier' ? 700 : 500,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                }}>
-                <Search size={16} color={adresseMode === 'quartier' ? '#3b82f6' : '#94a3b8'} />
-                <span>🏘️ Quartier</span>
-              </button>
-
-              <button type="button" onClick={() => setAdresseMode('manuel')}
-                style={{
-                  padding: '10px 8px', borderRadius: 10,
-                  border: `2px solid ${adresseMode === 'manuel' ? '#8b5cf6' : 'rgba(255,255,255,0.08)'}`,
-                  background: adresseMode === 'manuel' ? 'rgba(139,92,246,0.12)' : 'transparent',
-                  cursor: 'pointer', color: 'white', fontSize: 11, fontWeight: adresseMode === 'manuel' ? 700 : 500,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                }}>
-                <CreditCard size={16} color={adresseMode === 'manuel' ? '#8b5cf6' : '#94a3b8'} />
-                <span>✏️ Manuelle</span>
-              </button>
+              {modeBtn('gps', gpsStatus === 'loading' ? 'Localisation...' : '📍 Position live', gpsStatus === 'loading' ? <RefreshCw size={16} className="mj-spin" /> : <Navigation size={16} />)}
+              {modeBtn('quartier', '🏘️ Quartier', <Search size={16} />)}
+              {modeBtn('manuel', '✏️ Manuelle', <MapPin size={16} />)}
             </div>
-
-            {/* Mode quartier : ville + liste */}
             {adresseMode === 'quartier' && (
-              <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-                <select className="glass-input" value={ville} onChange={e => { setVille(e.target.value); setQuartier(null); }}
-                  style={{ fontSize: 12, marginBottom: 8, width: '100%' }}>
+              <div style={{ background: 'var(--mj-blue-light)', border: '1px solid #BFDBFE', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                <select className="mj-select" value={ville} onChange={e => { setVille(e.target.value); setQuartier(null); }} style={{ marginBottom: 8, fontSize: 13 }}>
                   {villes.map(v => <option key={v} value={v}>📍 {v}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                   {quartiers.map(q => (
-                    <button key={q.nom} type="button" onClick={() => choisirQuartier(q)}
-                      style={{
-                        padding: '4px 10px', fontSize: 11, borderRadius: 16,
-                        border: `1.5px solid ${quartier?.nom === q.nom ? '#3b82f6' : 'rgba(255,255,255,0.08)'}`,
-                        background: quartier?.nom === q.nom ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
-                        color: quartier?.nom === q.nom ? '#60a5fa' : 'white', cursor: 'pointer',
-                        fontWeight: quartier?.nom === q.nom ? 700 : 500,
-                      }}>
+                    <button key={q.nom} type="button" onClick={() => { setQuartier(q); setAdresse(`${q.nom}, ${ville}`); setAdresseMode('quartier'); }}
+                      style={{ padding: '4px 12px', fontSize: 11, borderRadius: 20, border: `1.5px solid ${quartier?.nom === q.nom ? 'var(--mj-red)' : 'var(--mj-border)'}`, background: quartier?.nom === q.nom ? 'var(--mj-red)' : 'var(--mj-white)', color: quartier?.nom === q.nom ? 'white' : 'var(--mj-text-2)', cursor: 'pointer', fontWeight: quartier?.nom === q.nom ? 700 : 500, transition: 'var(--mj-ease-fast)', fontFamily: 'var(--mj-font)' }}>
                       {q.nom}
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Champ adresse final (toujours visible) */}
-            <input className="glass-input" value={adresse} onChange={e => { setAdresse(e.target.value); if (adresseMode === 'manuel') { /* keep mode */ } }}
-              placeholder={
-                adresseMode === 'gps' ? 'Position GPS détectée' :
-                adresseMode === 'quartier' ? 'Sélectionnez un quartier' :
-                'Ex: 12 Rue Hassan II, Maarif, Casablanca'
-              }
+            <input className="mj-input" value={adresse} onChange={e => setAdresse(e.target.value)}
+              placeholder={adresseMode === 'gps' ? 'Position GPS détectée' : adresseMode === 'quartier' ? 'Sélectionnez un quartier' : 'Ex: 12 Rue Hassan II, Maarif, Casablanca'}
               required style={{ fontSize: 13 }} />
           </div>
 
-          {/* ── Estimation distance + frais ───────────────────────────────── */}
+          {/* Distance estimée */}
           {targetPos && boutiquePos && (
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.08))',
-              border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12,
-              padding: '14px 16px', marginBottom: '1rem',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#10b981', letterSpacing: '0.04em' }}>
-                  <Zap size={13} /> CALCUL EN TEMPS RÉEL
-                </div>
-                <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>basé sur votre position</span>
+            <div style={{ background: 'var(--mj-green-light)', border: '1px solid #BBF7D0', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Zap size={13} /> CALCUL EN TEMPS RÉEL
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Distance</div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#3b82f6' }}>{distance.toFixed(1)} km</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Temps estimé</div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#f59e0b' }}>{tempsEstime} min</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Frais livraison</div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#10b981' }}>{fraisCalcules} MAD</div>
-                </div>
+                {[['Distance', `${distance.toFixed(1)} km`, '#3B82F6'], ['Temps', `${tempsEstime} min`, '#F59E0B'], ['Frais', `${fraisCalcules} MAD`, '#22C55E']].map(([l, v, c]) => (
+                  <div key={l}><div style={{ fontSize: 10, color: 'var(--mj-text-4)' }}>{l}</div><div style={{ fontWeight: 700, fontSize: 16, color: c }}>{v}</div></div>
+                ))}
               </div>
-              {fraisCalcules > baseFrais && (
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 8 }}>
-                  Base {baseFrais} MAD + {fraisCalcules - baseFrais} MAD pour {(distance - 2).toFixed(1)} km supplémentaires
-                </div>
-              )}
             </div>
           )}
 
-          {/* ── Paiement ──────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
-              <CreditCard size={13} style={{ display: 'inline', marginRight: 4 }} /> Mode de paiement
+          {/* Paiement */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--mj-text)' }}>
+              <CreditCard size={13} style={{ display: 'inline', marginRight: 4, color: 'var(--mj-red)' }} /> Mode de paiement
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
-              {[['CASH', '💵 Cash à la livraison', '#10b981'], ['CARTE', '💳 Carte bancaire', '#3b82f6']].map(([k, l, c]) => (
+              {[['CASH', '💵 Cash', '#22C55E'], ['CARTE', '💳 Carte', '#3B82F6']].map(([k, l, c]) => (
                 <button key={k} type="button" onClick={() => setMode(k)}
-                  style={{
-                    flex: 1, padding: '12px', borderRadius: 10,
-                    border: `2px solid ${mode === k ? c : 'rgba(255,255,255,0.08)'}`,
-                    background: mode === k ? `${c}15` : 'transparent', cursor: 'pointer',
-                    color: mode === k ? c : 'white', fontWeight: mode === k ? 700 : 500, fontSize: 12,
-                  }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 10, border: `2px solid ${mode === k ? c : 'var(--mj-border)'}`, background: mode === k ? `${c}12` : 'var(--mj-white)', cursor: 'pointer', color: mode === k ? c : 'var(--mj-text-3)', fontWeight: mode === k ? 700 : 500, fontSize: 13, transition: 'var(--mj-ease-fast)', fontFamily: 'var(--mj-font)' }}>
                   {l}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── Instructions ──────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Instructions de livraison (optionnel)
-            </label>
-            <textarea className="glass-input" value={instructions} onChange={e => setInstructions(e.target.value)}
-              placeholder="Étage, digicode, point de repère..." rows={2} style={{ resize: 'none', fontSize: 13 }} />
+          {/* Instructions */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--mj-text-3)', marginBottom: 6 }}>Instructions de livraison (optionnel)</label>
+            <textarea className="mj-input" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Étage, digicode, point de repère..." rows={2} style={{ resize: 'none', fontSize: 13 }} />
           </div>
 
-          {/* ── Points de Fidélité (Feature 7) ── */}
+          {/* Points fidélité */}
           {points >= 100 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, marginBottom: '1rem', fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--mj-amber-light)', border: '1px solid #FCD34D', borderRadius: 12, marginBottom: 16, fontSize: 13 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 18 }}>⭐</span>
                 <div>
-                  <div style={{ fontWeight: 700, color: '#f59e0b' }}>Utiliser mes points</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
-                    Solde : {points} pts · Réduction max : {Math.min(Math.floor(points / 100) * 10, Math.floor(totalSansReduction))} MAD
-                  </div>
+                  <div style={{ fontWeight: 700, color: '#92400e' }}>Utiliser mes points</div>
+                  <div style={{ fontSize: 10, color: 'var(--mj-text-3)' }}>Solde : {points} pts · Réduction max : {Math.min(Math.floor(points / 100) * 10, Math.floor(totalSansReduction))} MAD</div>
                 </div>
               </div>
-              <input type="checkbox" checked={usePoints} onChange={e => setUsePoints(e.target.checked)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
+              <input type="checkbox" checked={usePoints} onChange={e => setUsePoints(e.target.checked)} style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--mj-red)' }} />
             </div>
           )}
 
-          {/* ── Récap ─────────────────────────────────────────────────────── */}
-          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '1rem', marginBottom: '1rem', fontSize: 13 }}>
-            <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ShoppingCart size={13} /> Récapitulatif
+          {/* Récap */}
+          <div style={{ background: 'var(--mj-bg)', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 13 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--mj-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShoppingCart size={13} color="var(--mj-red)" /> Récapitulatif
             </div>
             {items.map(i => (
-              <div key={i.produit.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: 4, fontSize: 12 }}>
-                <span>{i.produit.nom} <span style={{ opacity: 0.6 }}>×{i.quantite}</span></span>
+              <div key={i.produit.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', marginBottom: 4, fontSize: 12 }}>
+                <span>{i.produit.nom} <span style={{ opacity: 0.7 }}>×{i.quantite}</span></span>
                 <span>{(parseFloat(i.produit.prix_effectif) * i.quantite).toFixed(2)} MAD</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginTop: 6, fontSize: 12 }}>
+            <hr className="mj-divider" style={{ margin: '8px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', fontSize: 12 }}>
               <span>Sous-total</span><span>{sousTotal.toFixed(2)} MAD</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 12 }}>
-              <span>Frais de livraison</span>
-              <span>{fraisCalcules.toFixed(2)} MAD {fraisCalcules !== baseFrais && <span style={{ color: '#10b981', fontSize: 10 }}> (calculé)</span>}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', fontSize: 12 }}>
+              <span>Frais de livraison</span><span>{fraisCalcules.toFixed(2)} MAD</span>
             </div>
-            {discount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: 12 }}>
-                <span>Réduction Fidélité</span>
-                <span>- {discount.toFixed(2)} MAD</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', fontWeight: 700, marginTop: 6, fontSize: 15 }}>
-              <span>Total</span>
-              <span style={{ color: '#10b981' }}>{total.toFixed(2)} MAD</span>
+            {discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-green)', fontSize: 12 }}><span>Réduction</span><span>-{discount.toFixed(2)} MAD</span></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, paddingTop: 8, borderTop: '1px solid var(--mj-border)', marginTop: 6 }}>
+              <span>Total</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
             </div>
           </div>
 
-          {error && <div style={{ color: '#fca5a5', fontSize: 13, marginBottom: '1rem', padding: '0.75rem', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
+          {error && <div style={{ color: 'var(--mj-danger)', fontSize: 13, marginBottom: 14, padding: '10px 14px', background: 'var(--mj-danger-light)', borderRadius: 8, border: '1px solid #FECACA' }}>{error}</div>}
 
-          <button type="submit" className="btn btn-primary btn-full" style={{ justifyContent: 'center' }} disabled={loading}>
+          <button type="submit" className="mj-btn mj-btn-primary mj-btn-full" disabled={loading}>
             {loading ? '⏳ Envoi...' : `✓ Confirmer · ${total.toFixed(2)} MAD`}
           </button>
         </form>
@@ -774,9 +597,117 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
   );
 };
 
-// ─── Onglet CATALOGUE ─────────────────────────────────────────────────────────
-const CatalogueTab = ({ onCartOpen, groupCode, setGroupCode, groupMembers, selectedBoutique, setSelectedBoutique }) => {
-  const [categorie, setCategorie] = useState('');
+/* ── BoutiqueCard ─────────────────────────────────────────────────────────── */
+const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
+  const [logoErr, setLogoErr] = useState(false);
+  const catIcon = CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪';
+  const logoSrc = mediaUrl(b.logo);
+  const hasLogo = !!logoSrc && !logoErr;
+
+  return (
+    <div className="mj-boutique-card mj-fade-in" onClick={onSelect}>
+      {/* Cover — bannière ou dégradé avec emoji */}
+      <div className="mj-boutique-cover">
+        {hasLogo ? (
+          <img
+            src={logoSrc}
+            alt={b.nom_boutique}
+            onError={() => setLogoErr(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 56, opacity: 0.3,
+            }}>
+              {catIcon}
+            </div>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse at 60% 40%, rgba(249,115,22,0.12) 0%, transparent 70%)',
+            }} />
+          </>
+        )}
+        {/* Dark gradient overlay bottom */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 50, background: 'linear-gradient(transparent, rgba(0,0,0,0.65))' }} />
+
+        {/* Open/closed badge */}
+        <div style={{
+          position: 'absolute', top: 10, right: 10,
+          background: b.is_open ? 'rgba(34,197,94,0.9)' : 'rgba(100,116,139,0.85)',
+          backdropFilter: 'blur(6px)',
+          color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+        }}>
+          {b.is_open ? '● Ouvert' : '● Fermé'}
+        </div>
+
+        {/* Fav button */}
+        <button
+          onClick={onFav}
+          style={{
+            position: 'absolute', top: 10, left: 10,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255,255,255,0.15)', borderRadius: '50%',
+            width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: isFav ? 'var(--mj-red)' : '#CBD5E1',
+          }}
+        >
+          <Heart size={13} fill={isFav ? 'currentColor' : 'none'} />
+        </button>
+      </div>
+
+      {/* Info */}
+      <div className="mj-boutique-info">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          {/* Mini logo ou icône */}
+          <div style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0, overflow: 'hidden',
+            background: hasLogo ? 'transparent' : 'linear-gradient(135deg, var(--mj-red), #ea580c)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+            border: '1px solid #2D2D2D',
+          }}>
+            {hasLogo ? (
+              <img src={logoSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : catIcon}
+          </div>
+          <div className="mj-boutique-name">{b.nom_boutique}</div>
+        </div>
+        <div className="mj-boutique-meta">
+          <MapPin size={10} style={{ flexShrink: 0 }} />
+          <span>{b.ville || b.adresse}</span>
+          <span className="mj-boutique-rating">★ {b.note_moyenne?.toFixed(1) || '—'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B' }}>
+          <span>🚚 {b.frais_livraison_base} MAD · min {b.commande_minimum} MAD</span>
+          <ChevronRight size={13} style={{ color: 'var(--mj-red)' }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── CategorySidebar ──────────────────────────────────────────────────────── */
+const CategorySidebar = ({ categorie, setCategorie }) => (
+  <aside className="mj-cat-sidebar">
+    <div className="mj-cat-sidebar-title">Catégories</div>
+    {CATEGORIES.map(c => (
+      <div
+        key={c.key}
+        className={`mj-cat-sidebar-item${categorie === c.key ? ' active' : ''}`}
+        onClick={() => setCategorie(c.key)}
+      >
+        <span style={{ fontSize: 18 }}>{c.icon}</span>
+        <span>{c.label}</span>
+      </div>
+    ))}
+  </aside>
+);
+
+/* ── CatalogueTab ─────────────────────────────────────────────────────────── */
+const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMembers, selectedBoutique, setSelectedBoutique }) => {
   const [boutiques, setBoutiques] = useState([]);
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState('');
@@ -785,405 +716,286 @@ const CatalogueTab = ({ onCartOpen, groupCode, setGroupCode, groupMembers, selec
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
   const [loadingBoutiques, setLoadingBoutiques] = useState(true);
   const [loadingProduits, setLoadingProduits] = useState(false);
-
-  // Advanced filters (Feature 1)
   const [noteMin, setNoteMin] = useState(0);
   const [fraisMax, setFraisMax] = useState(50);
   const [delaiMax, setDelaiMax] = useState(90);
   const [showFilters, setShowFilters] = useState(false);
-
   const { addItem, items, fondateur: cartFondateur } = useCartStore();
   const { toggleFavShop, isFavShop, toggleFavProduct, isFavProduct } = useFavoritesStore();
-
   const cartCount = items.reduce((s, i) => s + i.quantite, 0);
+  const POIDS_APPROX = { ALIMENTAIRE: '0.3–2 kg', BOISSONS: '0.5–1.5 kg', HYGIENE: '0.1–0.5 kg', VETEMENTS: '0.2–1 kg', ELECTRONIQUE: '0.1–0.8 kg', MEDICAMENTS: '0.05–0.3 kg', AUTRE: '—' };
 
   useEffect(() => {
     setLoadingBoutiques(true);
     const params = { is_verified: true };
     if (categorie) params.categorie = categorie;
-    fondateursApi.list(params)
-      .then(r => setBoutiques(r.data.results || r.data || []))
-      .finally(() => setLoadingBoutiques(false));
+    fondateursApi.list(params).then(r => setBoutiques(r.data.results || r.data || [])).finally(() => setLoadingBoutiques(false));
   }, [categorie]);
 
-  // Load products when boutique is selected (Feature 1 / useEffect)
   useEffect(() => {
     if (!selectedBoutique) return;
     setLoadingProduits(true);
-    fondateursApi.produits(selectedBoutique.id)
-      .then(r => setProduits(r.data.results || r.data || []))
-      .finally(() => setLoadingProduits(false));
+    fondateursApi.produits(selectedBoutique.id).then(r => setProduits(r.data.results || r.data || [])).finally(() => setLoadingProduits(false));
   }, [selectedBoutique]);
 
-  // Liste unique des villes disponibles
   const villesDisponibles = React.useMemo(() => {
     const set = new Set();
     boutiques.forEach(b => { if (b.ville) set.add(b.ville); });
     return Array.from(set).sort();
   }, [boutiques]);
 
-  // Filtrage final (Feature 1)
-  const boutiquesFiltrees = React.useMemo(() => {
-    return boutiques.filter(b => {
-      if (filtreVille && b.ville !== filtreVille) return false;
-      if (showOnlyOpen && !b.is_open) return false;
-      if (searchBoutique) {
-        const q = searchBoutique.toLowerCase();
-        const hay = `${b.nom_boutique || ''} ${b.ville || ''} ${b.adresse || ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      // Advanced constraints
-      if (b.note_moyenne < noteMin) return false;
-      if (parseFloat(b.frais_livraison_base || 0) > fraisMax) return false;
-      const delai = Math.round(20 + (b.rayon_livraison_km || 5) * 4);
-      if (delai > delaiMax) return false;
-      return true;
-    });
-  }, [boutiques, filtreVille, searchBoutique, showOnlyOpen, noteMin, fraisMax, delaiMax]);
+  const boutiquesFiltrees = React.useMemo(() => boutiques.filter(b => {
+    if (filtreVille && b.ville !== filtreVille) return false;
+    if (showOnlyOpen && !b.is_open) return false;
+    if (searchBoutique) { const q = searchBoutique.toLowerCase(); if (!`${b.nom_boutique||''} ${b.ville||''} ${b.adresse||''}`.toLowerCase().includes(q)) return false; }
+    if (b.note_moyenne < noteMin) return false;
+    if (parseFloat(b.frais_livraison_base || 0) > fraisMax) return false;
+    if (Math.round(20 + (b.rayon_livraison_km || 5) * 4) > delaiMax) return false;
+    return true;
+  }), [boutiques, filtreVille, searchBoutique, showOnlyOpen, noteMin, fraisMax, delaiMax]);
 
-  const selectBoutique = (b) => {
-    setSelectedBoutique(b);
-  };
+  const filteredProduits = produits.filter(p => p.disponible && p.en_stock && (search === '' || p.nom.toLowerCase().includes(search.toLowerCase())));
 
-  const filteredProduits = produits.filter(p =>
-    p.disponible && p.en_stock &&
-    (search === '' || p.nom.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const POIDS_APPROX = { ALIMENTAIRE: '0.3–2 kg', BOISSONS: '0.5–1.5 kg', HYGIENE: '0.1–0.5 kg', VETEMENTS: '0.2–1 kg', ELECTRONIQUE: '0.1–0.8 kg', MEDICAMENTS: '0.05–0.3 kg', AUTRE: '—' };
-
-  const GroupOrderBanner = () => {
-    const [inputCode, setInputCode] = useState('');
-    const [copied, setCopied] = useState(false);
-
-    const startGroup = () => {
-      const code = 'GP-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      setGroupCode(code);
-    };
-
-    const joinGroup = () => {
-      if (inputCode.trim().length >= 4) {
-        setGroupCode(inputCode.trim().toUpperCase());
-        setInputCode('');
-      }
-    };
-
-    const leaveGroup = () => {
-      setGroupCode('');
-      localStorage.removeItem('delivermap_group_code');
-    };
-
-    const copyCode = () => {
-      navigator.clipboard.writeText(groupCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    if (groupCode) {
-      return (
-        <div className="glass-card animate-fade-in" style={{
-          background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))',
-          border: '1px solid rgba(99,102,241,0.25)',
-          borderRadius: 14, padding: '12px 16px', marginBottom: '1.25rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>👥</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#818cf8' }}>
-                Panier de groupe actif : {groupCode}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                {groupMembers} participant{groupMembers > 1 ? 's' : ''} connecté{groupMembers > 1 ? 's' : ''}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={copyCode} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: 12 }}>
-              {copied ? 'Copié !' : '📋 Copier le code'}
-            </button>
-            <button onClick={leaveGroup} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
-              Quitter
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="glass-card animate-fade-in" style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 14, padding: '12px 16px', marginBottom: '1.25rem',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>👥</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>Commande de groupe</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              Partagez votre panier et commandez à plusieurs en temps réel
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="glass-input" placeholder="Code groupe..." value={inputCode} onChange={e => setInputCode(e.target.value)} style={{ padding: '6px 10px', fontSize: 12, width: 110, height: 32 }} />
-          <button onClick={joinGroup} className="btn btn-secondary btn-sm" style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
-            Rejoindre
-          </button>
-          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-          <button onClick={startGroup} className="btn btn-primary btn-sm" style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
-            Créer un groupe
-          </button>
-        </div>
-      </div>
-    );
-  };
-
+  /* ── Vue produits d'une boutique ── */
   if (selectedBoutique) return (
-    <div>
-      {/* Header boutique */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <button onClick={() => { setSelectedBoutique(null); setProduits([]); setSearch(''); }}
-          style={{ background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', color: 'white', borderRadius: '10px', padding: '0.5rem', display: 'flex', alignItems: 'center' }}>
-          <ArrowLeft size={18} />
-        </button>
+    <div className="mj-fade-in">
+      {/* Back + boutique header */}
+      <button className="mj-back-btn" onClick={() => { setSelectedBoutique(null); setProduits([]); setSearch(''); }}>
+        <ArrowLeft size={14} /> Retour aux boutiques
+      </button>
+
+      <div className="mj-boutique-header-bar">
+        {/* Logo réel ou avatar emoji */}
+        <div className="mj-boutique-avatar-lg" style={{ overflow: 'hidden', padding: 0 }}>
+          {mediaUrl(selectedBoutique.logo)
+            ? <img src={mediaUrl(selectedBoutique.logo)} alt={selectedBoutique.nom_boutique} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} />
+            : <span style={{ fontSize: 28 }}>{CATEGORIES.find(c => c.key === selectedBoutique.categorie)?.icon || '🏪'}</span>
+          }
+        </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: '18px' }}>{selectedBoutique.nom_boutique}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-            <span><MapPin size={11} style={{ display: 'inline', marginRight: '3px' }} />{selectedBoutique.ville}</span>
-            <span><Stars note={selectedBoutique.note_moyenne} /></span>
-            <span><Clock size={11} style={{ display: 'inline', marginRight: '3px' }} />~{Math.round(20 + (selectedBoutique.rayon_livraison_km || 5) * 4)} min</span>
-            <span>Livraison: {selectedBoutique.frais_livraison_base} MAD</span>
+          <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+            {selectedBoutique.nom_boutique}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--mj-text-3)', marginTop: 4, flexWrap: 'wrap' }}>
+            <span><MapPin size={11} style={{ display: 'inline', marginRight: 3 }} />{selectedBoutique.ville}</span>
+            <Stars note={selectedBoutique.note_moyenne} />
+            <span><Clock size={11} style={{ display: 'inline', marginRight: 3 }} />~{Math.round(20 + (selectedBoutique.rayon_livraison_km || 5) * 4)} min</span>
+            <span style={{ color: 'var(--mj-red)', fontWeight: 700 }}>{selectedBoutique.frais_livraison_base} MAD livraison</span>
           </div>
         </div>
         {cartCount > 0 && (
-          <button className="btn btn-primary" onClick={onCartOpen} style={{ position: 'relative' }}>
+          <button className="mj-btn mj-btn-primary" onClick={onCartOpen} style={{ position: 'relative', flexShrink: 0 }}>
             <ShoppingCart size={16} /> Panier
-            <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{cartCount}</span>
+            <span style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{cartCount}</span>
           </button>
         )}
       </div>
 
-      {/* Avertissement changement de boutique */}
       {cartFondateur && cartFondateur.id !== selectedBoutique.id && cartCount > 0 && (
-        <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '13px', color: '#f59e0b' }}>
-          ⚠️ Vous avez des articles de <strong>{cartFondateur.nom_boutique}</strong> dans votre panier. Les ajouter ici videra le panier actuel.
+        <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B' }}>
+          ⚠️ Vous avez des articles de <strong>{cartFondateur.nom_boutique}</strong> dans votre panier.
         </div>
       )}
 
-      {/* Recherche produit */}
-      <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-        <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-        <input className="glass-input" placeholder="Rechercher un produit..." value={search}
-          onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '36px' }} />
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 20 }}>
+        <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+        <input className="mj-header-search" placeholder="Rechercher un produit..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 44, borderRadius: 12 }} />
       </div>
 
-      {/* Grille produits */}
-      {loadingProduits ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-          {Array(6).fill(0).map((_, i) => <div key={i} className="glass-card" style={{ height: '180px', opacity: 0.4 }} />)}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-          {filteredProduits.map(p => {
-            const inCart = items.find(i => i.produit.id === p.id);
-            const hasPrix_promo = p.prix_promo && parseFloat(p.prix_promo) < parseFloat(p.prix);
-            return (
-              <div key={p.id} className="glass-card animate-fade-in" style={{ padding: 0, position: 'relative', transition: 'transform 0.15s, box-shadow 0.2s', cursor: 'default', overflow: 'hidden' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.4)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ''; }}>
-                {/* Photo */}
-                <div style={{ position: 'relative' }}>
-                  <ProductImage produit={p} />
-                  <button onClick={() => toggleFavProduct(p, selectedBoutique.id)}
-                    style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(15,23,42,0.6)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: isFavProduct(p.id) ? '#ef4444' : 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', transition: 'all 0.2s' }}>
-                    <Heart size={14} fill={isFavProduct(p.id) ? '#ef4444' : 'transparent'} />
-                  </button>
+      {/* Products grid — Marjane Mall cards */}
+      <div className="mj-products-grid">
+        {loadingProduits ? Array(6).fill(0).map((_, i) => (
+          <div key={i} className="mj-skeleton" style={{ height: 300, borderRadius: 16 }} />
+        )) : filteredProduits.map(p => {
+          const inCart = items.find(i => i.produit.id === p.id);
+          const hasPrix_promo = p.prix_promo && parseFloat(p.prix_promo) < parseFloat(p.prix);
+          const discount = hasPrix_promo ? Math.round((1 - parseFloat(p.prix_promo) / parseFloat(p.prix)) * 100) : 0;
+          return (
+            <div key={p.id} className="mj-mm-product-card mj-fade-in">
+              {discount > 0 && <div className="mj-discount-badge">-{discount}%</div>}
+              {p.nombre_commandes > 20 && !discount && <div className="mj-discount-badge" style={{ background: '#F59E0B' }}>🔥</div>}
+              <button
+                className={`mj-fav-btn${isFavProduct(p.id) ? ' active' : ''}`}
+                onClick={() => toggleFavProduct(p, selectedBoutique.id)}
+              >
+                <Heart size={14} fill={isFavProduct(p.id) ? 'currentColor' : 'none'} />
+              </button>
+              <ProductImage produit={p} height={150} />
+              <div className="mj-mm-product-body">
+                <div className="mj-mm-product-name">{p.nom}</div>
+                {hasPrix_promo ? (
+                  <>
+                    <div className="mj-mm-product-price-old">{p.prix} MAD</div>
+                    <div className="mj-mm-product-price">{p.prix_promo} MAD</div>
+                  </>
+                ) : (
+                  <div className="mj-mm-product-price">{p.prix_effectif} MAD</div>
+                )}
+                <div className="mj-mm-product-stock">
+                  {p.stock > 10
+                    ? <span style={{ color: '#22C55E' }}>✓ En stock</span>
+                    : p.stock > 0
+                      ? <span style={{ color: '#F59E0B' }}>⚠ {p.stock} restants</span>
+                      : <span style={{ color: '#ef4444' }}>✗ Rupture</span>}
                 </div>
-
-                {/* Content */}
-                <div style={{ padding: '0.875rem 1rem 1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, lineHeight: 1.3 }}>{p.nom}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    🏪 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.fondateur_nom}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span>⚖️ {POIDS_APPROX[p.categorie] || '—'}</span>
-                    <span style={{ color: p.stock > 10 ? '#10b981' : p.stock > 0 ? '#f59e0b' : '#ef4444' }}>
-                      📦 {p.stock > 10 ? 'Stock OK' : p.stock > 0 ? `${p.stock} restants` : 'Rupture'}
+                {inCart ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--mj-red)', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
+                      ×{inCart.quantite}
                     </span>
-                    {p.nombre_commandes > 20 && <span style={{ color: '#f59e0b' }}>🔥 Populaire</span>}
+                    <button className="mj-mm-add-btn" style={{ flex: 1 }} onClick={() => addItem(p, selectedBoutique)}>
+                      <Plus size={14} />
+                    </button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      {hasPrix_promo ? (
-                        <>
-                          <div style={{ color: '#94a3b8', textDecoration: 'line-through', fontSize: 11 }}>{p.prix} MAD</div>
-                          <div style={{ fontWeight: 800, color: '#10b981', fontSize: 17 }}>{p.prix_promo} MAD</div>
-                        </>
-                      ) : (
-                        <div style={{ fontWeight: 800, color: '#10b981', fontSize: 17 }}>{p.prix_effectif} MAD</div>
-                      )}
-                    </div>
-                    {inCart ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700, background: 'rgba(16,185,129,0.15)', padding: '4px 8px', borderRadius: 6 }}>×{inCart.quantite}</span>
-                        <button onClick={() => addItem(p, selectedBoutique)}
-                          style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gradient-primary)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => addItem(p, selectedBoutique)}
-                        style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--gradient-primary)', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59,130,246,0.4)' }}>
-                        <Plus size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                ) : (
+                  <button className="mj-mm-add-btn" onClick={() => addItem(p, selectedBoutique)} disabled={!p.en_stock}>
+                    <Plus size={14} /> Ajouter
+                  </button>
+                )}
               </div>
-            );
-          })}
-          {filteredProduits.length === 0 && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-              Aucun produit trouvé
             </div>
-          )}
-        </div>
-      )}
+          );
+        })}
+        {!loadingProduits && filteredProduits.length === 0 && (
+          <div style={{ gridColumn: '1/-1' }} className="mj-empty">
+            <div className="mj-empty-icon">🔍</div>
+            <div className="mj-empty-title">Aucun produit trouvé</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
+  /* ── Vue liste boutiques ── */
   return (
-    <div>
-      {/* Group order banner */}
-      <GroupOrderBanner />
+    <div className="mj-fade-in">
 
-      {/* Filtres catégorie */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '4px' }}>
-        {CATEGORIES.map(c => (
-          <button key={c.key} onClick={() => setCategorie(c.key)}
-            style={{ flexShrink: 0, padding: '0.5rem 1rem', borderRadius: '20px', border: `1.5px solid ${categorie === c.key ? '#3b82f6' : 'rgba(255,255,255,0.12)'}`, background: categorie === c.key ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)', cursor: 'pointer', color: 'white', fontSize: '13px', fontWeight: categorie === c.key ? 700 : 400, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{c.icon}</span> {c.label}
+      {/* Hero Banner — photo Unsplash + overlay sombre */}
+      <div className="mj-hero-banner" style={{ padding: 0, minHeight: 220, overflow: 'hidden' }}>
+        {/* Photo de fond */}
+        <img
+          src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&q=80&auto=format&fit=crop"
+          alt=""
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', display: 'block', filter: 'brightness(0.35)',
+          }}
+        />
+        {/* Overlay dégradé orange */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(120deg, rgba(249,115,22,0.45) 0%, rgba(17,17,17,0.7) 60%, rgba(17,17,17,0.9) 100%)',
+        }} />
+        {/* Contenu */}
+        <div className="mj-hero-content" style={{ padding: '36px 40px', position: 'relative', zIndex: 2 }}>
+          <div className="mj-hero-title">Livraison rapide<br /><span>chez vous</span></div>
+          <div className="mj-hero-sub">Commandez auprès de boutiques locales vérifiées</div>
+          <button className="mj-hero-cta">
+            <ShoppingCart size={16} />
+            {boutiques.length} boutiques disponibles
           </button>
+        </div>
+      </div>
+
+      {/* Features strip */}
+      <div className="mj-features-strip" style={{ marginBottom: 28 }}>
+        {[
+          { icon: '🚚', label: 'Livraison rapide', sub: '30 à 60 min' },
+          { icon: '🔒', label: 'Paiement sécurisé', sub: 'Cash ou carte' },
+          { icon: '⭐', label: 'Boutiques vérifiées', sub: 'Qualité garantie' },
+          { icon: '📍', label: 'Suivi GPS live', sub: 'Temps réel' },
+          { icon: '🎁', label: 'Points fidélité', sub: 'À chaque commande' },
+        ].map((f, i) => (
+          <div key={i} className="mj-feature-item">
+            <div className="mj-feature-icon">{f.icon}</div>
+            <div className="mj-feature-label">{f.label}</div>
+            <div className="mj-feature-sub">{f.sub}</div>
+          </div>
         ))}
       </div>
 
-      {/* ── Barre de filtres avancés (ville + recherche + statut) ──────── */}
-      <div className="glass-card animate-fade-in" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem', padding: '0.85rem 1rem' }}>
-        {/* Sélecteur de ville */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
-          <MapPin size={16} style={{ color: '#3b82f6' }} />
-          <select className="glass-input" value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
-            style={{ minWidth: 170, padding: '6px 10px', fontSize: 13 }}>
-            <option value="">🌍 Toutes les villes ({boutiques.length})</option>
-            {villesDisponibles.map(v => {
-              const count = boutiques.filter(b => b.ville === v).length;
-              return <option key={v} value={v}>📍 {v} ({count})</option>;
-            })}
-          </select>
+      {/* Filter row */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: '2 1 220px' }}>
+          <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+          <input className="mj-header-search" placeholder="Rechercher une boutique…" value={searchBoutique} onChange={e => setSearchBoutique(e.target.value)} style={{ paddingLeft: 42, borderRadius: 12, height: 38 }} />
         </div>
-
-        {/* Recherche boutique */}
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-          <input className="glass-input" placeholder="Rechercher une boutique..." value={searchBoutique}
-            onChange={e => setSearchBoutique(e.target.value)}
-            style={{ paddingLeft: 32, fontSize: 13 }} />
-        </div>
-
-        {/* Toggle ouvertes seulement */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={showOnlyOpen} onChange={e => setShowOnlyOpen(e.target.checked)} />
-          🟢 Ouvertes uniquement
+        <select
+          value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
+          style={{ height: 38, background: '#1C1C1C', border: '1px solid #2D2D2D', borderRadius: 12, color: '#CBD5E1', fontSize: 13, padding: '0 12px', cursor: 'pointer', fontFamily: 'var(--mj-font)' }}
+        >
+          <option value="">🌍 Toutes les villes</option>
+          {villesDisponibles.map(v => <option key={v} value={v}>📍 {v}</option>)}
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+          <input type="checkbox" checked={showOnlyOpen} onChange={e => setShowOnlyOpen(e.target.checked)} style={{ accentColor: 'var(--mj-red)' }} />
+          🟢 Ouvertes
         </label>
-
-        {/* Advanced Filters Toggle (Feature 1) */}
-        <button onClick={() => setShowFilters(!showFilters)}
-          style={{ background: showFilters ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-          🎛️ Filtres {showFilters ? 'masqués' : 'avancés'}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          style={{ height: 38, padding: '0 14px', background: showFilters ? 'rgba(249,115,22,0.15)' : '#1C1C1C', border: `1px solid ${showFilters ? 'var(--mj-red)' : '#2D2D2D'}`, borderRadius: 12, color: showFilters ? 'var(--mj-red)' : '#94A3B8', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mj-font)' }}
+        >
+          <SlidersHorizontal size={14} /> Filtres
         </button>
-
-        {/* Reset */}
         {(filtreVille || searchBoutique || showOnlyOpen || noteMin > 0 || fraisMax < 50 || delaiMax < 90) && (
           <button onClick={() => { setFiltreVille(''); setSearchBoutique(''); setShowOnlyOpen(false); setNoteMin(0); setFraisMax(50); setDelaiMax(90); }}
-            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ height: 38, padding: '0 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, color: '#ef4444', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mj-font)' }}>
             <X size={12} /> Réinitialiser
           </button>
         )}
-
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
-          {boutiquesFiltrees.length} / {boutiques.length} boutiques
-        </div>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748B', fontWeight: 600 }}>
+          {boutiquesFiltrees.length} boutiques
+        </span>
       </div>
 
-      {/* Advanced Filter Sliders Panel (Feature 1) */}
       {showFilters && (
-        <div className="glass-card animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginTop: '-0.5rem', marginBottom: '1.25rem', padding: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Note minimale : <strong style={{ color: '#f59e0b' }}>{noteMin} ★</strong>
-            </label>
-            <input type="range" min="0" max="5" step="0.5" value={noteMin} onChange={e => setNoteMin(parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Frais de livraison max : <strong style={{ color: '#10b981' }}>{fraisMax} MAD</strong>
-            </label>
-            <input type="range" min="0" max="50" step="1" value={fraisMax} onChange={e => setFraisMax(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Délai de livraison max : <strong style={{ color: '#f59e0b' }}>{delaiMax} min</strong>
-            </label>
-            <input type="range" min="15" max="90" step="5" value={delaiMax} onChange={e => setDelaiMax(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#3b82f6' }} />
-          </div>
+        <div className="mj-card mj-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, padding: 18, marginBottom: 20 }}>
+          {[
+            { label: 'Note minimale', value: `${noteMin} ★`, min: 0, max: 5, step: 0.5, v: noteMin, sv: setNoteMin, color: '#F59E0B' },
+            { label: 'Frais max', value: `${fraisMax} MAD`, min: 0, max: 50, step: 1, v: fraisMax, sv: setFraisMax, color: '#22C55E' },
+            { label: 'Délai max', value: `${delaiMax} min`, min: 15, max: 90, step: 5, v: delaiMax, sv: setDelaiMax, color: '#F59E0B' },
+          ].map(f => (
+            <div key={f.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: 'var(--mj-text-3)' }}>
+                <span>{f.label}</span>
+                <strong style={{ color: f.color }}>{f.value}</strong>
+              </div>
+              <input type="range" min={f.min} max={f.max} step={f.step} value={f.v} onChange={e => f.sv(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--mj-red)' }} />
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Grille boutiques */}
+      {/* Section title */}
+      <div className="mj-section-bar" style={{ marginBottom: 16 }}>
+        <div className="mj-section-title">
+          {categorie ? (CATEGORIES.find(c => c.key === categorie)?.label || 'Boutiques') : 'Toutes les boutiques'}
+        </div>
+        <span style={{ fontSize: 12, color: '#64748B' }}>{boutiquesFiltrees.length} résultats</span>
+      </div>
+
+      {/* Boutiques grid — Marjane Mall cards */}
       {loadingBoutiques ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-          {Array(4).fill(0).map((_, i) => <div key={i} className="glass-card" style={{ height: '160px', opacity: 0.4 }} />)}
+        <div className="mj-boutiques-grid">
+          {Array(6).fill(0).map((_, i) => <div key={i} className="mj-skeleton" style={{ height: 210, borderRadius: 16 }} />)}
         </div>
       ) : boutiquesFiltrees.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-          🔍 Aucune boutique ne correspond à vos critères
-          <div style={{ marginTop: 12, fontSize: 12 }}>Essayez de modifier la ville ou la recherche.</div>
+        <div className="mj-empty">
+          <div className="mj-empty-icon">🔍</div>
+          <div className="mj-empty-title">Aucune boutique correspondante</div>
+          <div className="mj-empty-desc">Essayez de modifier vos filtres.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div className="mj-boutiques-grid">
           {boutiquesFiltrees.map(b => (
-            <div key={b.id} className="glass-card animate-fade-in" onClick={() => selectBoutique(b)}
-              style={{ cursor: 'pointer', transition: 'all 0.2s', padding: '1.25rem', borderLeft: `4px solid ${b.is_open ? '#10b981' : '#64748b'}` }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ''; }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px' }}>{b.nom_boutique}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    <MapPin size={11} style={{ display: 'inline' }} /> {b.ville || b.adresse}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={(e) => { e.stopPropagation(); toggleFavShop(b); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: isFavShop(b.id) ? '#ef4444' : 'rgba(255,255,255,0.4)', transition: 'color 0.2s' }}>
-                    <Heart size={18} fill={isFavShop(b.id) ? '#ef4444' : 'transparent'} />
-                  </button>
-                  <span style={{ fontSize: '24px' }}>{CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪'}</span>
-                </div>
-              </div>
-              <Stars note={b.note_moyenne} />
-              <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <span>🚚 {b.frais_livraison_base} MAD · Min {b.commande_minimum} MAD</span>
-                <span style={{ color: b.is_open ? '#10b981' : '#ef4444', fontWeight: 600 }}>{b.is_open ? '● Ouvert' : '● Fermé'}</span>
-              </div>
-              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{b.nombre_commandes} commandes · {b.rayon_livraison_km} km de rayon</span>
-                <ChevronRight size={14} style={{ color: 'var(--text-secondary)' }} />
-              </div>
-            </div>
+            <BoutiqueCard
+              key={b.id}
+              b={b}
+              onSelect={() => setSelectedBoutique(b)}
+              isFav={isFavShop(b.id)}
+              onFav={e => { e.stopPropagation(); toggleFavShop(b); }}
+            />
           ))}
         </div>
       )}
@@ -1191,7 +1003,7 @@ const CatalogueTab = ({ onCartOpen, groupCode, setGroupCode, groupMembers, selec
   );
 };
 
-// ─── Onglet MES COMMANDES ─────────────────────────────────────────────────────
+/* ── CommandesTab ─────────────────────────────────────────────────────────── */
 const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1199,486 +1011,316 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   const [cancelling, setCancelling] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
+  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
 
   const fetchCommandes = () => {
     setLoading(true);
-    commandesApi.list()
-      .then(r => setCommandes(r.data.results || r.data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    commandesApi.list().then(r => setCommandes(r.data.results || r.data || [])).catch(console.error).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchCommandes(); }, []);
-  // Auto-refresh every 20s
   useEffect(() => { const id = setInterval(fetchCommandes, 20000); return () => clearInterval(id); }, []);
 
   const handleCancel = async (cmd) => {
-    if (!window.confirm(`Annuler la commande ${cmd.reference} ?\nVotre stock sera remis à disposition.`)) return;
+    if (!window.confirm(`Annuler la commande ${cmd.reference} ?`)) return;
     setCancelling(cmd.id);
-    try {
-      await commandesApi.annuler(cmd.id);
-      showToast('Commande annulée avec succès');
-      fetchCommandes();
-    } catch (e) {
-      showToast(e.response?.data?.error || 'Impossible d\'annuler', 'error');
-    } finally {
-      setCancelling(null);
-    }
+    try { await commandesApi.annuler(cmd.id); showToast('Commande annulée'); fetchCommandes(); }
+    catch (e) { showToast(e.response?.data?.error || 'Impossible d\'annuler', 'error'); }
+    finally { setCancelling(null); }
   };
 
   const ProgressBar = ({ statut }) => {
-    const cfg = STATUT_CONFIG[statut] || {};
-    const step = cfg.step || 0;
+    const step = STATUT_CONFIG[statut]?.step || 0;
     const steps = ['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'EN_ROUTE', 'LIVREE'];
     return (
-      <div style={{ marginTop: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-          {steps.map((s, i) => {
-            const done = step > i;
-            const active = step === i + 1;
-            return (
-              <React.Fragment key={s}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '40px' }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: done || active ? 'var(--gradient-primary)' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: active ? '2px solid #3b82f6' : 'none', transition: 'all 0.3s' }}>
-                    {done ? '✓' : STATUT_CONFIG[s]?.icon}
-                  </div>
-                  <div style={{ fontSize: '9px', color: active ? '#3b82f6' : 'var(--text-secondary)', marginTop: '3px', textAlign: 'center', maxWidth: '50px' }}>{STATUT_CONFIG[s]?.label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginTop: 12 }}>
+        {steps.map((s, i) => {
+          const done = step > i; const active = step === i + 1;
+          return (
+            <React.Fragment key={s}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: done || active ? 'var(--mj-red)' : 'var(--mj-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: done || active ? 'white' : 'var(--mj-text-4)', border: active ? '2px solid var(--mj-red-dark)' : 'none', transition: 'var(--mj-ease)' }}>
+                  {done ? '✓' : STATUT_CONFIG[s]?.icon}
                 </div>
-                {i < steps.length - 1 && (
-                  <div style={{ flex: 1, height: '2px', background: done ? 'var(--gradient-primary)' : 'rgba(255,255,255,0.1)', minWidth: '20px', marginBottom: '14px' }} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+                <div style={{ fontSize: 9, color: active ? 'var(--mj-red)' : 'var(--mj-text-4)', marginTop: 3, textAlign: 'center', maxWidth: 50 }}>{STATUT_CONFIG[s]?.label}</div>
+              </div>
+              {i < steps.length - 1 && (
+                <div style={{ flex: 1, height: 2, background: done ? 'var(--mj-red)' : 'var(--mj-border)', minWidth: 16, marginBottom: 14, transition: 'var(--mj-ease)' }} />
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     );
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Chargement...</div>;
+  if (loading) return <div className="mj-empty"><RefreshCw size={28} className="mj-spin" style={{ margin: '0 auto 12px' }} /></div>;
 
   if (commandes.length === 0) return (
-    <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
-      <Package size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-      <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Aucune commande</div>
-      <div style={{ fontSize: '13px' }}>Explorez notre catalogue et passez votre première commande!</div>
+    <div className="mj-empty">
+      <div className="mj-empty-icon"><Package size={48} /></div>
+      <div className="mj-empty-title">Aucune commande</div>
+      <div className="mj-empty-desc">Explorez notre catalogue et passez votre première commande !</div>
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {toast && (
-        <div style={{ position: 'fixed', top: 80, right: 20, zIndex: 9999, background: toast.type === 'error' ? '#ef4444' : '#10b981', color: 'white', padding: '12px 20px', borderRadius: 12, fontWeight: 600, fontSize: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-          {toast.type === 'error' ? '❌' : '✅'} {toast.msg}
-        </div>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {toast && <div className={`mj-toast ${toast.type === 'error' ? 'mj-toast-error' : 'mj-toast-success'}`}>{toast.type === 'error' ? '❌' : '✅'} {toast.msg}</div>}
       {commandes.map(cmd => {
         const isExpanded = expanded === cmd.id;
         const canCancel = !['LIVREE', 'ANNULEE'].includes(cmd.statut);
         const isActive = ['VALIDEE', 'EN_PREPARATION', 'EN_ROUTE'].includes(cmd.statut);
+        const sc = STATUT_CONFIG[cmd.statut] || {};
         return (
-        <div key={cmd.id} className="glass-card animate-fade-in"
-          style={{
-            padding: '1.25rem',
-            borderLeft: `4px solid ${cmd.statut === 'LIVREE' ? '#10b981' : cmd.statut === 'ANNULEE' ? '#ef4444' : cmd.statut === 'EN_ROUTE' ? '#06b6d4' : cmd.statut === 'EN_PREPARATION' ? '#f59e0b' : '#3b82f6'}`,
-            background: isActive ? 'linear-gradient(135deg, rgba(15,23,42,0.5), rgba(59,130,246,0.04))' : undefined,
-          }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <div>
-              <div style={{ fontWeight: 800, fontFamily: 'monospace', fontSize: 14, color: '#60a5fa' }}>{cmd.reference}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                🏪 {cmd.fondateur_detail?.nom_boutique} · {new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 800, color: '#10b981', fontSize: 16 }}>{cmd.total_price} MAD</div>
-              <span className={`badge ${STATUT_CONFIG[cmd.statut]?.cls || 'badge-secondary'}`} style={{ fontSize: 11, marginTop: 4 }}>
-                {STATUT_CONFIG[cmd.statut]?.icon} {STATUT_CONFIG[cmd.statut]?.label}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MapPin size={11} /> {cmd.adresse_livraison}
-          </div>
-
-          {cmd.statut !== 'ANNULEE' && <ProgressBar statut={cmd.statut} />}
-
-          {/* Transporteur info (visible quand EN_ROUTE) */}
-          {cmd.transporteur_detail && cmd.statut === 'EN_ROUTE' && (
-            <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 10, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>🛵</span>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#06b6d4' }}>
-                    {cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Votre livreur en route</div>
+          <div key={cmd.id} className="mj-order-card mj-fade-in" style={{ borderLeft: `4px solid ${sc.color || 'var(--mj-border-md)'}`, background: isActive ? '#FFFBFB' : 'var(--mj-white)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontFamily: 'monospace', fontSize: 14, color: 'var(--mj-red)' }}>{cmd.reference}</div>
+                <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2 }}>
+                  🏪 {cmd.fondateur_detail?.nom_boutique} · {new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => onOpenChat(cmd)}
-                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <MessageSquare size={11} /> Chat
-                </button>
-                <button onClick={onNavigateSuivi}
-                  style={{ background: '#06b6d4', color: 'white', border: 'none', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <MapIcon size={11} /> Suivre
-                </button>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 800, color: 'var(--mj-text)', fontSize: 16 }}>{cmd.total_price} MAD</div>
+                <span className="mj-badge" style={{ background: `${sc.color}18`, color: sc.color, marginTop: 4 }}>
+                  {sc.icon} {sc.label}
+                </span>
               </div>
             </div>
-          )}
 
-          {cmd.statut === 'LIVREE' && (
-            <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(16,185,129,0.1)', borderRadius: 10, fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-              <CheckCircle size={13} /> Livré avec succès le {cmd.livree_at ? new Date(cmd.livree_at).toLocaleString('fr-FR') : ''}
+            <div style={{ fontSize: 12, color: 'var(--mj-text-3)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <MapPin size={11} style={{ color: 'var(--mj-red)' }} /> {cmd.adresse_livraison}
             </div>
-          )}
 
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
-            <button onClick={() => setExpanded(isExpanded ? null : cmd.id)}
-              style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              {isExpanded ? <>▲ Masquer détails</> : <>▼ Voir détails ({cmd.lignes?.length || 0} produits)</>}
-            </button>
-            {canCancel && (
-              <button onClick={() => handleCancel(cmd)} disabled={cancelling === cmd.id}
-                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {cancelling === cmd.id ? '...' : <><X size={12} /> Annuler</>}
+            {cmd.statut !== 'ANNULEE' && <ProgressBar statut={cmd.statut} />}
+
+            {cmd.transporteur_detail && cmd.statut === 'EN_ROUTE' && (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--mj-red-light)', border: '1px solid #FECACA', borderRadius: 10, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>🛵</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--mj-red)' }}>{cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--mj-text-3)' }}>Votre livreur en route</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => onOpenChat(cmd)} className="mj-btn mj-btn-sm" style={{ background: 'white', border: '1px solid var(--mj-border)', color: 'var(--mj-text)', gap: 4 }}>
+                    <MessageSquare size={11} /> Chat
+                  </button>
+                  <button onClick={onNavigateSuivi} className="mj-btn mj-btn-sm mj-btn-primary" style={{ gap: 4 }}>
+                    <MapIcon size={11} /> Suivre
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {cmd.statut === 'LIVREE' && (
+              <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--mj-green-light)', borderRadius: 10, fontSize: 12, color: '#15803d', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                <CheckCircle size={13} /> Livré avec succès le {cmd.livree_at ? new Date(cmd.livree_at).toLocaleString('fr-FR') : ''}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setExpanded(isExpanded ? null : cmd.id)} className="mj-btn mj-btn-secondary mj-btn-sm" style={{ flex: 1, justifyContent: 'center' }}>
+                {isExpanded ? '▲ Masquer' : `▼ Voir détails (${cmd.lignes?.length || 0} produits)`}
               </button>
+              {canCancel && (
+                <button onClick={() => handleCancel(cmd)} disabled={cancelling === cmd.id} className="mj-btn mj-btn-sm" style={{ background: 'var(--mj-danger-light)', border: '1px solid #FECACA', color: 'var(--mj-danger)' }}>
+                  {cancelling === cmd.id ? '...' : <><X size={12} /> Annuler</>}
+                </button>
+              )}
+            </div>
+
+            {isExpanded && cmd.lignes?.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--mj-border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mj-text-4)', letterSpacing: '0.05em', marginBottom: 8 }}>PRODUITS COMMANDÉS</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 8 }}>
+                  {cmd.lignes.map((l, i) => {
+                    const prod = { id: l.produit, categorie: l.produit_detail?.categorie || 'AUTRE' };
+                    const [g1, g2] = PRODUCT_GRADIENTS[prod.categorie] || PRODUCT_GRADIENTS.AUTRE;
+                    const detailImg = mediaUrl(l.produit_detail?.image_principale || l.produit_detail?.image);
+                    return (
+                      <div key={i} style={{ background: 'var(--mj-bg)', borderRadius: 10, padding: 10, display: 'flex', gap: 8, alignItems: 'center', border: '1px solid var(--mj-border)' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, ${g1}, ${g2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0, overflow: 'hidden' }}>
+                          {detailImg
+                            ? <img src={detailImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                            : getProductEmoji(prod.categorie, prod.id)
+                          }
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--mj-text)' }}>{l.produit_detail?.nom || `#${l.produit}`}</div>
+                          <div style={{ fontSize: 10, color: 'var(--mj-text-4)' }}>×{l.quantite}</div>
+                          <div style={{ fontSize: 11, color: 'var(--mj-red)', fontWeight: 700 }}>{l.sous_total} MAD</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Détails produits (expansible) */}
-          {isExpanded && cmd.lignes?.length > 0 && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: 8 }}>PRODUITS COMMANDÉS</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 8 }}>
-                {cmd.lignes.map((l, i) => {
-                  const prod = { id: l.produit, categorie: l.produit_detail?.categorie || 'AUTRE' };
-                  const [g1, g2] = PRODUCT_GRADIENTS[prod.categorie] || PRODUCT_GRADIENTS.AUTRE;
-                  return (
-                    <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 8,
-                        background: `linear-gradient(135deg, ${g1}, ${g2})`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 20, flexShrink: 0,
-                      }}>
-                        {getProductEmoji(prod.categorie, prod.id)}
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {l.produit_detail?.nom || `#${l.produit}`}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>×{l.quantite}</div>
-                        <div style={{ fontSize: 11, color: '#10b981', fontWeight: 700 }}>{l.sous_total} MAD</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
         );
       })}
     </div>
   );
 };
 
-// ─── OSRM routing helper (client side) ───────────────────────────────────────
+/* ── SuiviTab ─────────────────────────────────────────────────────────────── */
 const fetchClientRoute = async (from, to) => {
   if (!from || !to) return null;
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     const data = await res.json();
-    if (data.routes && data.routes[0]) {
-      return {
-        coords: data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]),
-        distance_km: (data.routes[0].distance / 1000).toFixed(1),
-        duration_min: Math.round(data.routes[0].duration / 60),
-      };
-    }
+    if (data.routes?.[0]) return { coords: data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]), distance_km: (data.routes[0].distance / 1000).toFixed(1), duration_min: Math.round(data.routes[0].duration / 60) };
   } catch { /* ignore */ }
   return null;
 };
 
-// ─── Onglet SUIVI LIVE (avec filtres calques) ────────────────────────────────
 const SuiviTab = ({ user, onOpenChat }) => {
   const [livraisons, setLivraisons] = useState([]);
   const [boutiques, setBoutiques] = useState([]);
-  const [transporteurs, setTransporteurs] = useState([]);
-  const [routes, setRoutes] = useState({});  // id commande → route data
+  const [routes, setRoutes] = useState({});
   const [userPos, setUserPos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [layers, setLayers] = useState({
-    maPosition:    { label: 'Ma position',              active: true,  emoji: '📍', color: '#3b82f6' },
-    livraisons:    { label: 'Mes livraisons en cours',  active: true,  emoji: '🛵', color: '#f59e0b' },
-    transporteurs: { label: 'Transporteurs',            active: true,  emoji: '🚗', color: '#8b5cf6' },
-    boutiques:     { label: 'Boutiques ouvertes',       active: false, emoji: '🏪', color: '#10b981' },
+    maPosition:    { label: 'Ma position',              active: true,  emoji: '📍', color: '#3B82F6' },
+    livraisons:    { label: 'Mes livraisons en cours',  active: true,  emoji: '🛵', color: '#E30613' },
+    transporteurs: { label: 'Transporteurs',            active: true,  emoji: '🚗', color: '#8B5CF6' },
+    boutiques:     { label: 'Boutiques ouvertes',       active: false, emoji: '🏪', color: '#22C55E' },
   });
-
   const toggleLayer = (key) => setLayers(l => ({ ...l, [key]: { ...l[key], active: !l[key].active } }));
 
   const fetchData = () => {
-    Promise.all([
-      commandesApi.list(),
-      fondateursApi.list({ is_verified: true, is_open: true }),
-    ]).then(([cmdRes, bRes]) => {
-      const all = cmdRes.data.results || cmdRes.data || [];
-      // Garde mes commandes EN_ROUTE et EN_PREPARATION
-      const actives = all.filter(c => ['EN_PREPARATION', 'EN_ROUTE'].includes(c.statut));
-      setLivraisons(actives);
-      setBoutiques((bRes.data.results || bRes.data || []).slice(0, 30));
-    }).catch(console.error).finally(() => setLoading(false));
+    Promise.all([commandesApi.list(), fondateursApi.list({ is_verified: true, is_open: true })])
+      .then(([cmdRes, bRes]) => {
+        const all = cmdRes.data.results || cmdRes.data || [];
+        setLivraisons(all.filter(c => ['EN_PREPARATION', 'EN_ROUTE'].includes(c.statut)));
+        setBoutiques((bRes.data.results || bRes.data || []).slice(0, 30));
+      }).catch(console.error).finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    setLoading(true);
-    fetchData();
+    setLoading(true); fetchData();
     const id = setInterval(fetchData, 20000);
-    navigator.geolocation?.getCurrentPosition(
-      pos => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-      () => setUserPos([33.5731, -7.5898]),
-      { enableHighAccuracy: true }
-    );
+    navigator.geolocation?.getCurrentPosition(pos => setUserPos([pos.coords.latitude, pos.coords.longitude]), () => setUserPos([33.5731, -7.5898]), { enableHighAccuracy: true });
     return () => clearInterval(id);
   }, []);
 
-  // Calculer routes du transporteur vers le client (EN_ROUTE seulement)
   useEffect(() => {
     livraisons.forEach(async cmd => {
-      if (cmd.statut !== 'EN_ROUTE') return;
-      if (routes[cmd.id]) return;
-      const transporteurPos = cmd.transporteur_detail
-        ? [cmd.transporteur_detail.latitude, cmd.transporteur_detail.longitude]
-        : null;
-      const clientPos = cmd.latitude_livraison && cmd.longitude_livraison
-        ? [cmd.latitude_livraison, cmd.longitude_livraison]
-        : userPos;
-      if (transporteurPos && transporteurPos[0] && clientPos && clientPos[0]) {
-        const r = await fetchClientRoute(transporteurPos, clientPos);
-        if (r) setRoutes(prev => ({ ...prev, [cmd.id]: r }));
-      }
+      if (cmd.statut !== 'EN_ROUTE' || routes[cmd.id]) return;
+      const tPos = cmd.transporteur_detail ? [cmd.transporteur_detail.latitude, cmd.transporteur_detail.longitude] : null;
+      const cPos = cmd.latitude_livraison && cmd.longitude_livraison ? [cmd.latitude_livraison, cmd.longitude_livraison] : userPos;
+      if (tPos?.[0] && cPos?.[0]) { const r = await fetchClientRoute(tPos, cPos); if (r) setRoutes(prev => ({ ...prev, [cmd.id]: r })); }
     });
   }, [livraisons, userPos]);
 
-  const mapCenter = userPos || [33.5731, -7.5898];
-
   return (
-    <div>
-      {/* Calques toggle */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+    <div className="mj-fade-in">
+      {/* Calques */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {Object.entries(layers).map(([key, { label, active, emoji, color }]) => (
           <button key={key} onClick={() => toggleLayer(key)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
-              borderRadius: 20, border: `1.5px solid ${active ? color : 'rgba(255,255,255,0.1)'}`,
-              background: active ? `${color}18` : 'rgba(255,255,255,0.04)',
-              cursor: 'pointer', color: active ? color : 'var(--text-secondary)',
-              fontSize: 12, fontWeight: active ? 700 : 400, transition: 'all 0.15s',
-            }}>
-            <span>{emoji}</span> {label}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${active ? color : 'var(--mj-border)'}`, background: active ? `${color}12` : 'var(--mj-white)', cursor: 'pointer', color: active ? color : 'var(--mj-text-3)', fontSize: 12, fontWeight: active ? 700 : 400, transition: 'var(--mj-ease-fast)', fontFamily: 'var(--mj-font)' }}>
+            {emoji} {label}
           </button>
         ))}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--mj-text-3)' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mj-green)', display: 'inline-block' }} />
           {livraisons.length} en route
         </div>
       </div>
 
       {/* Carte */}
-      <div className="glass-card" style={{ height: 440, padding: 4, overflow: 'hidden', borderRadius: 16 }}>
+      <div className="mj-card" style={{ height: 440, padding: 4, overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--text-secondary)' }}>
-            <RefreshCw size={28} className="spin" />
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--mj-text-4)' }}>
+            <RefreshCw size={28} className="mj-spin" />
             <span style={{ fontSize: 13 }}>Chargement de la carte...</span>
           </div>
         ) : (
-          <MapContainer center={mapCenter} zoom={userPos ? 13 : 6}
-            style={{ height: '100%', width: '100%', borderRadius: 12 }}>
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; CARTO' />
-
-            {/* Ma position */}
+          <MapContainer center={userPos || [33.5731, -7.5898]} zoom={userPos ? 13 : 6} style={{ height: '100%', width: '100%', borderRadius: 12 }}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; CARTO' />
             {layers.maPosition.active && userPos && (
               <>
-                <Marker position={userPos} icon={iconBlue}>
-                  <Popup>
-                    <div style={{ color: '#000' }}>
-                      <strong>📍 Votre position</strong><br />
-                      {user?.first_name} {user?.last_name}
-                    </div>
-                  </Popup>
-                </Marker>
-                <Circle center={userPos} radius={400}
-                  pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.07, weight: 2, dashArray: '6 3' }} />
+                <Marker position={userPos} icon={iconBlue}><Popup><div><strong>📍 Votre position</strong><br />{user?.first_name} {user?.last_name}</div></Popup></Marker>
+                <Circle center={userPos} radius={400} pathOptions={{ color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.08, weight: 2, dashArray: '6 3' }} />
               </>
             )}
-
-            {/* Livraisons en cours + transporteurs + itinéraires */}
             {layers.livraisons.active && livraisons.map(cmd => {
-              const lat = cmd.latitude_livraison;
-              const lon = cmd.longitude_livraison;
-              const tLat = cmd.transporteur_detail?.latitude;
-              const tLon = cmd.transporteur_detail?.longitude;
+              const lat = cmd.latitude_livraison; const lon = cmd.longitude_livraison;
+              const tLat = cmd.transporteur_detail?.latitude; const tLon = cmd.transporteur_detail?.longitude;
               return (
                 <React.Fragment key={`l-${cmd.id}`}>
-                  {/* Marqueur destination livraison */}
-                  {lat && lon && (
-                    <Marker position={[lat, lon]} icon={iconRed}>
-                      <Popup>
-                        <div style={{ color: '#000', minWidth: 170 }}>
-                          <strong>📍 Adresse de livraison</strong><br />
-                          <span style={{ fontSize: 12 }}>{cmd.adresse_livraison}</span><br />
-                          <strong style={{ color: '#10b981' }}>{cmd.total_price} MAD</strong>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )}
-                  {/* Marqueur transporteur (si EN_ROUTE) */}
+                  {lat && lon && <Marker position={[lat, lon]} icon={iconRed}><Popup><div><strong>📍 Adresse de livraison</strong><br /><span style={{ fontSize: 12 }}>{cmd.adresse_livraison}</span><br /><strong style={{ color: 'var(--mj-red)' }}>{cmd.total_price} MAD</strong></div></Popup></Marker>}
                   {layers.transporteurs.active && cmd.statut === 'EN_ROUTE' && tLat && tLon && (
                     <>
-                      <Marker position={[tLat, tLon]} icon={iconOrange}>
-                        <Popup>
-                          <div style={{ color: '#000', minWidth: 170 }}>
-                            <strong>🛵 Votre livreur</strong><br />
-                            <span style={{ fontSize: 12 }}>
-                              {cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}
-                            </span><br />
-                            <span style={{ fontSize: 12, color: '#666' }}>{cmd.reference}</span><br />
-                            {routes[cmd.id] && (
-                              <span style={{ fontSize: 11, color: '#3b82f6' }}>
-                                📏 {routes[cmd.id].distance_km} km · ⏱ {routes[cmd.id].duration_min} min
-                              </span>
-                            )}
-                          </div>
-                        </Popup>
-                      </Marker>
-                      <Circle center={[tLat, tLon]} radius={150}
-                        pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 2 }} />
+                      <Marker position={[tLat, tLon]} icon={iconOrange}><Popup><div><strong>🛵 Votre livreur</strong><br /><span style={{ fontSize: 12 }}>{cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</span></div></Popup></Marker>
+                      <Circle center={[tLat, tLon]} radius={150} pathOptions={{ color: '#E30613', fillColor: '#E30613', fillOpacity: 0.12, weight: 2 }} />
                     </>
                   )}
-                  {/* Polyline de l'itinéraire transporteur → client */}
-                  {routes[cmd.id] && cmd.statut === 'EN_ROUTE' && (
-                    <Polyline positions={routes[cmd.id].coords}
-                      pathOptions={{ color: '#f59e0b', weight: 4, opacity: 0.85, dashArray: '8 6' }} />
-                  )}
+                  {routes[cmd.id] && cmd.statut === 'EN_ROUTE' && <Polyline positions={routes[cmd.id].coords} pathOptions={{ color: '#E30613', weight: 4, opacity: 0.8, dashArray: '8 6' }} />}
                 </React.Fragment>
               );
             })}
-
-            {/* Boutiques ouvertes */}
-            {layers.boutiques.active && boutiques.map(b => {
-              if (!b.latitude || !b.longitude) return null;
-              return (
-                <Marker key={b.id} position={[b.latitude, b.longitude]} icon={iconGreen}>
-                  <Popup>
-                    <div style={{ color: '#000', minWidth: 150 }}>
-                      <strong>🏪 {b.nom_boutique}</strong><br />
-                      <span style={{ fontSize: 12 }}>{b.categorie} · {b.ville}</span><br />
-                      <span style={{ fontSize: 12, color: '#10b981' }}>● Ouvert</span><br />
-                      <span style={{ fontSize: 12 }}>⭐ {b.note_moyenne?.toFixed(1)} · {b.frais_livraison_base} MAD livraison</span>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-
-            {/* Transporteurs disponibles */}
-            {layers.transporteurs.active && transporteurs.map(t => {
-              if (!t.latitude || !t.longitude) return null;
-              return (
-                <Marker key={t.id} position={[t.latitude, t.longitude]} icon={iconRed}>
-                  <Popup>
-                    <div style={{ color: '#000' }}>
-                      <strong>🚗 Chauffeur disponible</strong><br />
-                      <span style={{ fontSize: 12 }}>{t.vehicule_type} · {t.note_moyenne?.toFixed(1)} ⭐</span>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
+            {layers.boutiques.active && boutiques.map(b => b.latitude && b.longitude ? (
+              <Marker key={b.id} position={[b.latitude, b.longitude]} icon={iconGreen}><Popup><div><strong>🏪 {b.nom_boutique}</strong><br /><span style={{ fontSize: 12 }}>{b.categorie} · {b.ville}</span><br /><span style={{ fontSize: 12, color: 'var(--mj-green)' }}>● Ouvert</span></div></Popup></Marker>
+            ) : null)}
           </MapContainer>
         )}
       </div>
 
-      {/* Liste livraisons en cours */}
+      {/* Liste */}
       {livraisons.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: 14 }}>
-          <CheckCircle size={36} color="#10b981" style={{ opacity: 0.5, marginBottom: 8 }} />
-          <div>Aucune livraison en cours pour le moment 🎉</div>
+        <div className="mj-empty" style={{ marginTop: 24 }}>
+          <div className="mj-empty-icon"><CheckCircle size={36} color="var(--mj-green)" /></div>
+          <div className="mj-empty-title">Aucune livraison en cours</div>
+          <div className="mj-empty-desc">Toutes vos commandes ont été livrées 🎉</div>
         </div>
       ) : (
-        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {livraisons.map(cmd => {
             const route = routes[cmd.id];
             const isEnRoute = cmd.statut === 'EN_ROUTE';
-            const statutColor = isEnRoute ? '#f59e0b' : '#3b82f6';
             return (
-              <div key={cmd.id} className="glass-card animate-fade-in" style={{
-                padding: '1rem',
-                borderLeft: `4px solid ${statutColor}`,
-                background: `linear-gradient(135deg, rgba(15,23,42,0.4), ${statutColor}08)`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{
-                    width: 50, height: 50, background: `${statutColor}20`, borderRadius: 12,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0,
-                  }}>
+              <div key={cmd.id} className="mj-order-card mj-fade-in" style={{ borderLeft: `4px solid ${isEnRoute ? 'var(--mj-red)' : '#8B5CF6'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 50, height: 50, background: isEnRoute ? 'var(--mj-red-light)' : '#F3E8FF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
                     {isEnRoute ? '🛵' : '👨‍🍳'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ fontSize: 14, color: '#60a5fa', fontFamily: 'monospace' }}>{cmd.reference}</strong>
-                      <span style={{
-                        background: statutColor + '20', color: statutColor,
-                        fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700,
-                      }}>
+                      <strong style={{ fontSize: 14, color: 'var(--mj-red)', fontFamily: 'monospace' }}>{cmd.reference}</strong>
+                      <span className="mj-badge" style={{ background: isEnRoute ? 'var(--mj-red-light)' : '#F3E8FF', color: isEnRoute ? 'var(--mj-red)' : '#7C3AED' }}>
                         {isEnRoute ? '🚚 EN ROUTE' : '👨‍🍳 PRÉPARATION'}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      🏪 {cmd.fondateur_detail?.nom_boutique}
-                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🏪 {cmd.fondateur_detail?.nom_boutique}</div>
                     {cmd.transporteur_detail && (
-                      <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 11, color: 'var(--mj-text-3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>👤 {cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</span>
-                        <button
-                          onClick={() => onOpenChat(cmd)}
-                          style={{
-                            background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 6, padding: '2px 8px',
-                            color: '#a5b4fc', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.25)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.55)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; }}
-                        >
-                          <MessageSquare size={10} /> Chat livreur
+                        <button onClick={() => onOpenChat(cmd)} className="mj-btn mj-btn-sm" style={{ background: 'var(--mj-red-light)', border: '1px solid #FECACA', color: 'var(--mj-red)', padding: '2px 10px', fontSize: 10, height: 'auto' }}>
+                          <MessageSquare size={10} /> Chat
                         </button>
                       </div>
                     )}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontWeight: 800, color: '#10b981', fontSize: 15 }}>{Math.round(cmd.total_price)} MAD</div>
-                    {route && (
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        ⏱ <strong style={{ color: statutColor }}>{route.duration_min} min</strong>
-                      </div>
-                    )}
+                    <div style={{ fontWeight: 800, color: 'var(--mj-text)', fontSize: 15 }}>{Math.round(cmd.total_price)} MAD</div>
+                    {route && <div style={{ fontSize: 11, color: 'var(--mj-text-4)', marginTop: 4 }}>⏱ <strong style={{ color: 'var(--mj-red)' }}>{route.duration_min} min</strong></div>}
                   </div>
                 </div>
                 {route && (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
-                    <span>📏 Distance restante : <strong style={{ color: '#3b82f6' }}>{route.distance_km} km</strong></span>
-                    <span>🚚 Arrivée estimée : <strong style={{ color: '#10b981' }}>{new Date(Date.now() + route.duration_min * 60000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--mj-border)', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--mj-text-3)' }}>
+                    <span>📏 Restant : <strong style={{ color: 'var(--mj-blue)' }}>{route.distance_km} km</strong></span>
+                    <span>🚚 Arrivée : <strong style={{ color: 'var(--mj-green)' }}>{new Date(Date.now() + route.duration_min * 60000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong></span>
                   </div>
                 )}
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--mj-border)' }}>
+                  <SuiviTimeline commande={cmd} livraison={cmd.livraison} onContact={cmd.transporteur_detail ? () => onOpenChat(cmd) : null} />
+                </div>
               </div>
             );
           })}
@@ -1688,17 +1330,17 @@ const SuiviTab = ({ user, onOpenChat }) => {
   );
 };
 
-// ─── Onglet PROFIL ────────────────────────────────────────────────────────────
+/* ── ProfilTab ────────────────────────────────────────────────────────────── */
 const ProfilTab = ({ user }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-    <div className="glass-card" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1.5rem' }}>
-      <div style={{ width: '72px', height: '72px', background: 'var(--gradient-primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 700, color: 'white', flexShrink: 0 }}>
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+    <div className="mj-card" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 20, padding: 22 }}>
+      <div className="mj-avatar" style={{ width: 72, height: 72 }}>
         {user?.first_name?.[0]}{user?.last_name?.[0]}
       </div>
       <div>
-        <div style={{ fontSize: '20px', fontWeight: 800 }}>{user?.first_name} {user?.last_name}</div>
-        <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>{user?.email}</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '2px' }}>{user?.phone || 'Téléphone non renseigné'}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--mj-text)' }}>{user?.first_name} {user?.last_name}</div>
+        <div style={{ color: 'var(--mj-text-3)', marginTop: 4 }}>{user?.email}</div>
+        <div style={{ color: 'var(--mj-text-4)', fontSize: 13, marginTop: 2 }}>{user?.phone || 'Téléphone non renseigné'}</div>
       </div>
     </div>
     {[
@@ -1707,39 +1349,24 @@ const ProfilTab = ({ user }) => (
       { label: 'Membre depuis', value: user?.date_joined ? new Date(user.date_joined).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' },
       { label: 'Adresses sauvegardées', value: user?.adresses_sauvegardees?.length || 0 },
     ].map(({ label, value }) => (
-      <div key={label} className="glass-card" style={{ padding: '1rem' }}>
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
-        <div style={{ fontWeight: 600 }}>{value}</div>
+      <div key={label} className="mj-stat-card">
+        <div style={{ fontSize: 12, color: 'var(--mj-text-4)', marginBottom: 4 }}>{label}</div>
+        <div style={{ fontWeight: 700, color: 'var(--mj-text)', fontSize: 15 }}>{value}</div>
       </div>
     ))}
   </div>
 );
 
-// ─── TICKET STATUS CONFIG ─────────────────────────────────────────────────────
-const TICKET_STATUS = {
-  ouvert:     { label: 'Ouvert',     color: '#3b82f6', bg: '#3b82f620' },
-  en_cours:   { label: 'En cours',   color: '#f59e0b', bg: '#f59e0b20' },
-  en_attente: { label: 'En attente', color: '#8b5cf6', bg: '#8b5cf620' },
-  resolu:     { label: 'Résolu',     color: '#10b981', bg: '#10b98120' },
-  ferme:      { label: 'Fermé',      color: '#64748b', bg: '#64748b20' },
-};
-
-const TICKET_PRIORITY = {
-  urgent: { label: 'Urgent', color: '#ef4444' },
-  moyen:  { label: 'Moyen',  color: '#f59e0b' },
-  faible: { label: 'Faible', color: '#10b981' },
-};
-
+/* ── TicketsTab ───────────────────────────────────────────────────────────── */
 const TICKET_CATEGORIES = [
-  { value: 'livraison',   label: 'Problème de livraison' },
-  { value: 'paiement',    label: 'Problème de paiement' },
-  { value: 'produit',     label: 'Produit endommagé / manquant' },
-  { value: 'retard',      label: 'Retard de livraison' },
-  { value: 'annulation',  label: 'Annulation de commande' },
-  { value: 'autre',       label: 'Autre' },
+  { value: 'livraison', label: 'Problème de livraison' },
+  { value: 'paiement', label: 'Problème de paiement' },
+  { value: 'produit', label: 'Produit endommagé / manquant' },
+  { value: 'retard', label: 'Retard de livraison' },
+  { value: 'annulation', label: 'Annulation de commande' },
+  { value: 'autre', label: 'Autre' },
 ];
 
-// ─── Tickets Tab ──────────────────────────────────────────────────────────────
 const TicketsTab = ({ userId }) => {
   const [tickets, setTickets] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -1765,34 +1392,30 @@ const TicketsTab = ({ userId }) => {
 
   return (
     <div>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 20, marginBottom: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
-        <h3 style={{ color: 'var(--text-primary)', marginBottom: 16, fontSize: 15, fontWeight: 700 }}>📝 Nouveau ticket</h3>
-        <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder="Sujet du ticket"
-          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }} />
-        <select value={categorie} onChange={e => setCategorie(e.target.value)}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }}>
+      <div className="mj-card" style={{ padding: 20, marginBottom: 20 }}>
+        <div className="mj-section-title" style={{ marginBottom: 16 }}>Nouveau ticket</div>
+        <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder="Sujet du ticket" className="mj-input" style={{ marginBottom: 10 }} />
+        <select value={categorie} onChange={e => setCategorie(e.target.value)} className="mj-select" style={{ marginBottom: 10 }}>
           {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description détaillée..." rows={3}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'white', padding: '10px 14px', fontSize: 13, marginBottom: 10, resize: 'vertical', boxSizing: 'border-box' }} />
-        <button onClick={handleSubmit} disabled={submitting || !sujet.trim()}
-          style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#6366f1', color: 'white', fontWeight: 700, cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description détaillée..." rows={3} className="mj-input" style={{ marginBottom: 14, resize: 'vertical' }} />
+        <button onClick={handleSubmit} disabled={submitting || !sujet.trim()} className="mj-btn mj-btn-primary">
           {submitting ? 'Envoi...' : '📨 Envoyer le ticket'}
         </button>
       </div>
 
-      {loading ? <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p> : (
+      {loading ? <div className="mj-empty"><RefreshCw size={24} className="mj-spin" style={{ margin: '0 auto' }} /></div> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {tickets.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Aucun ticket pour le moment.</p>}
+          {tickets.length === 0 && <div className="mj-empty"><div className="mj-empty-title">Aucun ticket</div></div>}
           {tickets.map(t => (
-            <div key={t.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>#{t.id} — {t.sujet}</span>
-                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: t.statut === 'ouvert' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)', color: t.statut === 'ouvert' ? '#818cf8' : '#34d399' }}>
+            <div key={t.id} className="mj-ticket-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontWeight: 700, color: 'var(--mj-text)', fontSize: 14 }}>#{t.id} — {t.sujet}</span>
+                <span className="mj-badge" style={{ background: t.statut === 'ouvert' ? 'var(--mj-red-light)' : 'var(--mj-green-light)', color: t.statut === 'ouvert' ? 'var(--mj-red)' : '#15803d' }}>
                   {t.statut}
                 </span>
               </div>
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{t.description}</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--mj-text-3)' }}>{t.description}</p>
             </div>
           ))}
         </div>
@@ -1801,31 +1424,29 @@ const TicketsTab = ({ userId }) => {
   );
 };
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+/* ── Main Component ───────────────────────────────────────────────────────── */
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('catalogue');
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [categorie, setCategorie] = useState('');
   const { items } = useCartStore();
   const cartCount = items.reduce((s, i) => s + i.quantite, 0);
-
   const [selectedBoutique, setSelectedBoutique] = useState(null);
   const [groupCode, setGroupCode] = useState('');
   const [groupMembers, setGroupMembers] = useState(1);
   const [activeChatCommande, setActiveChatCommande] = useState(null);
-
-  // Commande EN_ROUTE avec transporteur → floating chat button
   const [activeDelivery, setActiveDelivery] = useState(null);
+
   useEffect(() => {
     let cancelled = false;
     const poll = async () => {
       try {
         const res = await commandesApi.list({ statut: 'EN_ROUTE', page_size: 5 });
         const rows = res.data.results || res.data || [];
-        const withDriver = rows.find(c => c.transporteur_detail);
-        if (!cancelled) setActiveDelivery(withDriver || null);
+        if (!cancelled) setActiveDelivery(rows.find(c => c.transporteur_detail) || null);
       } catch { /* ignore */ }
     };
     poll();
@@ -1834,105 +1455,131 @@ const ClientDashboard = () => {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary,#0f1422)', color: 'var(--text-primary,#f1f5f9)', fontFamily: 'system-ui,sans-serif' }}>
+    <div className="mj-page mj-client-theme" style={{ padding: 0 }}>
 
-      {/* Top bar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(15,20,34,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: 800, fontSize: 16, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>🚚 DeliverMap</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => setCartOpen(true)} style={{ position: 'relative', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <ShoppingCart size={16} /> Panier
-            {cartCount > 0 && <span style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{cartCount}</span>}
+      {/* ── Dark Header ── */}
+      <header className="mj-client-header">
+        <div className="mj-client-logo">🚀 DeliverMap</div>
+
+        <div className="mj-header-search-wrap">
+          <input
+            className="mj-header-search"
+            placeholder="Rechercher boutiques, produits…"
+            onFocus={() => setTab('catalogue')}
+          />
+          <Search size={16} className="mj-header-search-icon" />
+        </div>
+
+        <div className="mj-header-actions">
+          {/* Favoris */}
+          <button className="mj-header-icon-btn" onClick={() => setTab('favoris')} title="Mes favoris">
+            <Heart size={18} />
           </button>
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>👤 {user?.first_name || user?.username}</span>
-          <button onClick={() => { logout(); navigate('/login'); }} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '6px 10px', color: '#f87171', cursor: 'pointer' }}>
-            <LogOut size={14} />
+
+          {/* Panier */}
+          <button className="mj-header-icon-btn" onClick={() => setCartOpen(true)} title="Mon panier">
+            <ShoppingCart size={18} />
+            {cartCount > 0 && <span className="mj-header-cart-badge">{cartCount}</span>}
+          </button>
+
+
+          {/* User */}
+          <div className="mj-header-user" onClick={() => setTab('profil')}>
+            <User size={16} style={{ color: '#94A3B8', flexShrink: 0 }} />
+            <span className="mj-header-user-name">{user?.first_name || user?.username}</span>
+          </div>
+
+          {/* Logout */}
+          <button
+            className="mj-header-icon-btn"
+            onClick={() => { logout(); navigate('/login'); }}
+            title="Déconnexion"
+          >
+            <LogOut size={16} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Tab nav */}
-      <div style={{ display: 'flex', gap: 4, padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto' }}>
+      {/* ── Tab bar ── */}
+      <nav className="mj-client-tabs">
         {TABS.map(t => {
           const Icon = t.icon;
-          const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', background: active ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.05)', color: active ? 'white' : 'rgba(255,255,255,0.55)' }}>
-              <Icon size={15} /> {t.label}
+            <button
+              key={t.id}
+              className={`mj-client-tab${tab === t.id ? ' active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              <Icon size={15} />
+              {t.label}
+              {t.id === 'commandes' && activeDelivery && (
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', display: 'inline-block', marginLeft: 2, boxShadow: '0 0 5px #22C55E' }} />
+              )}
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Tab content */}
-      <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
-        {tab === 'catalogue' && (
-          <CatalogueTab
-            onCartOpen={() => setCartOpen(true)}
-            groupCode={groupCode}
-            setGroupCode={setGroupCode}
-            groupMembers={groupMembers}
-            selectedBoutique={selectedBoutique}
-            setSelectedBoutique={setSelectedBoutique}
-          />
-        )}
-        {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} onOpenChat={setActiveChatCommande} />}
-        {tab === 'suivi'     && <SuiviTab user={user} onOpenChat={setActiveChatCommande} />}
-        {tab === 'tickets'   && <TicketsTab userId={user?.id} />}
-        {tab === 'profil'    && <ProfilTab user={user} />}
-      </div>
-
-      {cartOpen && (
-        <CartSidebar
-          onClose={() => setCartOpen(false)}
-          onOrder={() => { setCartOpen(false); setCheckoutOpen(true); }}
-        />
-      )}
-      {checkoutOpen && (
-        <CheckoutModal
-          onClose={() => setCheckoutOpen(false)}
-          onSuccess={() => { setCheckoutOpen(false); setTab('commandes'); }}
-        />
-      )}
-      {activeChatCommande && (
-        <ChatSidebar
-          commande={activeChatCommande}
-          onClose={() => setActiveChatCommande(null)}
-        />
+      {/* ── Content ── */}
+      {tab === 'catalogue' ? (
+        <div className="mj-catalogue-layout">
+          <CategorySidebar categorie={categorie} setCategorie={setCategorie} />
+          <div className="mj-catalogue-main">
+            <CatalogueTab
+              onCartOpen={() => setCartOpen(true)}
+              categorie={categorie}
+              groupCode={groupCode}
+              setGroupCode={setGroupCode}
+              groupMembers={groupMembers}
+              selectedBoutique={selectedBoutique}
+              setSelectedBoutique={setSelectedBoutique}
+            />
+          </div>
+        </div>
+      ) : (
+        <main style={{ padding: '20px', maxWidth: 1000, margin: '0 auto' }}>
+          {tab === 'commandes' && <CommandesTab onNavigateSuivi={() => setTab('suivi')} onOpenChat={setActiveChatCommande} />}
+          {tab === 'suivi'     && <SuiviTab user={user} onOpenChat={setActiveChatCommande} />}
+          {tab === 'favoris'   && (
+            <div className="mj-empty">
+              <div className="mj-empty-icon">❤️</div>
+              <div className="mj-empty-title">Mes favoris</div>
+              <div className="mj-empty-desc">
+                <a href="/client/favoris" style={{ color: 'var(--mj-red)', fontWeight: 600 }}>Voir mes favoris →</a>
+              </div>
+            </div>
+          )}
+          {tab === 'tickets'   && <TicketsTab userId={user?.id} />}
+          {tab === 'profil'    && <ProfilTab user={user} />}
+        </main>
       )}
 
-      {/* ── Floating chat button — visible sur tous les onglets quand livraison active ── */}
+      {/* Sidebars & modals */}
+      {cartOpen     && <CartSidebar onClose={() => setCartOpen(false)} onOrder={() => { setCartOpen(false); setCheckoutOpen(true); }} />}
+      {checkoutOpen && <CheckoutModal onClose={() => setCheckoutOpen(false)} onSuccess={() => { setCheckoutOpen(false); setTab('commandes'); }} />}
+      {activeChatCommande && <ChatSidebar commande={activeChatCommande} onClose={() => setActiveChatCommande(null)} />}
+
+      {/* Floating chat button */}
+      {/* Chat livreur — positionné juste au-dessus du bouton chatbot (bottom 24 + 54px + 12 gap) */}
       {activeDelivery && !activeChatCommande && (
         <button
           onClick={() => setActiveChatCommande(activeDelivery)}
-          title={`Chat avec ${activeDelivery.transporteur_detail?.first_name || 'le livreur'}`}
+          title="Chat avec le livreur"
           style={{
-            position: 'fixed', bottom: 90, right: 22, zIndex: 500,
-            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-            border: 'none', borderRadius: 28, padding: '10px 18px',
-            color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 13,
-            display: 'flex', alignItems: 'center', gap: 8,
-            boxShadow: '0 4px 24px rgba(99,102,241,0.45)',
-            transition: 'transform 0.18s, box-shadow 0.18s',
-            animation: 'chatPulse 2.5s ease-in-out infinite',
+            position: 'fixed', bottom: 90, right: 24, zIndex: 9998,
+            background: 'var(--mj-red)', border: 'none', borderRadius: 28,
+            padding: '11px 18px', color: 'white', cursor: 'pointer',
+            fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 4px 20px rgba(249,115,22,0.55)',
+            animation: 'mj-pulse-red 2.5s ease-in-out infinite',
+            fontFamily: 'var(--mj-font)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; e.currentTarget.style.boxShadow = '0 6px 32px rgba(99,102,241,0.6)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(99,102,241,0.45)'; }}
         >
-          <MessageSquare size={16} />
+          <MessageSquare size={15} />
           <span>Chat livreur</span>
-          <span style={{
-            background: '#10b981', borderRadius: '50%', width: 8, height: 8,
-            display: 'inline-block', boxShadow: '0 0 6px #10b981',
-          }} />
+          <span style={{ background: '#22C55E', borderRadius: '50%', width: 8, height: 8, display: 'inline-block', boxShadow: '0 0 6px #22C55E' }} />
         </button>
       )}
-      <style>{`
-        @keyframes chatPulse {
-          0%, 100% { box-shadow: 0 4px 24px rgba(99,102,241,0.45); }
-          50%       { box-shadow: 0 4px 32px rgba(99,102,241,0.7), 0 0 0 6px rgba(99,102,241,0.15); }
-        }
-      `}</style>
 
       <ChatbotWidget />
     </div>

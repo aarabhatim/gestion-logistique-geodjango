@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { analyticsApi, fondateursApi, commandesApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import '../../styles/marjane.css';
 
 // ── Son de notification via Web Audio API ───────────────────────────────────
 function playNotifSound() {
@@ -20,7 +21,7 @@ function playNotifSound() {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.4);
-  } catch (e) { /* ignore — navigateur bloque audio sans geste */ }
+  } catch (e) { /* ignore */ }
 }
 
 // ── Chronomètre de préparation ───────────────────────────────────────────────
@@ -45,27 +46,29 @@ const PrepTimer = ({ cmd }) => {
   const isLate = parseInt(display.split(':')[0]) >= 15;
   return (
     <span style={{
-      background: isLate ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
-      border: `1px solid ${isLate ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)'}`,
-      color: isLate ? '#fca5a5' : '#fcd34d',
+      background: isLate ? 'rgba(227,6,19,0.1)' : 'rgba(245,158,11,0.1)',
+      border: `1px solid ${isLate ? 'rgba(227,6,19,0.3)' : 'rgba(245,158,11,0.3)'}`,
+      color: isLate ? '#E30613' : '#D97706',
       borderRadius: 6, padding: '1px 8px', fontSize: 11, fontFamily: 'monospace',
-      fontWeight: 700, marginLeft: 6
+      fontWeight: 700, marginLeft: 6,
     }}>
       ⏱ {display}
     </span>
   );
 };
 
-const StatCard = ({ title, value, icon: Icon, sub, color = '#6366f1' }) => (
-  <div className="glass-card" style={{ borderTop: `3px solid ${color}` }}>
+const StatCard = ({ title, value, icon: Icon, sub, color = '#E30613' }) => (
+  <div className="mj-stat-card" style={{ borderTop: `3px solid ${color}` }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginBottom: 6 }}>{title}</div>
         <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 11, color: 'var(--mj-text-3)', marginTop: 4 }}>{sub}</div>}
       </div>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: color + '20',
-        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 12, background: color + '15',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
         <Icon size={20} color={color} />
       </div>
     </div>
@@ -73,24 +76,22 @@ const StatCard = ({ title, value, icon: Icon, sub, color = '#6366f1' }) => (
 );
 
 const STATUT_LABEL = {
-  EN_ATTENTE:      { label: 'En attente',     color: '#64748b' },
-  VALIDEE:         { label: 'Validée',         color: '#3b82f6' },
-  EN_PREPARATION:  { label: 'En préparation', color: '#f59e0b' },
-  EN_ROUTE:        { label: 'En route',        color: '#10b981' },
-  LIVREE:          { label: 'Livrée',          color: '#22c55e' },
-  ANNULEE:         { label: 'Annulée',         color: '#ef4444' },
+  EN_ATTENTE:      { label: 'En attente',    color: '#64748b' },
+  VALIDEE:         { label: 'Validée',        color: '#3b82f6' },
+  EN_PREPARATION:  { label: 'En préparation', color: '#F59E0B' },
+  EN_ROUTE:        { label: 'En route',       color: '#E30613' },
+  LIVREE:          { label: 'Livrée',         color: '#22C55E' },
+  ANNULEE:         { label: 'Annulée',        color: '#ef4444' },
 };
 
-// ── Indicateur live WebSocket ────────────────────────────────────────────────
 const LiveBadge = ({ connected }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
     <div style={{
       width: 8, height: 8, borderRadius: '50%',
-      background: connected ? '#22c55e' : '#ef4444',
-      boxShadow: connected ? '0 0 6px #22c55e' : 'none',
-      animation: connected ? 'pulse 2s infinite' : 'none',
+      background: connected ? '#22C55E' : '#ef4444',
+      boxShadow: connected ? '0 0 6px #22C55E' : 'none',
     }} />
-    <span style={{ fontSize: 11, color: connected ? '#86efac' : '#f87171' }}>
+    <span style={{ fontSize: 12, color: connected ? '#22C55E' : '#ef4444', fontWeight: 600 }}>
       {connected ? 'Live' : 'Hors ligne'}
     </span>
   </div>
@@ -98,17 +99,16 @@ const LiveBadge = ({ connected }) => (
 
 export default function StoreDash() {
   const navigate = useNavigate();
-  const [kpis, setKpis]           = useState(null);
+  const [kpis, setKpis]               = useState(null);
   const [topProduits, setTopProduits] = useState([]);
-  const [alertes, setAlertes]     = useState([]);
-  const [commandes, setCommandes] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [soundOn, setSoundOn]     = useState(true);
+  const [alertes, setAlertes]         = useState([]);
+  const [commandes, setCommandes]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [soundOn, setSoundOn]         = useState(true);
   const [wsConnected, setWsConnected] = useState(false);
   const [lastUpdate, setLastUpdate]   = useState(null);
   const [newCount, setNewCount]       = useState(0);
 
-  // Track IDs we've already seen to detect new orders
   const knownIdsRef = useRef(new Set());
   const wsRef       = useRef(null);
 
@@ -120,7 +120,6 @@ export default function StoreDash() {
         fondateursApi.stockAlertes().catch(() => ({ data: [] })),
         commandesApi.list({ page_size: 10 }).catch(() => ({ data: { results: [] } })),
       ]);
-
       const a = analyticsRes.data || {};
       setKpis(a.kpis || {});
       setTopProduits(a.top_produits || []);
@@ -132,7 +131,6 @@ export default function StoreDash() {
       setCommandes(cmds);
       setLastUpdate(new Date());
 
-      // Détection nouvelles commandes
       const newOnes = cmds.filter(c => !knownIdsRef.current.has(c.id));
       if (newOnes.length > 0 && knownIdsRef.current.size > 0) {
         setNewCount(n => n + newOnes.length);
@@ -146,16 +144,12 @@ export default function StoreDash() {
     }
   }, [soundOn]);
 
-  // Initial load
   useEffect(() => { fetchAll(); }, []);
-
-  // Auto-refresh toutes les 20s
   useEffect(() => {
     const id = setInterval(() => fetchAll(true), 20000);
     return () => clearInterval(id);
   }, [fetchAll]);
 
-  // WebSocket notifications
   useEffect(() => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (!token) return;
@@ -170,9 +164,7 @@ export default function StoreDash() {
       ws.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
-          if (data.type === 'notification' || data.type === 'nouvelle_commande') {
-            fetchAll(true);
-          }
+          if (data.type === 'notification' || data.type === 'nouvelle_commande') fetchAll(true);
         } catch (_) {}
       };
     } catch (_) {}
@@ -180,9 +172,9 @@ export default function StoreDash() {
   }, []);
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
-      <div className="spinner" />
-      <span style={{ color: 'var(--text-secondary)' }}>Chargement…</span>
+    <div className="mj-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
+      <div className="mj-spin" style={{ width: 28, height: 28, border: '3px solid var(--mj-border)', borderTopColor: 'var(--mj-red)', borderRadius: '50%' }} />
+      <span style={{ color: 'var(--mj-text-3)' }}>Chargement…</span>
     </div>
   );
 
@@ -191,26 +183,29 @@ export default function StoreDash() {
   const enPreparation = commandes.filter(c => c.statut === 'EN_PREPARATION');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '0 0 40px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+    <div className="mj-page" style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '24px 0 40px' }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontWeight: 800, fontSize: 22, margin: 0 }}>Tableau de bord Boutique</h2>
+          <h2 style={{ fontWeight: 800, fontSize: 22, margin: 0, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+            Tableau de bord Boutique
+          </h2>
           {lastUpdate && (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 4 }}>
               Mis à jour à {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <LiveBadge connected={wsConnected} />
           {newCount > 0 && (
             <div
               onClick={() => setNewCount(0)}
               style={{
-                background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)',
-                color: '#fca5a5', borderRadius: 20, padding: '4px 12px',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer', animation: 'pulse 1.5s infinite'
+                background: 'var(--mj-red-light)', border: '1px solid rgba(227,6,19,0.3)',
+                color: 'var(--mj-red)', borderRadius: 20, padding: '5px 14px',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}
             >
               🔔 +{newCount} nouvelle{newCount > 1 ? 's' : ''} commande{newCount > 1 ? 's' : ''}
@@ -218,86 +213,81 @@ export default function StoreDash() {
           )}
           <button
             onClick={() => setSoundOn(s => !s)}
-            title={soundOn ? 'Désactiver le son' : 'Activer le son'}
-            style={{
-              background: soundOn ? 'rgba(34,197,94,0.15)' : 'rgba(71,85,105,0.2)',
-              border: `1px solid ${soundOn ? 'rgba(34,197,94,0.4)' : 'rgba(71,85,105,0.3)'}`,
-              borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
-              color: soundOn ? '#86efac' : '#64748b', display: 'flex', alignItems: 'center', gap: 5
-            }}
+            className="mj-btn mj-btn-secondary mj-btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: 5 }}
           >
             {soundOn ? <Bell size={14} /> : <BellOff size={14} />}
-            <span style={{ fontSize: 12 }}>{soundOn ? 'Son on' : 'Son off'}</span>
+            {soundOn ? 'Son on' : 'Son off'}
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={() => fetchAll()}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            className="mj-btn mj-btn-outline-red mj-btn-sm"
+            onClick={() => fetchAll()}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
             <RefreshCw size={14} /> Actualiser
           </button>
         </div>
       </div>
 
-      {/* Bande statut temps réel */}
+      {/* ── Bande statut temps réel ── */}
       {(enAttente.length > 0 || enPreparation.length > 0) && (
         <div style={{
-          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
-          borderRadius: 12, padding: '12px 18px',
-          display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center'
+          background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 14, padding: '14px 20px',
+          display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center',
         }}>
-          <span style={{ fontSize: 13, color: '#fcd34d', fontWeight: 700 }}>
-            ⚡ Statut en direct
-          </span>
+          <span style={{ fontSize: 13, color: '#D97706', fontWeight: 700 }}>⚡ Statut en direct</span>
           {enAttente.length > 0 && (
-            <span style={{ color: '#94a3b8', fontSize: 13 }}>
-              🟡 <strong style={{ color: '#f1f5f9' }}>{enAttente.length}</strong> en attente de validation
+            <span style={{ color: 'var(--mj-text-3)', fontSize: 13 }}>
+              🟡 <strong style={{ color: 'var(--mj-text)' }}>{enAttente.length}</strong> en attente de validation
             </span>
           )}
           {enPreparation.length > 0 && (
-            <span style={{ color: '#94a3b8', fontSize: 13 }}>
-              🟠 <strong style={{ color: '#f1f5f9' }}>{enPreparation.length}</strong> en cours de préparation
+            <span style={{ color: 'var(--mj-text-3)', fontSize: 13 }}>
+              🟠 <strong style={{ color: 'var(--mj-text)' }}>{enPreparation.length}</strong> en cours de préparation
             </span>
           )}
           <button
+            className="mj-btn mj-btn-sm"
             onClick={() => navigate('/boutique/commandes')}
-            style={{
-              marginLeft: 'auto', background: 'rgba(245,158,11,0.2)',
-              border: '1px solid rgba(245,158,11,0.4)', color: '#fcd34d',
-              borderRadius: 8, padding: '5px 14px', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600
-            }}
+            style={{ marginLeft: 'auto', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#D97706' }}
           >
             Gérer →
           </button>
         </div>
       )}
 
-      {/* KPIs */}
+      {/* ── KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
-        <StatCard title="CA ce mois" value={`${Math.round(k.ca_mois || 0).toLocaleString('fr-FR')} MAD`} icon={DollarSign} color="#10b981" />
-        <StatCard title="CA total" value={`${Math.round(k.ca_total || 0).toLocaleString('fr-FR')} MAD`} icon={TrendingUp} color="#6366f1" />
+        <StatCard title="CA ce mois" value={`${Math.round(k.ca_mois || 0).toLocaleString('fr-FR')} MAD`} icon={DollarSign} color="#22C55E" />
+        <StatCard title="CA total" value={`${Math.round(k.ca_total || 0).toLocaleString('fr-FR')} MAD`} icon={TrendingUp} color="#3b82f6" />
         <StatCard title="Commandes totales" value={k.commandes_total || 0}
-          sub={`${k.commandes_aujourd_hui || 0} aujourd'hui`} icon={Package} color="#3b82f6" />
+          sub={`${k.commandes_aujourd_hui || 0} aujourd'hui`} icon={Package} color="#6366f1" />
         <StatCard title="En attente" value={k.commandes_en_attente || 0}
-          sub={`${k.commandes_en_preparation || 0} en préparation`} icon={Clock} color="#f59e0b" />
+          sub={`${k.commandes_en_preparation || 0} en préparation`} icon={Clock} color="#F59E0B" />
         <StatCard title="Note boutique" value={(k.note_boutique || 0).toFixed(1)}
-          sub={`${k.nombre_avis || 0} avis`} icon={Star} color="#f59e0b" />
-        <StatCard title="Taux annulation" value={`${k.taux_annulation || 0}%`} icon={AlertCircle} color="#ef4444" />
+          sub={`${k.nombre_avis || 0} avis`} icon={Star} color="#F59E0B" />
+        <StatCard title="Taux annulation" value={`${k.taux_annulation || 0}%`} icon={AlertCircle} color="#E30613" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Dernières commandes — avec chronomètre */}
-        <div className="glass-card">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
+
+        {/* ── Dernières commandes ── */}
+        <div className="mj-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ShoppingBag size={16} color="#3b82f6" /> Commandes récentes
+            <h4 style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+              <ShoppingBag size={16} color="var(--mj-red)" /> Commandes récentes
             </h4>
-            <button className="btn btn-secondary btn-sm"
+            <button
+              className="mj-btn mj-btn-secondary mj-btn-sm"
               onClick={() => navigate('/boutique/commandes')}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            >
               Tout voir <ArrowRight size={12} />
             </button>
           </div>
           {commandes.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--mj-text-3)', fontSize: 14 }}>
               Aucune commande
             </div>
           ) : commandes.slice(0, 6).map(cmd => {
@@ -305,23 +295,25 @@ export default function StoreDash() {
             return (
               <div key={cmd.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                padding: '10px 0', borderBottom: '1px solid var(--mj-border)',
               }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--mj-text)', display: 'flex', alignItems: 'center' }}>
                     #{cmd.reference || cmd.id}
                     <PrepTimer cmd={cmd} />
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--mj-text-3)' }}>
                     {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, color: '#10b981' }}>
+                  <div style={{ fontWeight: 700, color: '#22C55E', fontSize: 14 }}>
                     {Math.round(parseFloat(cmd.total_price || 0))} MAD
                   </div>
-                  <span style={{ fontSize: 10, background: s.color + '20', color: s.color,
-                    padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>
+                  <span style={{
+                    fontSize: 10, background: s.color + '15', color: s.color,
+                    padding: '2px 8px', borderRadius: 20, fontWeight: 600,
+                  }}>
                     {s.label}
                   </span>
                 </div>
@@ -330,37 +322,38 @@ export default function StoreDash() {
           })}
         </div>
 
-        {/* Alertes stock */}
-        <div className="glass-card">
+        {/* ── Alertes stock ── */}
+        <div className="mj-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertCircle size={16} color="#f59e0b" /> Alertes de stock
+            <h4 style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+              <AlertCircle size={16} color="#F59E0B" /> Alertes de stock
             </h4>
-            <button className="btn btn-secondary btn-sm"
+            <button
+              className="mj-btn mj-btn-secondary mj-btn-sm"
               onClick={() => navigate('/boutique/produits')}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            >
               Gérer <ArrowRight size={12} />
             </button>
           </div>
           {alertes.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#10b981' }}>
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#22C55E', fontSize: 14 }}>
               ✅ Tous les stocks sont suffisants
             </div>
           ) : alertes.map(p => (
             <div key={p.id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              padding: '10px 0', borderBottom: '1px solid var(--mj-border)',
             }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{p.nom}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                  Seuil: {p.stock_alerte} unités
-                </div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--mj-text)' }}>{p.nom}</div>
+                <div style={{ fontSize: 11, color: 'var(--mj-text-3)' }}>Seuil: {p.stock_alerte} unités</div>
               </div>
               <span style={{
-                background: p.stock === 0 ? '#ef444420' : '#f59e0b20',
-                color: p.stock === 0 ? '#ef4444' : '#f59e0b',
-                fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                background: p.stock === 0 ? 'rgba(227,6,19,0.08)' : 'rgba(245,158,11,0.08)',
+                color: p.stock === 0 ? '#E30613' : '#D97706',
+                border: `1px solid ${p.stock === 0 ? 'rgba(227,6,19,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
               }}>
                 {p.stock === 0 ? 'Rupture' : `${p.stock} restants`}
               </span>
@@ -369,29 +362,31 @@ export default function StoreDash() {
         </div>
       </div>
 
-      {/* Top produits */}
+      {/* ── Top produits ── */}
       {topProduits.length > 0 && (
-        <div className="glass-card">
-          <h4 style={{ fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={16} color="#6366f1" /> Top produits commandés
+        <div className="mj-card">
+          <h4 style={{ fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
+            <TrendingUp size={16} color="var(--mj-red)" /> Top produits commandés
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             {topProduits.slice(0, 6).map((p, i) => (
               <div key={p.nom} style={{
-                background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '14px',
-                border: '1px solid rgba(255,255,255,0.07)',
+                background: 'var(--mj-bg)', borderRadius: 12, padding: 14,
+                border: '1px solid var(--mj-border)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#6366f1',
-                    background: '#6366f120', padding: '2px 8px', borderRadius: 20 }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: 'var(--mj-red)',
+                    background: 'var(--mj-red-light)', padding: '2px 8px', borderRadius: 20,
+                  }}>
                     #{i + 1}
                   </span>
-                  <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>
+                  <span style={{ fontSize: 12, color: '#22C55E', fontWeight: 700 }}>
                     {p.nombre_commandes} cmd
                   </span>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.nom}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--mj-text)', marginBottom: 4 }}>{p.nom}</div>
+                <div style={{ fontSize: 12, color: 'var(--mj-text-3)' }}>
                   {p.stock} en stock · {p.prix} MAD
                 </div>
               </div>

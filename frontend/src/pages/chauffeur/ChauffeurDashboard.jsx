@@ -1125,9 +1125,22 @@ const ChauffeurDashboard = () => {
                   )}
                 </div>
                 <div className="glass-card">
-                  <h4 style={{ fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Award size={16} color="#f59e0b" /> Badges débloqués
-                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h4 style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Award size={16} color="#f59e0b" /> Badges débloqués
+                    </h4>
+                    <button
+                      onClick={() => navigate('/chauffeur/gamification')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 10px', borderRadius: 8,
+                        border: '1px solid rgba(245,158,11,0.3)',
+                        background: 'rgba(245,158,11,0.08)',
+                        color: '#f59e0b', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      }}>
+                      Voir tout →
+                    </button>
+                  </div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {[
                       { emoji: '🚀', label: '10 livraisons',   achieved: (profile?.nombre_livraisons || 0) >= 10 },
@@ -1326,11 +1339,24 @@ const ChauffeurDashboard = () => {
               <MiniStat icon={DollarSign} label="Revenus tot." value={`${Math.round(profile?.revenus_total || 0)} MAD`}   color="#10b981" />
             </div>
 
-            {/* Revenus */}
+            {/* Revenus — résumé + lien dashboard financier */}
             <div className="glass-card">
-              <h4 style={{ fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TrendingUp size={16} color="#10b981" /> Revenus
-              </h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h4 style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <TrendingUp size={16} color="#10b981" /> Revenus
+                </h4>
+                <button
+                  onClick={() => navigate('/chauffeur/finances')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '5px 10px', borderRadius: 8,
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    background: 'rgba(16,185,129,0.08)',
+                    color: '#10b981', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  }}>
+                  Dashboard complet →
+                </button>
+              </div>
               {[
                 { label: "Aujourd'hui",  value: profile?.revenus_jour    || 0, color: '#10b981', icon: '📅' },
                 { label: 'Cette semaine', value: profile?.revenus_semaine || 0, color: '#3b82f6', icon: '📆' },

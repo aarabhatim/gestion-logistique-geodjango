@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.gis.db import models as gis_models
 from django.db import models
 from django.utils import timezone
+import datetime
 
 
 class Transporteur(models.Model):
@@ -118,6 +119,10 @@ class ChatMessage(models.Model):
     )
     contenu = models.TextField()
     lu = models.BooleanField(default=False)
+    # Partage de position GPS dans le chat
+    position_lat = models.FloatField(null=True, blank=True)
+    position_lng = models.FloatField(null=True, blank=True)
+    est_position_partagee = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -125,6 +130,26 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"Chat cmd#{self.commande_id} - {self.auteur}"
+
+
+class MessageTemplate(models.Model):
+    """Templates de messages rapides pour le chat chauffeur→client."""
+    CIBLE_CHOICES = [
+        ('CHAUFFEUR', 'Chauffeur'),
+        ('CLIENT', 'Client'),
+        ('TOUS', 'Tous'),
+    ]
+    contenu = models.CharField(max_length=200)
+    cible = models.CharField(max_length=10, choices=CIBLE_CHOICES, default='CHAUFFEUR')
+    ordre = models.PositiveSmallIntegerField(default=0)
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['ordre', 'contenu']
+        verbose_name = 'Template message rapide'
+
+    def __str__(self):
+        return self.contenu
 
 
 class ObjectifHebdomadaire(models.Model):
@@ -153,3 +178,239 @@ class ObjectifHebdomadaire(models.Model):
         if self.objectif_livraisons == 0:
             return 0
         return min(100, round(self.livraisons_effectuees / self.objectif_livraisons * 100))
+
+
+# ─── Gamification ──────────────────────────────────────────────────────────────
+
+class Badge(models.Model):
+    """Définition d'un badge débloquable."""
+    CATEGORIE_CHOICES = [
+        ('LIVRAISONS', 'Volume de livraisons'),
+        ('PONCTUALITE', 'Ponctualité'),
+        ('SATISFACTION', 'Satisfaction client'),
+        ('SECURITE', 'Sécurité (zéro incident)'),
+        ('FIDELITE', 'Fidélité plateforme'),
+        ('SPECIAL', 'Badge spécial'),
+    ]
+    code = models.CharField(max_length=50, unique=True)
+    nom = models.CharField(max_length=100)
+    description = models.TextField()
+    icone = models.CharField(max_length=10, default='🏅', help_text='Emoji représentant le badge')
+    categorie = models.CharField(max_length=15, choices=CATEGORIE_CHOICES, default='LIVRAISONS')
+    seuil = models.PositiveIntegerField(default=0, help_text='Valeur numérique pour débloquer')
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['categorie', 'seuil']
+        verbose_name = 'Badge'
+
+    def __str__(self):
+        return f"{self.icone} {self.nom}"
+
+
+class BadgeTransporteur(models.Model):
+    """Badge obtenu par un transporteur."""
+    transporteur = models.ForeignKey(Transporteur, on_delete=models.CASCADE, related_name='badges')
+    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='detenteurs')
+    obtenu_le = models.DateTimeField(auto_now_add=True)
+    notifie = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ['transporteur', 'badge']
+        ordering = ['-obtenu_le']
+
+    def __str__(self):
+        return f"{self.transporteur} — {self.badge}"
+
+
+class NiveauTransporteur(models.Model):
+    """Niveau global du transporteur : Bronze → Argent → Or → Platine."""
+    NIVEAU_CHOICES = [
+        ('BRONZE', 'Bronze'),
+        ('ARGENT', 'Argent'),
+        ('OR', 'Or'),
+        ('PLATINE', 'Platine'),
+    ]
+    transporteur = models.OneToOneField(
+        Transporteur, on_delete=models.CASCADE, related_name='niveau'
+    )
+    niveau = models.CharField(max_length=10, choices=NIVEAU_CHOICES, default='BRONZE')
+    points = models.PositiveIntegerField(default=0)
+    mise_a_jour = models.DateTimeField(auto_now=True)
+
+    SEUILS = {'BRONZE': 0, 'ARGENT': 500, 'OR': 1500, 'PLATINE': 3000}
+
+    def recalculer(self):
+        """Recalcule le niveau en fonction des points."""
+        if self.points >= self.SEUILS['PLATINE']:
+            self.niveau = 'PLATINE'
+        elif self.points >= self.SEUILS['OR']:
+            self.niveau = 'OR'
+        elif self.points >= self.SEUILS['ARGENT']:
+            self.niveau = 'ARGENT'
+        else:
+            self.niveau = 'BRONZE'
+        self.save(update_fields=['niveau', 'mise_a_jour'])
+
+    @property
+    def points_vers_prochain(self):
+        seuils = [self.SEUILS['ARGENT'], self.SEUILS['OR'], self.SEUILS['PLATINE']]
+        for s in seuils:
+            if self.points < s:
+                return s - self.points
+        return 0
+
+    @property
+    def prochain_niveau(self):
+        ordre = ['BRONZE', 'ARGENT', 'OR', 'PLATINE']
+        idx = ordre.index(self.niveau)
+        return ordre[idx + 1] if idx < 3 else None
+
+    def __str__(self):
+        return f"{self.transporteur} — {self.niveau} ({self.points} pts)"
+
+
+# ─── Planning & Disponibilités ─────────────────────────────────────────────────
+
+class DisponibiliteHebdo(models.Model):
+    """Créneaux de disponibilité planifiés par le chauffeur pour une semaine."""
+    JOUR_CHOICES = [
+        (0, 'Lundi'), (1, 'Mardi'), (2, 'Mercredi'),
+        (3, 'Jeudi'), (4, 'Vendredi'), (5, 'Samedi'), (6, 'Dimanche'),
+    ]
+    transporteur = models.ForeignKey(
+        Transporteur, on_delete=models.CASCADE, related_name='disponibilites_hebdo'
+    )
+    jour_semaine = models.PositiveSmallIntegerField(choices=JOUR_CHOICES)
+    heure_debut = models.TimeField()
+    heure_fin = models.TimeField()
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['jour_semaine', 'heure_debut']
+        unique_together = ['transporteur', 'jour_semaine', 'heure_debut']
+        verbose_name = 'Créneau disponibilité'
+
+    def __str__(self):
+        return f"{self.transporteur} — {self.get_jour_semaine_display()} {self.heure_debut}–{self.heure_fin}"
+
+
+class AbsenceTransporteur(models.Model):
+    """Congés et absences planifiés, avec validation admin."""
+    STATUT_CHOICES = [
+        ('EN_ATTENTE', 'En attente'),
+        ('APPROUVEE', 'Approuvée'),
+        ('REFUSEE', 'Refusée'),
+    ]
+    transporteur = models.ForeignKey(
+        Transporteur, on_delete=models.CASCADE, related_name='absences'
+    )
+    date_debut = models.DateField()
+    date_fin = models.DateField()
+    motif = models.CharField(max_length=200)
+    statut = models.CharField(max_length=12, choices=STATUT_CHOICES, default='EN_ATTENTE')
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='absences_validees'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_debut']
+        verbose_name = 'Absence transporteur'
+
+    def __str__(self):
+        return f"{self.transporteur} — {self.date_debut} → {self.date_fin} ({self.statut})"
+
+
+class PreferenceZone(models.Model):
+    """Zone géographique préférée d'un transporteur."""
+    transporteur = models.ForeignKey(
+        Transporteur, on_delete=models.CASCADE, related_name='zones_preferees'
+    )
+    zone = models.ForeignKey(
+        'zones.ZoneLivraison', on_delete=models.CASCADE, related_name='transporteurs_preferents'
+    )
+    limite_commandes_jour = models.PositiveSmallIntegerField(
+        default=0, help_text='0 = pas de limite'
+    )
+
+    class Meta:
+        unique_together = ['transporteur', 'zone']
+        verbose_name = 'Préférence de zone'
+
+    def __str__(self):
+        return f"{self.transporteur} préfère {self.zone}"
+
+
+# ─── Gestion du véhicule ───────────────────────────────────────────────────────
+
+class EntretienVehicule(models.Model):
+    """Journal d'entretien et de maintenance du véhicule."""
+    TYPE_CHOICES = [
+        ('VIDANGE', 'Vidange'),
+        ('PNEUS', 'Changement pneus'),
+        ('FREINS', 'Freins'),
+        ('REVISION', 'Révision générale'),
+        ('CONTROLE_TECHNIQUE', 'Contrôle technique'),
+        ('REPARATION', 'Réparation'),
+        ('AUTRE', 'Autre'),
+    ]
+    transporteur = models.ForeignKey(
+        Transporteur, on_delete=models.CASCADE, related_name='entretiens'
+    )
+    type_entretien = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    date_entretien = models.DateField()
+    kilometrage = models.PositiveIntegerField(help_text='Kilométrage au moment de l\'entretien')
+    cout = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    description = models.TextField(blank=True)
+    prochain_entretien_km = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Kilométrage prévu pour le prochain entretien'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_entretien']
+        verbose_name = 'Entretien véhicule'
+
+    def __str__(self):
+        return f"{self.transporteur.plaque} — {self.get_type_entretien_display()} le {self.date_entretien}"
+
+
+class DocumentVehicule(models.Model):
+    """Documents administratifs du véhicule (assurance, vignette, carte grise…)."""
+    TYPE_CHOICES = [
+        ('ASSURANCE', 'Assurance'),
+        ('CARTE_GRISE', 'Carte grise'),
+        ('VIGNETTE', 'Vignette'),
+        ('VISITE_TECHNIQUE', 'Visite technique'),
+        ('AUTRE', 'Autre'),
+    ]
+    transporteur = models.ForeignKey(
+        Transporteur, on_delete=models.CASCADE, related_name='documents_vehicule'
+    )
+    type_document = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    fichier = models.FileField(upload_to='transporteurs/documents/')
+    date_expiration = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Document véhicule'
+
+    @property
+    def est_expire(self):
+        if not self.date_expiration:
+            return False
+        return self.date_expiration < datetime.date.today()
+
+    @property
+    def expire_bientot(self):
+        """Expire dans moins de 30 jours."""
+        if not self.date_expiration:
+            return False
+        return self.date_expiration <= datetime.date.today() + datetime.timedelta(days=30)
+
+    def __str__(self):
+        return f"{self.transporteur.plaque} — {self.get_type_document_display()}"

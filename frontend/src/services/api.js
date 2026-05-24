@@ -2,6 +2,20 @@ import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/';
 
+/**
+ * Construit l'URL complète d'un fichier média Django.
+ * Les champs ImageField retournent des chemins relatifs comme "/media/produits/xyz.jpg"
+ * ou "produits/xyz.jpg" — il faut préfixer avec l'hôte Django.
+ * Si la valeur est déjà une URL complète (http/https), elle est retournée telle quelle.
+ */
+export const mediaUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const host = BASE_URL.replace('/api/', '');          // "http://127.0.0.1:8000"
+  const clean = path.startsWith('/') ? path : `/${path}`;
+  return `${host}${clean}`;
+};
+
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -347,6 +361,9 @@ export const chauffeurApi = {
   sos:                        (data)   => api.post('transporteurs/sos/', data),
   chatGet:                    (id)     => api.get(`transporteurs/chat/${id}/`),
   chatSend:                   (id, c)  => api.post(`transporteurs/chat/${id}/`, { contenu: c }),
+  chatTemplates:              ()       => api.get('transporteurs/chat/templates/'),
+  chatPartagerPosition:       (id, d)  => api.post(`transporteurs/chat/${id}/position/`, d),
+  chatHistorique:             (id)     => api.get(`transporteurs/chat/${id}/historique/`),
   objectifs:                  ()       => api.get('transporteurs/objectifs/'),
   multiLivraisonsDisponibles: ()       => api.get('transporteurs/multi-livraisons/'),
   multiLivraisonsAccepter:    (data)   => api.post('transporteurs/multi-livraisons/', data),
@@ -355,6 +372,39 @@ export const chauffeurApi = {
   itineraire: (orig, dest) => api.get('tracking/itineraire/', {
     params: { orig_lat: orig.lat, orig_lng: orig.lng, dest_lat: dest.lat, dest_lng: dest.lng },
   }),
+  // ── Dashboard financier ───────────────────────────────────────────────────
+  finances:           ()       => api.get('transporteurs/finances/'),
+  financesHistorique: (params) => api.get('transporteurs/finances/historique/', { params }),
+  financesExport:     (mois)   => api.get('transporteurs/finances/export/', { params: { mois }, responseType: 'blob' }),
+  // ── Gamification ──────────────────────────────────────────────────────────
+  badges:           ()       => api.get('transporteurs/badges/'),
+  badgesVerifier:   ()       => api.post('transporteurs/badges/verifier/'),
+  niveau:           ()       => api.get('transporteurs/niveau/'),
+  classement:       (params) => api.get('transporteurs/classement/', { params }),
+  // ── Planning ──────────────────────────────────────────────────────────────
+  planningDispos:           ()       => api.get('transporteurs/planning/disponibilites/'),
+  planningDisposCreate:     (d)      => api.post('transporteurs/planning/disponibilites/', d),
+  planningDisposUpdate:     (id, d)  => api.patch(`transporteurs/planning/disponibilites/${id}/`, d),
+  planningDisposDelete:     (id)     => api.delete(`transporteurs/planning/disponibilites/${id}/`),
+  planningAbsences:         ()       => api.get('transporteurs/planning/absences/'),
+  planningAbsenceCreate:    (d)      => api.post('transporteurs/planning/absences/', d),
+  planningPrefsZones:       ()       => api.get('transporteurs/planning/preferences-zones/'),
+  planningPrefsZonesSave:   (d)      => api.post('transporteurs/planning/preferences-zones/', d),
+  planningPrefsZonesDelete: (d)      => api.delete('transporteurs/planning/preferences-zones/', { data: d }),
+  // ── Véhicule ──────────────────────────────────────────────────────────────
+  vehiculeEntretiens:       ()       => api.get('transporteurs/vehicule/entretiens/'),
+  vehiculeEntretienCreate:  (d)      => api.post('transporteurs/vehicule/entretiens/', d),
+  vehiculeEntretienUpdate:  (id, d)  => api.patch(`transporteurs/vehicule/entretiens/${id}/`, d),
+  vehiculeEntretienDelete:  (id)     => api.delete(`transporteurs/vehicule/entretiens/${id}/`),
+  vehiculeAlertes:          ()       => api.get('transporteurs/vehicule/alertes/'),
+  vehiculeDocuments:        ()       => api.get('transporteurs/vehicule/documents/'),
+  vehiculeDocumentCreate:   (d)      => api.post('transporteurs/vehicule/documents/', d),
+  vehiculeDocumentDelete:   (id)     => api.delete(`transporteurs/vehicule/documents/${id}/`),
+  // ── Livraison avancée ─────────────────────────────────────────────────────
+  livraisonReporter:    (id, d)  => api.post(`livraisons/${id}/reporter/`, d),
+  livraisonMajColis:    (id, d)  => api.patch(`livraisons/${id}/colis/`, d),
+  livraisonPhotoPreuve: (id, f)  => { const fd = new FormData(); fd.append('photo_preuve', f); return api.post(`livraisons/${id}/photo-preuve/`, fd); },
+  livraisonNotifDepart: (id)     => api.post(`livraisons/${id}/notif-depart/`),
 };
 
 export default api;
