@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import Pagination from '../components/Pagination';
 import {
   MessageSquare, Plus, Send, RefreshCw, Filter, X,
-  Clock, User, Tag, ChevronLeft, AlertCircle,
+  Clock, User, Tag, ChevronLeft, AlertCircle, Download,
 } from 'lucide-react';
 import { ticketsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const PRIORITE_CONFIG = {
   urgent: { label: 'Urgent',  class: 'badge-danger',   color: '#ef4444' },
@@ -75,6 +76,11 @@ const Tickets = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {isAdmin && (
+            <button onClick={() => exportCsv({ data: tickets, columns: CSV_COLUMNS.tickets, filename: 'tickets' })} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Download size={14} /> CSV
+            </button>
+          )}
           <button onClick={fetchTickets} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
           </button>

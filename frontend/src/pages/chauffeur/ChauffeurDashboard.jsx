@@ -762,18 +762,30 @@ const ChauffeurDashboard = () => {
                     <button onClick={() => setTab('missions')} style={{ fontSize: 12, color: T.primary, background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Voir tout</button>
                   </div>
                   {loading ? (
-                    <div style={{ color: T.text2, textAlign: 'center', padding: 20 }}>Chargement…</div>
+                    /* Skeleton loader */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[1,2,3].map(k => (
+                        <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 10, background: `${T.border}`, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ height: 12, width: '60%', background: T.border, borderRadius: 6 }} />
+                            <div style={{ height: 10, width: '40%', background: T.border, borderRadius: 6 }} />
+                          </div>
+                          <div style={{ height: 24, width: 72, background: T.border, borderRadius: 20 }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : missions.length === 0 ? (
+                    /* État vide */
+                    <div style={{ textAlign: 'center', padding: '28px 0', color: T.text2 }}>
+                      <Package size={40} color={T.primary} style={{ opacity: 0.4, marginBottom: 12 }} />
+                      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 6 }}>Aucune livraison récente</div>
+                      <div style={{ fontSize: 12 }}>Vos prochaines missions apparaîtront ici.</div>
+                    </div>
                   ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <tbody>
-                        {(missions.length > 0 ? missions : []).concat(
-                          Array.from({ length: Math.max(0, 5 - missions.length) }, (_, i) => ({
-                            id: `mock-${i}`, reference: `EXP1283${5-i}`,
-                            adresse_livraison: ['Casablanca → Rabat','Marrakech → Agadir','Tanger → Tétouan','Fès → Meknès','Casa → El Jadida'][i],
-                            statut: ['EN_ROUTE','EN_ROUTE','EN_ROUTE','LIVREE','ANNULEE'][i],
-                            created_at: new Date(Date.now() - i * 3600000).toISOString(),
-                          }))
-                        ).slice(0, 5).map((cmd, i) => {
+                        {missions.slice(0, 5).map((cmd) => {
                           const s = STATUT_STYLE[cmd.statut] || STATUT_STYLE.EN_ATTENTE;
                           const timeStr = cmd.created_at ? new Date(cmd.created_at).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '–';
                           return (

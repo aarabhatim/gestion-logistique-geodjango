@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Mail, Phone, MapPin, Search, UserX, Shield, RefreshCw } from 'lucide-react';
+import { Users, Mail, Phone, MapPin, Search, UserX, Shield, RefreshCw, Download } from 'lucide-react';
 import api from '../services/api';
+import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const roleColor = (role) => {
   const map = { CLIENT: 'badge-info', ADMIN: 'badge-danger', FONDATEUR: 'badge-warning', TRANSPORTEUR: 'badge-success' };
@@ -53,9 +54,14 @@ const Clients = () => {
           <h2 className="page-title text-gradient">Gestion des Clients</h2>
           <p className="page-subtitle">{count} utilisateurs enregistrés sur DeliverMap</p>
         </div>
-        <button className="btn btn-secondary" onClick={() => fetchClients()}>
-          <RefreshCw size={16} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => exportCsv({ data: clients, columns: CSV_COLUMNS.clients, filename: 'clients' })}>
+            <Download size={16} /> Exporter CSV
+          </button>
+          <button className="btn btn-secondary" onClick={() => fetchClients()}>
+            <RefreshCw size={16} /> Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche */}

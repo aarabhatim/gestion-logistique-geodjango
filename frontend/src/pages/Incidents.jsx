@@ -4,9 +4,10 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   AlertTriangle, Check, RefreshCw, Filter, X, Eye,
-  MapPin, Clock, User, Package, Camera,
+  MapPin, Clock, User, Package, Camera, Download,
 } from 'lucide-react';
 import { incidentsApi } from '../services/api';
+import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const TYPE_CONFIG = {
   accident:        { label: 'Accident',          color: '#ef4444', emoji: '🚨' },
@@ -106,9 +107,14 @@ const Incidents = () => {
           </h2>
           <p className="page-subtitle">Suivez et résolvez les incidents de livraison en temps réel.</p>
         </div>
-        <button onClick={fetchAll} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => exportCsv({ data: incidents, columns: CSV_COLUMNS.incidents, filename: 'incidents' })} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={14} /> Exporter CSV
+          </button>
+          <button onClick={fetchAll} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Actualiser
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}

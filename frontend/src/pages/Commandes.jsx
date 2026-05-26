@@ -3,11 +3,13 @@ import {
   Package, Check, Truck, X, RefreshCw, Filter,
   ChevronLeft, ChevronRight, Eye, UserCheck, AlertTriangle,
   ArrowRight, MapPin, Clock, Star, Search, Download,
-  LayoutList, Kanban,
+  LayoutList, Kanban, Plus, Loader, ShoppingCart, Minus,
 } from 'lucide-react';
-import { commandesApi } from '../services/api';
+import { useLocation } from 'react-router-dom';
+import { commandesApi, fondateursApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { KanbanCommandes } from '../components/KanbanCommandes';
+import { LoadingState, EmptyState, ErrorState, EMPTY_PRESETS } from '../components/ui/StateDisplay';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
 const exportCSV = (rows) => {
@@ -292,9 +294,257 @@ const BTN_DANGER = {
   background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171',
 };
 
+// ─── Modal Nouvelle Expédition ────────────────────────────────────────────────
+const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
+  const [step, setStep] = useState(1);           // 1=boutique, 2=produits, 3=livraison
+  const [boutiques, setBoutiques] = useState([]);
+  const [produits, setProduits]   = useState([]);
+  const [panier, setPanier]       = useState({}); // {produitId: quantite}
+  const [selectedBoutique, setSelectedBoutique] = useState(null);
+  const [adresse, setAdresse]     = useState('');
+  const [modePaiement, setModePaiement] = useState('CASH');
+  const [loading, setLoading]     = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState(null);
+
+  // Charger les boutiques vérifiées
+  useEffect(() => {
+    setLoading(true);
+    fondateursApi.list({ is_verified: true, page_size: 100 })
+      .then(r => setBoutiques(r.data?.results || r.data || []))
+      .catch(() => setError('Impossible de charger les boutiques.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Charger les produits de la boutique sélectionnée
+  useEffect(() => {
+    if (!selectedBoutique) return;
+    setLoading(true);
+    setPanier({});
+    fondateursApi.produits(selectedBoutique.id, { page_size: 100 })
+      .then(r => setProduits(r.data?.results || r.data || []))
+      .catch(() => setError('Impossible de charger les produits.'))
+      .finally(() => setLoading(false));
+  }, [selectedBoutique]);
+
+  const totalArticles = Object.values(panier).reduce((s, q) => s + q, 0);
+  const sousTotal = produits.reduce((s, p) => s + (panier[p.id] || 0) * parseFloat(p.prix_effectif || p.prix || 0), 0);
+
+  const addToCart = (pid, delta) => {
+    setPanier(prev => {
+      const q = Math.max(0, (prev[pid] || 0) + delta);
+      if (q === 0) { const n = { ...prev }; delete n[pid]; return n; }
+      return { ...prev, [pid]: q };
+    });
+  };
+
+  const passerCommande = async () => {
+    if (!adresse.trim()) { setError("L'adresse de livraison est requise."); return; }
+    const lignes = Object.entries(panier)
+      .filter(([, q]) => q > 0)
+      .map(([pid, q]) => ({ produit_id: parseInt(pid), quantite: q }));
+    if (lignes.length === 0) { setError('Ajoutez au moins un produit.'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await commandesApi.create({
+        fondateur_id: selectedBoutique.id,
+        produits: lignes,
+        adresse_livraison: adresse,
+        mode_paiement: modePaiement,
+      });
+      onSuccess('Expédition créée avec succès !');
+      onClose();
+    } catch (e) {
+      setError(e.response?.data?.detail || JSON.stringify(e.response?.data) || 'Erreur lors de la création.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
+  const modal   = { background: 'var(--surface, #1e293b)', borderRadius: 20, padding: '24px', width: '100%', maxWidth: 600, maxHeight: '85vh', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' };
+
+  return (
+    <div style={overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={modal}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary, #f1f5f9)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShoppingCart size={18} color="#22c55e" /> Nouvelle expédition
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
+              Étape {step}/3 — {step === 1 ? 'Choisir la boutique' : step === 2 ? 'Sélectionner les produits' : 'Adresse & paiement'}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Barre de progression */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          {[1, 2, 3].map(s => (
+            <div key={s} style={{ flex: 1, height: 4, borderRadius: 4, background: s <= step ? '#22c55e' : 'rgba(255,255,255,0.08)', transition: 'background 0.3s' }} />
+          ))}
+        </div>
+
+        {error && (
+          <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f87171', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} /> {error}
+          </div>
+        )}
+
+        {/* ── ÉTAPE 1 : Boutique ── */}
+        {step === 1 && (
+          <>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: 'var(--text-secondary)' }}>Boutique / Fondateur</div>
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Loader size={24} style={{ animation: 'spin 1s linear infinite', color: '#22c55e' }} /></div>
+            ) : boutiques.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Aucune boutique vérifiée disponible.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
+                {boutiques.map(b => (
+                  <div key={b.id} onClick={() => setSelectedBoutique(b)}
+                    style={{
+                      padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                      border: `2px solid ${selectedBoutique?.id === b.id ? '#22c55e' : 'rgba(255,255,255,0.06)'}`,
+                      background: selectedBoutique?.id === b.id ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.02)',
+                      transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🏪</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary, #f1f5f9)' }}>{b.nom_boutique || b.nom}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{b.categorie || ''} {b.ville ? `· ${b.ville}` : ''}</div>
+                    </div>
+                    {selectedBoutique?.id === b.id && <Check size={16} color="#22c55e" style={{ marginLeft: 'auto' }} />}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => { if (!selectedBoutique) { setError('Sélectionnez une boutique.'); return; } setError(null); setStep(2); }}
+              className="btn btn-primary" style={{ width: '100%', marginTop: 20, padding: '12px 0', fontWeight: 700, fontSize: 15 }}>
+              Continuer →
+            </button>
+          </>
+        )}
+
+        {/* ── ÉTAPE 2 : Produits ── */}
+        {step === 2 && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-secondary)' }}>Produits de {selectedBoutique?.nom_boutique}</div>
+              {totalArticles > 0 && (
+                <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+                  {totalArticles} article(s) — {sousTotal.toFixed(2)} MAD
+                </span>
+              )}
+            </div>
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Loader size={24} style={{ animation: 'spin 1s linear infinite', color: '#22c55e' }} /></div>
+            ) : produits.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Aucun produit disponible dans cette boutique.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
+                {produits.map(p => {
+                  const prix = parseFloat(p.prix_effectif || p.prix || 0);
+                  const qty  = panier[p.id] || 0;
+                  return (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: qty > 0 ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.02)', border: `1px solid ${qty > 0 ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.05)'}` }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(34,197,94,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📦</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f1f5f9)' }}>{p.nom}</div>
+                        <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700 }}>{prix.toFixed(2)} MAD</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => addToCart(p.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Minus size={12} />
+                        </button>
+                        <span style={{ fontWeight: 700, fontSize: 14, minWidth: 20, textAlign: 'center', color: qty > 0 ? '#22c55e' : 'var(--text-secondary)' }}>{qty}</span>
+                        <button onClick={() => addToCart(p.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, background: qty > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${qty > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`, color: qty > 0 ? '#22c55e' : 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+              <button onClick={() => { setError(null); setStep(1); }} className="btn btn-secondary" style={{ flex: 1, padding: '11px 0', fontWeight: 600 }}>← Retour</button>
+              <button onClick={() => { if (totalArticles === 0) { setError('Ajoutez au moins un produit.'); return; } setError(null); setStep(3); }} className="btn btn-primary" style={{ flex: 2, padding: '11px 0', fontWeight: 700 }}>
+                Continuer → ({totalArticles} art.)
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── ÉTAPE 3 : Adresse & paiement ── */}
+        {step === 3 && (
+          <>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--text-secondary)' }}>Récapitulatif</div>
+            <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Boutique</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selectedBoutique?.nom_boutique}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Articles</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{totalArticles} produit(s)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8, marginTop: 4 }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Sous-total</span>
+                <span style={{ fontWeight: 800, color: '#22c55e' }}>{sousTotal.toFixed(2)} MAD</span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Adresse de livraison <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                value={adresse}
+                onChange={e => setAdresse(e.target.value)}
+                placeholder="Ex : 12 Rue Hassan II, Maarif, Casablanca"
+                className="glass-input"
+                style={{ width: '100%', padding: '10px 14px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Mode de paiement</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[{ id: 'CASH', label: '💵 Espèces' }, { id: 'CARTE', label: '💳 Carte' }].map(m => (
+                  <button key={m.id} onClick={() => setModePaiement(m.id)}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: `2px solid ${modePaiement === m.id ? '#22c55e' : 'rgba(255,255,255,0.06)'}`, background: modePaiement === m.id ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setError(null); setStep(2); }} className="btn btn-secondary" style={{ flex: 1, padding: '12px 0', fontWeight: 600 }}>← Retour</button>
+              <button onClick={passerCommande} disabled={saving} className="btn btn-primary"
+                style={{ flex: 2, padding: '12px 0', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {saving ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Création…</> : <><Check size={16} /> Créer l'expédition</>}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+};
+
 // ─── Commandes principale ─────────────────────────────────────────────────────
 const Commandes = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingIds, setPendingIds] = useState(new Set()); // boutons en cours
@@ -306,8 +556,17 @@ const Commandes = () => {
   const [assigning, setAssigning] = useState(null);
   const [toast, setToast] = useState(null);
   const [viewMode, setViewMode] = useState('liste'); // 'liste' | 'kanban'
+  const [showCreate, setShowCreate] = useState(false);
 
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
+
+  // Ouvrir le modal si on vient du bouton "Nouvelle expédition" du header
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreate(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const fetchCommandes = useCallback(async (statut = filterStatut, q = search, p = page) => {
     setLoading(true);
@@ -416,6 +675,10 @@ const Commandes = () => {
           </button>
           <button className="btn btn-secondary" onClick={() => fetchCommandes()}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={15} /> Nouvelle expédition
           </button>
         </div>
       </div>
@@ -596,6 +859,12 @@ const Commandes = () => {
           commande={assigning}
           onClose={() => setAssigning(null)}
           onSuccess={(msg) => { showToast(msg); fetchCommandes(); }}
+        />
+      )}
+      {showCreate && (
+        <ModalNouvelleExpedition
+          onClose={() => setShowCreate(false)}
+          onSuccess={(msg) => { showToast(msg); setShowCreate(false); fetchCommandes(); }}
         />
       )}
     </div>

@@ -35,7 +35,12 @@ if os.name == 'nt':
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'delivermap-secret-key-change-in-production-2025')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# En production : fournir une liste explicite via ALLOWED_HOSTS=mon-domaine.com,www.mon-domaine.com
+_allowed = os.environ.get('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()] if _allowed else (
+    ['localhost', '127.0.0.1'] if DEBUG else []
+)
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -117,7 +122,7 @@ DATABASES = {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': os.environ.get('DB_NAME', 'logistique_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASS', 'Hatim2005@'),
+        'PASSWORD': os.environ.get('DB_PASS', ''),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
@@ -193,6 +198,19 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    # Rate limiting — protège login, chatbot, tickets
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+        'user': '300/minute',
+        'login': '10/minute',
+        'token_refresh': '20/minute',
+        'chatbot': '30/minute',
+        'ticket_create': '20/hour',
+    },
 }
 
 # --- JWT ---------------------------------------------------------------------
@@ -219,7 +237,8 @@ else:
         'http://127.0.0.1:5174',
         'http://localhost:3000',
     ]
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
+# En développement, autoriser toutes les origines par défaut ; forcer False en production
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True' if DEBUG else 'False') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
 # --- Stripe ------------------------------------------------------------------

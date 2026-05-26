@@ -4,6 +4,7 @@ import {
   Bell, Check, Globe, Search, Sun, Moon, Trash2, CheckCheck, X, Plus,
   Zap,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -43,6 +44,7 @@ export function AppHeader() {
   const { t, langue, setLangue } = useI18n();
   const { mode, toggleMode, isAdmin } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     notifications, unreadCount, loading, hasMore,
     fetchNotifications, fetchNextPage, marquerLue, supprimer, toutLire, supprimerLues,
@@ -114,6 +116,7 @@ export function AppHeader() {
       {/* ── Add Expedition CTA ── */}
       {isAdmin && (
         <button
+          onClick={() => navigate('/commandes', { state: { openCreate: true } })}
           style={{
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '8px 16px', borderRadius: 10,

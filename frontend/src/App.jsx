@@ -37,6 +37,7 @@ import PrevisionsPage   from './pages/admin/PrevisionsPage';
 import ImpersonationPage from './pages/admin/ImpersonationPage';
 import BannieresPage    from './pages/admin/BannieresPage';
 import BlacklistPage    from './pages/admin/BlacklistPage';
+import AlertesCentrePage from './pages/admin/AlertesCentrePage';
 
 // Fondateur (boutique) — existing
 import StoreDash  from './pages/store/StoreDash';
@@ -53,10 +54,13 @@ import ChauffeurDashboard   from './pages/chauffeur/ChauffeurDashboard';
 import SignalerIncident      from './pages/chauffeur/SignalerIncident';
 import DashboardFinancier   from './pages/chauffeur/DashboardFinancier';
 import GamificationPage     from './pages/chauffeur/GamificationPage';
+import ModeLivraison        from './pages/chauffeur/ModeLivraison';
 
 // Client
-import ClientDashboard from './pages/client/ClientDashboard';
-import FavoritesPage   from './pages/client/FavoritesPage';
+import ClientDashboard   from './pages/client/ClientDashboard';
+import FavoritesPage     from './pages/client/FavoritesPage';
+import CheckoutPage      from './pages/client/CheckoutPage';
+import OrderTrackingPage from './pages/client/OrderTrackingPage';
 
 // Nouvelles fonctionnalités globales
 import GlobalSearch from './components/GlobalSearch';
@@ -131,6 +135,16 @@ function AppRoutes() {
             <FavoritesPage />
           </ProtectedRoute>
         } />
+        <Route path="/client/checkout" element={
+          <ProtectedRoute allowedRoles={['CLIENT']}>
+            <CheckoutPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/client/suivi/:id" element={
+          <ProtectedRoute allowedRoles={['CLIENT']}>
+            <OrderTrackingPage />
+          </ProtectedRoute>
+        } />
 
         {/* Chauffeur */}
         <Route path="/chauffeur" element={
@@ -155,6 +169,16 @@ function AppRoutes() {
             <TransporteurLayout pageTitle="Gamification & Badges" pageIcon="🏆">
               <GamificationPage />
             </TransporteurLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/chauffeur/livraison" element={
+          <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
+            <ModeLivraison />
+          </ProtectedRoute>
+        } />
+        <Route path="/chauffeur/livraison/:id" element={
+          <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
+            <ModeLivraison />
           </ProtectedRoute>
         } />
 
@@ -190,6 +214,7 @@ function AppRoutes() {
         <Route path="/impersonation"  element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><ImpersonationPage /></AdminShell></ProtectedRoute>} />
         <Route path="/bannieres"      element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><BannieresPage /></AdminShell></ProtectedRoute>} />
         <Route path="/blacklist"      element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><BlacklistPage /></AdminShell></ProtectedRoute>} />
+        <Route path="/alertes"        element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><AlertesCentrePage /></AdminShell></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

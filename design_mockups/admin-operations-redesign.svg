@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <linearGradient id="adminBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.55" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#122018"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#adminBg)"/>
+  <circle cx="1420" cy="120" r="230" fill="#14532d" opacity="0.28"/>
+  <circle cx="1180" cy="920" r="260" fill="#0e7490" opacity="0.16"/>
+
+  <rect x="42" y="36" width="1516" height="928" rx="34" fill="#07111f" stroke="#1e293b"/>
+
+  <rect x="42" y="36" width="258" height="928" rx="34" fill="#0b1625"/>
+  <rect x="42" y="84" width="258" height="880" fill="#0b1625"/>
+  <circle cx="92" cy="91" r="24" fill="url(#accent)"/>
+  <path d="M80 92h24M91 80l-11 12 11 12M105 80l11 12-11 12" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <text x="130" y="86" font-family="Inter, Segoe UI, Arial" font-size="23" font-weight="900" fill="#fff">DeliverMap</text>
+  <text x="130" y="110" font-family="Inter, Segoe UI, Arial" font-size="11" font-weight="800" fill="#67e8f9" letter-spacing="2">CONTROL ROOM</text>
+
+  <g font-family="Inter, Segoe UI, Arial">
+    <text x="74" y="176" font-size="11" font-weight="800" fill="#64748b" letter-spacing="2">SUPERVISION</text>
+    <rect x="66" y="198" width="202" height="48" rx="16" fill="#13243a"/>
+    <rect x="66" y="198" width="5" height="48" rx="3" fill="#22c55e"/>
+    <text x="98" y="228" font-size="15" font-weight="800" fill="#fff">Operations Live</text>
+    <text x="98" y="288" font-size="15" font-weight="700" fill="#94a3b8">Commandes</text>
+    <text x="98" y="346" font-size="15" font-weight="700" fill="#94a3b8">Carte et Heatmap</text>
+    <text x="98" y="404" font-size="15" font-weight="700" fill="#94a3b8">Incidents</text>
+    <text x="74" y="480" font-size="11" font-weight="800" fill="#64748b" letter-spacing="2">GESTION</text>
+    <text x="98" y="536" font-size="15" font-weight="700" fill="#94a3b8">Clients</text>
+    <text x="98" y="594" font-size="15" font-weight="700" fill="#94a3b8">Transporteurs</text>
+    <text x="98" y="652" font-size="15" font-weight="700" fill="#94a3b8">Boutiques</text>
+    <text x="98" y="710" font-size="15" font-weight="700" fill="#94a3b8">Tickets SLA</text>
+  </g>
+
+  <rect x="340" y="76" width="1178" height="78" rx="24" fill="#0b1625" stroke="#1e293b"/>
+  <text x="380" y="120" font-family="Inter, Segoe UI, Arial" font-size="28" font-weight="900" fill="#fff">Operations command center</text>
+  <rect x="1038" y="94" width="238" height="42" rx="21" fill="#111827" stroke="#273449"/>
+  <text x="1074" y="121" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#94a3b8">Search order, driver...</text>
+  <rect x="1294" y="94" width="188" height="42" rx="21" fill="url(#accent)"/>
+  <text x="1333" y="121" font-family="Inter, Segoe UI, Arial" font-size="14" font-weight="900" fill="#06121b">Nouvelle action</text>
+
+  <g transform="translate(340 188)" font-family="Inter, Segoe UI, Arial">
+    <rect width="260" height="142" rx="24" fill="#0f2135" stroke="#1e3a5f" filter="url(#shadow)"/>
+    <text x="24" y="42" font-size="13" font-weight="800" fill="#93c5fd">Commandes aujourd'hui</text>
+    <text x="24" y="92" font-size="44" font-weight="950" fill="#fff">1,284</text>
+    <text x="24" y="124" font-size="13" fill="#22c55e">+18.4% vs hier</text>
+    <path d="M166 104c28-50 46-20 70-64" fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(630 188)" font-family="Inter, Segoe UI, Arial">
+    <rect width="260" height="142" rx="24" fill="#10271b" stroke="#1f4d32" filter="url(#shadow)"/>
+    <text x="24" y="42" font-size="13" font-weight="800" fill="#86efac">Chauffeurs actifs</text>
+    <text x="24" y="92" font-size="44" font-weight="950" fill="#fff">342</text>
+    <text x="24" y="124" font-size="13" fill="#bbf7d0">87% disponibilite</text>
+    <circle cx="208" cy="76" r="38" fill="#22c55e" opacity="0.22"/>
+    <circle cx="208" cy="76" r="18" fill="#22c55e"/>
+  </g>
+  <g transform="translate(920 188)" font-family="Inter, Segoe UI, Arial">
+    <rect width="260" height="142" rx="24" fill="#2a1a0e" stroke="#7c2d12" filter="url(#shadow)"/>
+    <text x="24" y="42" font-size="13" font-weight="800" fill="#fdba74">Retards critiques</text>
+    <text x="24" y="92" font-size="44" font-weight="950" fill="#fff">19</text>
+    <text x="24" y="124" font-size="13" fill="#fed7aa">a traiter maintenant</text>
+    <path d="M208 42l42 76h-84z" fill="#f97316" opacity="0.85"/>
+  </g>
+  <g transform="translate(1210 188)" font-family="Inter, Segoe UI, Arial">
+    <rect width="308" height="142" rx="24" fill="#101827" stroke="#253247" filter="url(#shadow)"/>
+    <text x="24" y="42" font-size="13" font-weight="800" fill="#c4b5fd">Satisfaction client</text>
+    <text x="24" y="92" font-size="44" font-weight="950" fill="#fff">4.72</text>
+    <text x="24" y="124" font-size="13" fill="#a7f3d0">score moyen 30j</text>
+    <circle cx="238" cy="76" r="42" fill="none" stroke="#334155" stroke-width="12"/>
+    <path d="M238 34a42 42 0 1 1-33 68" fill="none" stroke="#a78bfa" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <rect x="340" y="366" width="746" height="532" rx="28" fill="#0b1625" stroke="#1e293b" filter="url(#shadow)"/>
+  <text x="378" y="416" font-family="Inter, Segoe UI, Arial" font-size="21" font-weight="900" fill="#fff">Carte temps reel Casablanca</text>
+  <text x="378" y="444" font-family="Inter, Segoe UI, Arial" font-size="13" fill="#64748b">Commandes, incidents, zones chaudes et transporteurs</text>
+  <rect x="378" y="478" width="670" height="366" rx="24" fill="#102033"/>
+  <path d="M410 780 C505 670 610 795 700 690 S930 570 1010 735" fill="none" stroke="#38bdf8" stroke-width="20" opacity="0.13"/>
+  <path d="M420 612 C560 554 660 630 802 560 S960 488 1032 566" fill="none" stroke="#22c55e" stroke-width="16" opacity="0.18"/>
+  <g opacity="0.85">
+    <circle cx="520" cy="630" r="42" fill="#22c55e" opacity="0.25"/><circle cx="520" cy="630" r="12" fill="#22c55e"/>
+    <circle cx="735" cy="712" r="56" fill="#f97316" opacity="0.22"/><circle cx="735" cy="712" r="13" fill="#f97316"/>
+    <circle cx="900" cy="590" r="36" fill="#38bdf8" opacity="0.24"/><circle cx="900" cy="590" r="11" fill="#38bdf8"/>
+    <circle cx="968" cy="770" r="46" fill="#ef4444" opacity="0.20"/><circle cx="968" cy="770" r="12" fill="#ef4444"/>
+  </g>
+  <rect x="400" y="500" width="170" height="36" rx="18" fill="#07111f" opacity="0.86"/>
+  <text x="424" y="523" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="800" fill="#e2e8f0">Heatmap active</text>
+
+  <rect x="1120" y="366" width="398" height="532" rx="28" fill="#0b1625" stroke="#1e293b" filter="url(#shadow)"/>
+  <text x="1156" y="416" font-family="Inter, Segoe UI, Arial" font-size="21" font-weight="900" fill="#fff">File d'alertes</text>
+  <text x="1156" y="444" font-family="Inter, Segoe UI, Arial" font-size="13" fill="#64748b">Priorisee par impact operationnel</text>
+  <g font-family="Inter, Segoe UI, Arial">
+    <rect x="1156" y="488" width="326" height="86" rx="20" fill="#1f1711" stroke="#7c2d12"/>
+    <circle cx="1192" cy="531" r="16" fill="#f97316"/><text x="1220" y="524" font-size="14" font-weight="900" fill="#fff">Retard +35 min</text><text x="1220" y="548" font-size="12" fill="#fdba74">Commande DM-5829 • Maarif</text>
+    <rect x="1156" y="594" width="326" height="86" rx="20" fill="#1c1216" stroke="#7f1d1d"/>
+    <circle cx="1192" cy="637" r="16" fill="#ef4444"/><text x="1220" y="630" font-size="14" font-weight="900" fill="#fff">Incident chauffeur</text><text x="1220" y="654" font-size="12" fill="#fecaca">Assistance demandee</text>
+    <rect x="1156" y="700" width="326" height="86" rx="20" fill="#101827" stroke="#1d4ed8"/>
+    <circle cx="1192" cy="743" r="16" fill="#38bdf8"/><text x="1220" y="736" font-size="14" font-weight="900" fill="#fff">Zone surchargee</text><text x="1220" y="760" font-size="12" fill="#bae6fd">Affecter 4 chauffeurs</text>
+    <rect x="1156" y="814" width="154" height="42" rx="21" fill="#22c55e"/>
+    <text x="1194" y="841" font-size="14" font-weight="900" fill="#052e16">Traiter</text>
+    <rect x="1328" y="814" width="154" height="42" rx="21" fill="#111827" stroke="#334155"/>
+    <text x="1364" y="841" font-size="14" font-weight="900" fill="#cbd5e1">Assigner</text>
+  </g>
+</svg>
