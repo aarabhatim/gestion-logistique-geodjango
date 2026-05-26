@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { analyticsApi, incidentsApi, commandesApi } from '../../services/api';
 import { Truck, AlertTriangle, Package, RefreshCw, Radio, Clock, CheckCircle } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 const ICON_LIVE = new L.DivIcon({
   html: '<div style="width:14px;height:14px;background:#10b981;border:2px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(16,185,129,0.3);animation:pulse 2s infinite"></div>',
@@ -32,6 +33,7 @@ function AnimatedCounter({ value, label, color, icon: Icon }) {
 }
 
 export default function LiveDashboard() {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [commandes, setCommandes] = useState([]);
@@ -64,10 +66,10 @@ export default function LiveDashboard() {
   }, []);
 
   const kpis = data ? [
-    { label: 'Commandes actives', value: commandes.length, color: '#3b82f6', icon: Package },
-    { label: 'Incidents ouverts', value: incidents.length, color: '#ef4444', icon: AlertTriangle },
-    { label: 'Transporteurs en route', value: commandes.length, color: '#10b981', icon: Truck },
-    { label: 'Total commandes', value: data.total_commandes || 0, color: '#f59e0b', icon: CheckCircle },
+    { label: t('lv_active_orders_label'), value: commandes.length,         color: '#3b82f6', icon: Package },
+    { label: t('incidents'),              value: incidents.length,          color: '#ef4444', icon: AlertTriangle },
+    { label: t('lv_active_drivers'),      value: commandes.length,          color: '#10b981', icon: Truck },
+    { label: t('dash_total_orders'),      value: data.total_commandes || 0, color: '#f59e0b', icon: CheckCircle },
   ] : [];
 
   return (
@@ -76,14 +78,14 @@ export default function LiveDashboard() {
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Radio size={22} style={{ color: '#10b981' }} />
-            Tableau de bord live
+            {t('lv_title')}
           </h2>
           <p className="page-subtitle">
-            {lastUpdate ? `Mis à jour: ${lastUpdate.toLocaleTimeString('fr-FR')}` : 'Chargement...'}
+            {lastUpdate ? lastUpdate.toLocaleTimeString() : t('common_loading')}
           </p>
         </div>
         <button className="btn btn-secondary" onClick={fetchAll} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} /> Actualiser
+          <RefreshCw size={14} className={loading ? 'spin' : ''} /> {t('common_retry')}
         </button>
       </div>
 
@@ -97,7 +99,7 @@ export default function LiveDashboard() {
         <div className="glass-card animate-fade-in" style={{ overflow: 'hidden', borderRadius: 14 }}>
           <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--glass-border)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite', display: 'inline-block' }} />
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Chauffeurs en mission</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t('lv_drivers_on_mission')}</span>
           </div>
           <MapContainer center={[33.589886, -7.603869]} zoom={12} style={{ height: 420 }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -105,9 +107,9 @@ export default function LiveDashboard() {
               cmd.transporteur_position_lat && (
                 <Marker key={cmd.id} position={[cmd.transporteur_position_lat, cmd.transporteur_position_lng]} icon={ICON_LIVE}>
                   <Popup>
-                    <b>Commande #{cmd.reference}</b><br />
-                    Client: {cmd.client_nom || '-'}<br />
-                    Statut: {cmd.statut}
+                    <b>#{cmd.reference}</b><br />
+                    {t('lv_popup_client')}: {cmd.client_nom || '-'}<br />
+                    {t('lv_popup_statut')}: {cmd.statut}
                   </Popup>
                 </Marker>
               )
@@ -117,14 +119,17 @@ export default function LiveDashboard() {
 
         {/* Alertes */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Incidents ouverts */}
           <div className="glass-card animate-fade-in">
             <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle size={14} color="#ef4444" />
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Incidents ouverts</span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{t('lv_open_incidents_title')}</span>
               <span className="badge badge-danger" style={{ marginLeft: 'auto', fontSize: 10 }}>{incidents.length}</span>
             </div>
             {incidents.length === 0 ? (
-              <div style={{ padding: '1rem', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>Aucun incident ouvert</div>
+              <div style={{ padding: '1rem', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {t('lv_no_open_incidents')}
+              </div>
             ) : (
               incidents.slice(0, 5).map(inc => (
                 <div key={inc.id} style={{ padding: '10px 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between' }}>
@@ -134,25 +139,28 @@ export default function LiveDashboard() {
                       {new Date(inc.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
-                  <span className="badge badge-danger" style={{ fontSize: 9 }}>Ouvert</span>
+                  <span className="badge badge-danger" style={{ fontSize: 9 }}>{t('lv_status_open')}</span>
                 </div>
               ))
             )}
           </div>
 
+          {/* Livraisons en cours */}
           <div className="glass-card animate-fade-in">
             <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Truck size={14} color="#3b82f6" />
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Livraisons en cours</span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{t('lv_deliveries_in_progress_title')}</span>
               <span className="badge badge-primary" style={{ marginLeft: 'auto', fontSize: 10 }}>{commandes.length}</span>
             </div>
             {commandes.length === 0 ? (
-              <div style={{ padding: '1rem', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>Aucune livraison en cours</div>
+              <div style={{ padding: '1rem', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {t('lv_no_deliveries_progress')}
+              </div>
             ) : (
               commandes.slice(0, 6).map(cmd => (
                 <div key={cmd.id} style={{ padding: '8px 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 12 }}>
                   <div style={{ fontWeight: 600 }}>#{cmd.reference}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{cmd.adresse_livraison || 'En route...'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{cmd.adresse_livraison || t('lv_en_route')}</div>
                 </div>
               ))
             )}

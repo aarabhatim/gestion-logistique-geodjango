@@ -5,17 +5,20 @@ import {
 } from 'recharts';
 import { Award, RefreshCw, TrendingUp, Star, BarChart2, ChevronUp, ChevronDown } from 'lucide-react';
 import { scoringApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
+// Translated at render time via DIMENSIONS_I18N inside the Scoring component.
 const DIMENSIONS = [
-  { key: 'ponctualite', label: 'Ponctualité', color: '#3b82f6' },
-  { key: 'fiabilite',   label: 'Fiabilité',   color: '#10b981' },
-  { key: 'satisfaction', label: 'Satisfaction', color: '#f59e0b' },
-  { key: 'rapidite',   label: 'Rapidité',    color: '#22c55e' },
+  { key: 'ponctualite',  i18n: 'sc_col_punctuality',  color: '#3b82f6' },
+  { key: 'fiabilite',    i18n: 'sc_col_reliability',  color: '#10b981' },
+  { key: 'satisfaction', i18n: 'sc_col_satisfaction', color: '#f59e0b' },
+  { key: 'rapidite',     i18n: 'sc_col_speed',        color: '#22c55e' },
 ];
 
 const ScoreBadge = ({ score }) => {
+  const { t } = useI18n();
   const color = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
-  const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Bien' : 'A ameliorer';
+  const label = score >= 80 ? t('sc_excellent') : score >= 60 ? t('sc_good') : t('sc_to_improve');
   return (
     <span style={{ fontSize: 11, fontWeight: 700, color, background: `${color}22`,
       padding: '2px 8px', borderRadius: 6 }}>
@@ -25,9 +28,10 @@ const ScoreBadge = ({ score }) => {
 };
 
 const ScoreRadar = ({ data }) => {
+  const { t } = useI18n();
   if (!data) return null;
   const chartData = DIMENSIONS.map(d => ({
-    subject: d.label,
+    subject: t(d.i18n),
     value: Math.round((data[d.key] || 0) * 100) / 100,
     fullMark: 100,
   }));
@@ -48,6 +52,7 @@ const ScoreRadar = ({ data }) => {
 };
 
 const Scoring = () => {
+  const { t } = useI18n();
   const [classement, setClassement] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState('score_global');
@@ -110,15 +115,15 @@ const Scoring = () => {
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Award size={24} /> Scoring Transporteurs
+            <Award size={24} /> {t('scoring')}
           </h2>
-          <p className="page-subtitle">Classement et analyse multi-dimensionnelle des performances.</p>
+          <p className="page-subtitle">{t('scoring_subtitle')}</p>
         </div>
         <button onClick={handleRecalcTous} className="btn btn-secondary"
           disabled={recalcLoading}
           style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={14} className={recalcLoading ? 'spin' : ''} />
-          {recalcLoading ? 'Recalcul...' : 'Recalculer tous'}
+          {recalcLoading ? t('common_loading') : t('recalculate_all')}
         </button>
       </div>
 
@@ -129,18 +134,18 @@ const Scoring = () => {
             <thead>
               <tr>
                 <th style={{ width: 40 }}>#</th>
-                <th>Transporteur</th>
+                <th>{t('transporteurs')}</th>
                 {DIMENSIONS.map(d => (
                   <th key={d.key} onClick={() => toggleSort(d.key)}
                     style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                    {d.label} <SortIcon k={d.key} />
+                    {t(d.i18n)} <SortIcon k={d.key} />
                   </th>
                 ))}
                 <th onClick={() => toggleSort('score_global')}
                   style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Score global <SortIcon k="score_global" />
+                  {t('sc_col_global')} <SortIcon k="score_global" />
                 </th>
-                <th>Actions</th>
+                <th>{t('sc_col_actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +155,7 @@ const Scoring = () => {
                 </td></tr>
               ) : sorted.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: 13 }}>
-                  Aucun score calculé.
+                  {t('common_no_results')}
                 </td></tr>
               ) : (
                 sorted.map((s, idx) => {
@@ -166,7 +171,7 @@ const Scoring = () => {
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{nom}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                          {s.nb_livraisons || 0} livraisons
+                          {s.nb_livraisons || 0} {t('sc_deliveries_count')}
                         </div>
                       </td>
                       {DIMENSIONS.map(d => (
@@ -187,7 +192,7 @@ const Scoring = () => {
                       <td>
                         <button onClick={(e) => { e.stopPropagation(); handleRecalc(s.id); }}
                           className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <RefreshCw size={11} /> Recalc
+                          <RefreshCw size={11} /> {t('sc_recalc')}
                         </button>
                       </td>
                     </tr>

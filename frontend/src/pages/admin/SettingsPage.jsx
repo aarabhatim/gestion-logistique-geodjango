@@ -77,6 +77,7 @@ const SettingsPage = () => {
   const { user } = useAuth();
   const { mode, role, toggleMode, setLight, setDark, isDark } = useTheme();
   const i18n = useI18n();
+  const { t } = i18n;
 
   const [activeSection, setActiveSection] = useState('profil');
   const [savedNotif, setSavedNotif] = useState('');
@@ -182,12 +183,12 @@ const SettingsPage = () => {
   };
 
   const SECTIONS = [
-    { id: 'profil',       label: 'Profil',         icon: User,         color: '#22c55e' },
-    { id: 'securite',     label: 'Sécurité',       icon: Shield,       color: '#a3e635' },
-    { id: 'notifications',label: 'Notifications',  icon: Bell,         color: '#facc15' },
-    { id: 'apparence',    label: 'Apparence',      icon: Palette,      color: '#4ade80' },
-    { id: 'systeme',      label: 'Système',        icon: Cpu,          color: '#fb7185' },
-    { id: 'apropos',      label: 'À propos',       icon: SettingsIcon, color: '#22d3ee' },
+    { id: 'profil',       label: t('set_profile'),       icon: User,         color: '#22c55e' },
+    { id: 'securite',     label: t('set_security'),      icon: Shield,       color: '#a3e635' },
+    { id: 'notifications',label: t('set_notifications'), icon: Bell,         color: '#facc15' },
+    { id: 'apparence',    label: t('set_appearance'),    icon: Palette,      color: '#4ade80' },
+    { id: 'systeme',      label: t('set_system'),        icon: Cpu,          color: '#fb7185' },
+    { id: 'apropos',      label: t('set_about'),         icon: SettingsIcon, color: '#22d3ee' },
   ];
 
   return (
@@ -196,10 +197,10 @@ const SettingsPage = () => {
       <div className="dashboard-header">
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Terminal size={26} /> Paramètres système
+            <Terminal size={26} /> {t('set_system_settings')}
           </h2>
           <p className="page-subtitle">
-            Configuration de l'environnement administrateur · {user?.role}
+            {t('set_admin_env')} · {user?.role}
           </p>
         </div>
         {savedNotif && (
@@ -239,18 +240,18 @@ const SettingsPage = () => {
         <div>
           {/* PROFIL */}
           {activeSection === 'profil' && (
-            <SectionCard title="Informations personnelles" icon={User} color="#22c55e"
+            <SectionCard title={t('set_personal_info')} icon={User} color="#22c55e"
               action={<button className="btn btn-primary btn-sm" onClick={handleSaveProfile} disabled={saving}>
-                <Save size={13} /> {saving ? 'Sauvegarde...' : 'Enregistrer'}
+                <Save size={13} /> {saving ? t('common_loading') : t('set_save')}
               </button>}>
               <form onSubmit={handleSaveProfile}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <Field label="Prénom" value={firstName} onChange={setFirstName} icon={User} />
-                  <Field label="Nom" value={lastName} onChange={setLastName} icon={User} />
+                  <Field label={t('set_first_name')} value={firstName} onChange={setFirstName} icon={User} />
+                  <Field label={t('set_last_name')} value={lastName} onChange={setLastName} icon={User} />
                 </div>
-                <Field label="Adresse email" type="email" value={email} onChange={setEmail} icon={Mail} />
-                <Field label="Téléphone" value={phone} onChange={setPhone} icon={Phone} placeholder="+212 6XX XX XX XX" />
-                <Field label="Nom d'utilisateur" value={user?.username} onChange={() => {}} disabled icon={User} />
+                <Field label={t('set_email')} type="email" value={email} onChange={setEmail} icon={Mail} />
+                <Field label={t('set_phone')} value={phone} onChange={setPhone} icon={Phone} placeholder="+212 6XX XX XX XX" />
+                <Field label={t('set_username')} value={user?.username} onChange={() => {}} disabled icon={User} />
               </form>
             </SectionCard>
           )}

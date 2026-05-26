@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { transporteursApi, fondateursApi, commandesApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 import {
   Truck, Store, Package, RefreshCw, Layers, Users, Eye, EyeOff,
   Navigation, AlertCircle, CheckCircle, Clock, TrendingUp, Shield,
@@ -337,6 +338,7 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const MapPage = () => {
+  const { t } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
   const [boutiques, setBoutiques] = useState([]);
   const [livraisons, setLivraisons] = useState([]);
@@ -458,7 +460,7 @@ const MapPage = () => {
       {/* Header */}
       <div className="dashboard-header animate-fade-in" style={{ flexShrink: 0 }}>
         <div>
-          <h2 className="page-title text-gradient">Centre de Supervision</h2>
+          <h2 className="page-title text-gradient">{t('mp_title')}</h2>
           <p className="page-subtitle">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />

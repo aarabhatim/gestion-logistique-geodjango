@@ -7,6 +7,7 @@ import {
   MapPin, Clock, User, Package, Camera,
 } from 'lucide-react';
 import { incidentsApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 const TYPE_CONFIG = {
   accident:        { label: 'Accident',          color: '#ef4444', emoji: '🚨' },
@@ -26,6 +27,7 @@ const STATUT_CONFIG = {
 };
 
 const Incidents = () => {
+  const { t } = useI18n();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -102,7 +104,7 @@ const Incidents = () => {
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={24} /> Gestion des Incidents
+            <AlertTriangle size={24} /> {t('incidents')}
           </h2>
           <p className="page-subtitle">Suivez et résolvez les incidents de livraison en temps réel.</p>
         </div>
@@ -133,22 +135,22 @@ const Incidents = () => {
         <Filter size={14} style={{ color: 'var(--text-secondary)' }} />
         <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
           style={{ width: 160, padding: '5px 10px', fontSize: 13 }}>
-          <option value="">Tous les statuts</option>
+          <option value="">{t('in_all_status')}</option>
           {Object.entries(STATUT_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <select className="glass-input" value={filtreType} onChange={e => setFiltreType(e.target.value)}
           style={{ width: 180, padding: '5px 10px', fontSize: 13 }}>
-          <option value="">Tous les types</option>
+          <option value="">{t('in_all_types')}</option>
           {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
         </select>
         {(filtreStatut || filtreType) && (
           <button onClick={() => { setFiltreStatut(''); setFiltreType(''); }}
             className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <X size={12} /> Effacer filtres
+            <X size={12} /> {t('adm_filters_clear')}
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>
-          {incidents.length} incident{incidents.length > 1 ? 's' : ''}
+          {incidents.length} {t('incidents')}
         </span>
       </div>
 
@@ -265,6 +267,7 @@ const Incidents = () => {
 };
 
 const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResoudre, onPrendreEnCharge, onClose }) => {
+  const { t } = useI18n();
   const props = inc.properties || inc;
   const cfg = TYPE_CONFIG[props.type_incident] || TYPE_CONFIG.autre;
   const statCfg = STATUT_CONFIG[props.statut] || {};
@@ -282,25 +285,25 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>Type</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{t('in_col_type')}</span>
           <strong>{cfg.emoji} {cfg.label}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>Statut</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{t('in_col_status')}</span>
           <span className={`badge ${statCfg.class || 'badge-secondary'}`}>{statCfg.label || props.statut}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>Commande</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{t('in_col_order')}</span>
           <strong>{props.commande_reference || props.commande}</strong>
         </div>
         {props.chauffeur_nom && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Chauffeur</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{t('in_col_driver')}</span>
             <span><User size={11} style={{ marginRight: 3 }} />{props.chauffeur_nom}</span>
           </div>
         )}
         <div>
-          <div style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: 11 }}>Description</div>
+          <div style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: 11 }}>{t('in_col_description')}</div>
           <div style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: 6, fontSize: 12, lineHeight: 1.5 }}>
             {props.description}
           </div>
@@ -333,20 +336,20 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
           {props.statut === 'ouvert' && (
             <button onClick={onPrendreEnCharge} className="btn btn-secondary"
               style={{ width: '100%', marginBottom: 8, fontSize: 12 }}>
-              Prendre en charge
+              {t('in_take_charge')}
             </button>
           )}
           <textarea
             value={resolveNotes}
             onChange={e => setResolveNotes(e.target.value)}
-            placeholder="Notes de résolution..."
+            placeholder={t('in_resolve_notes')}
             className="glass-input"
             style={{ width: '100%', minHeight: 70, marginBottom: 8, fontSize: 12, resize: 'vertical' }}
           />
           <button onClick={onResoudre} className="btn btn-success"
             disabled={resolving}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12 }}>
-            <Check size={14} /> {resolving ? 'En cours...' : 'Marquer comme résolu'}
+            <Check size={14} /> {resolving ? t('common_loading') : t('in_resolve')}
           </button>
         </div>
       )}

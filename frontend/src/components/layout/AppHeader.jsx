@@ -7,22 +7,13 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-const LANGS = [
-  { code: 'fr', flag: 'FR', label: 'Francais' },
-  { code: 'ar', flag: 'AR', label: 'Arabique' },
-  { code: 'en', flag: 'EN', label: 'English' },
-  { code: 'es', flag: 'ES', label: 'Espanol' },
-];
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export function AppHeader() {
-  const { t, langue, setLangue } = useI18n();
+  const { t } = useI18n();
   const { mode, toggleMode, isAdmin } = useTheme();
   const { user } = useAuth();
   const {
@@ -44,7 +35,6 @@ export function AppHeader() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const currentLang = LANGS.find(l => l.code === langue) || LANGS[0];
   const initials = user ? ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase() || 'A' : 'A';
 
   const headerBg = isAdmin
@@ -78,7 +68,7 @@ export function AppHeader() {
             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
           >
             <Plus size={15} />
-            Ajouter Expedition
+            {t('sb_add_expedition')}
           </button>
         )}
 
@@ -87,22 +77,8 @@ export function AppHeader() {
           {mode === 'dark' ? <Sun className="h-[17px] w-[17px] text-amber-400" /> : <Moon className="h-[17px] w-[17px]" />}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 h-9 rounded-xl" style={ctrlStyle}>
-              <Globe className="h-4 w-4" />
-              <span className="text-xs">{currentLang.flag}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {LANGS.map(l => (
-              <DropdownMenuItem key={l.code} onClick={() => setLangue(l.code)} className="gap-2">
-                {l.label}
-                {l.code === langue && <Check className="ml-auto h-4 w-4" />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Sélecteur de langue — composant unifié, identique au client */}
+        <LanguageSwitcher variant="dark" />
 
         <div className="relative" ref={notifRef}>
           <Button variant="outline" size="icon" onClick={() => setOpenNotif(s => !s)}
@@ -142,7 +118,7 @@ export function AppHeader() {
                         <CheckCheck className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={supprimerLues} title="Supprimer les lues">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={supprimerLues} title={t('sb_notifications_delete_read')}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpenNotif(false)}>
@@ -153,7 +129,7 @@ export function AppHeader() {
 
                 <div className="flex border-b text-xs font-medium shrink-0"
                   style={{ borderColor: isAdmin ? 'rgba(34,197,94,0.08)' : undefined }}>
-                  {['Non lues', 'Toutes'].map((label, i) => {
+                  {[t('sb_notifications_unread'), t('sb_notifications_all')].map((label, i) => {
                     const active = i === 0 ? !showAll : showAll;
                     return (
                       <button key={label} onClick={() => setShowAll(i === 1)}
@@ -191,7 +167,7 @@ export function AppHeader() {
                           </div>
                           <Button variant="ghost" size="icon"
                             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
-                            onClick={() => supprimer(n.id)} title="Supprimer">
+                            onClick={() => supprimer(n.id)} title={t('common_close')}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -199,7 +175,7 @@ export function AppHeader() {
                       {showAll && hasMore && (
                         <div className="p-3 text-center border-t shrink-0">
                           <Button variant="outline" size="sm" className="w-full text-xs" onClick={fetchNextPage} disabled={loading}>
-                            {loading ? 'Chargement...' : 'Charger plus'}
+                            {loading ? t('common_loading') : t('sb_notifications_load_more')}
                           </Button>
                         </div>
                       )}

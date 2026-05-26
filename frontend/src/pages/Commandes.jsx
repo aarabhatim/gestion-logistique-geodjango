@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { commandesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
 import { KanbanCommandes } from '../components/KanbanCommandes';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
@@ -66,7 +67,9 @@ const StatutBadge = ({ statut }) => {
 };
 
 // ─── Modal Détail commande ────────────────────────────────────────────────────
-const DetailModal = ({ commande, onClose }) => (
+const DetailModal = ({ commande, onClose }) => {
+  const { t } = useI18n();
+  return (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
     <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 620, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -115,13 +118,13 @@ const DetailModal = ({ commande, onClose }) => (
       {/* Montants */}
       <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10, padding: '0.875rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-          <span>Sous-total</span><span>{commande.sous_total} MAD</span>
+          <span>{t('cl_cart_subtotal')}</span><span>{commande.sous_total} MAD</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-          <span>Frais livraison</span><span>{commande.frais_livraison} MAD</span>
+          <span>{t('co_delivery_fees')}</span><span>{commande.frais_livraison} MAD</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, borderTop: '1px solid rgba(16,185,129,0.2)', paddingTop: 8, color: '#10b981' }}>
-          <span>Total</span><span>{commande.total_price} MAD</span>
+          <span>{t('adm_total')}</span><span>{commande.total_price} MAD</span>
         </div>
       </div>
 
@@ -139,10 +142,12 @@ const DetailModal = ({ commande, onClose }) => (
       )}
     </div>
   </div>
-);
+  );
+};
 
 // ─── Modal Assigner transporteur ──────────────────────────────────────────────
 const AssignerModal = ({ commande, onClose, onSuccess }) => {
+  const { t } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(null);
@@ -177,15 +182,15 @@ const AssignerModal = ({ commande, onClose, onSuccess }) => {
       <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <div>
-            <h3 className="card-title" style={{ margin: 0 }}>Assigner un transporteur</h3>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Commande #{commande.reference}</div>
+            <h3 className="card-title" style={{ margin: 0 }}>{t('co_assign_driver')}</h3>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{t('co_col_reference')} #{commande.reference}</div>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={onClose}><X size={16} /></button>
         </div>
 
         <div style={{ position: 'relative', marginBottom: '1rem' }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-          <input className="glass-input" placeholder="Rechercher par nom ou plaque..."
+          <input className="glass-input" placeholder={t('co_search_driver')}
             value={search} onChange={e => setSearch(e.target.value)}
             style={{ paddingLeft: 36 }} />
         </div>
@@ -295,6 +300,7 @@ const BTN_DANGER = {
 // ─── Commandes principale ─────────────────────────────────────────────────────
 const Commandes = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingIds, setPendingIds] = useState(new Set()); // boutons en cours
@@ -382,8 +388,8 @@ const Commandes = () => {
 
       <div className="dashboard-header animate-fade-in">
         <div>
-          <h2 className="page-title text-gradient">Gestion des Commandes</h2>
-          <p className="page-subtitle">{count} commandes · Page {page}/{Math.max(1, totalPages)}</p>
+          <h2 className="page-title text-gradient">{t('co_title')}</h2>
+          <p className="page-subtitle">{count} {t('commandes')} · {t('page')} {page}/{Math.max(1, totalPages)}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Toggle Liste / Kanban */}
@@ -415,7 +421,7 @@ const Commandes = () => {
             <Download size={15} /> CSV
           </button>
           <button className="btn btn-secondary" onClick={() => fetchCommandes()}>
-            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> {t('common_retry')}
           </button>
         </div>
       </div>
@@ -433,17 +439,17 @@ const Commandes = () => {
           </button>
         ))}
         {filterStatut && (
-          <button className="btn btn-secondary btn-sm" onClick={() => changeFilter('')}>× Tout</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => changeFilter('')}>× {t('adm_all')}</button>
         )}
       </div>
 
       {/* Search */}
       <div className="glass-card animate-fade-in" style={{ padding: '0.875rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         <Filter size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-        <input type="text" placeholder="Référence, client, boutique..." className="glass-input"
+        <input type="text" placeholder={t('co_search_placeholder')} className="glass-input"
           value={search} onChange={e => changeSearch(e.target.value)} style={{ flex: 1, maxWidth: 340 }} />
-        {search && <button className="btn btn-secondary btn-sm" onClick={() => changeSearch('')}>× Effacer</button>}
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>{count} résultat{count !== 1 ? 's' : ''}</span>
+        {search && <button className="btn btn-secondary btn-sm" onClick={() => changeSearch('')}>× {t('adm_filters_clear')}</button>}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>{count} {t('cli_results')}</span>
       </div>
 
       {/* ── Vue Kanban ── */}
@@ -464,14 +470,14 @@ const Commandes = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Référence</th>
-              <th>Client</th>
-              <th>Boutique</th>
-              <th>Total</th>
-              <th>Transporteur</th>
-              <th>Statut</th>
-              <th>Date</th>
-              <th style={{ minWidth: 200 }}>Actions</th>
+              <th>{t('co_col_reference')}</th>
+              <th>{t('co_col_client')}</th>
+              <th>{t('co_col_store')}</th>
+              <th>{t('co_col_total')}</th>
+              <th>{t('co_col_driver')}</th>
+              <th>{t('co_col_status')}</th>
+              <th>{t('co_col_date')}</th>
+              <th style={{ minWidth: 200 }}>{t('adm_actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -487,7 +493,7 @@ const Commandes = () => {
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                   <Package size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-                  <div>Aucune commande trouvée</div>
+                  <div>{t('co_no_orders')}</div>
                 </td>
               </tr>
             ) : commandes.map(cmd => (

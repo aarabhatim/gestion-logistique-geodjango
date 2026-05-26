@@ -92,7 +92,12 @@ export function AppSidebar() {
     ? (user.first_name?.[0] || '') + (user.last_name?.[0] || '') || 'A'
     : 'A';
 
-  const roleLabel = { ADMIN: 'Administrateur', FONDATEUR: 'Fondateur', TRANSPORTEUR: 'Transporteur', CLIENT: 'Client' };
+  const roleLabel = {
+    ADMIN: t('sb_role_admin'),
+    FONDATEUR: t('sb_role_fondateur'),
+    TRANSPORTEUR: t('sb_role_transporteur'),
+    CLIENT: t('sb_role_client'),
+  };
   const isAdmin = user?.role === 'ADMIN';
   const isFondateur = user?.role === 'FONDATEUR';
 
@@ -122,35 +127,35 @@ export function AppSidebar() {
       >
         {isAdmin && (
           <>
-            <NavSection title="Tableau de bord">
+            <NavSection title={t('sb_dashboard')}>
               <NavLink to="/"           icon={LayoutDashboard} label={t('dashboard')} />
-              <NavLink to="/live"       icon={Radio}           label="Live temps reel" />
+              <NavLink to="/live"       icon={Radio}           label={t('sb_live')} />
               <NavLink to="/map"        icon={MapIcon}         label={t('map_tracking')} />
-              <NavLink to="/calendrier" icon={CalendarDays}    label="Calendrier" />
+              <NavLink to="/calendrier" icon={CalendarDays}    label={t('sb_calendrier')} />
             </NavSection>
-            <NavSection title="Operations">
+            <NavSection title={t('sb_operations')}>
               <NavLink to="/commandes"  icon={Package}         label={t('commandes')} />
               <NavLink to="/boutiques"  icon={Store}           label={t('boutiques')} />
               <NavLink to="/incidents"  icon={AlertTriangle}   label={t('incidents')} />
-              <NavLink to="/zones"      icon={MapPinned}       label="Zones livraison" />
-              <NavLink to="/promotions" icon={Tag}             label="Promotions" />
+              <NavLink to="/zones"      icon={MapPinned}       label={t('sb_zones')} />
+              <NavLink to="/promotions" icon={Tag}             label={t('sb_promotions')} />
             </NavSection>
-            <NavSection title="Gestion">
+            <NavSection title={t('sb_gestion')}>
               <NavLink to="/clients"       icon={Users}         label={t('clients')} />
               <NavLink to="/transporteurs" icon={Truck}         label={t('transporteurs')} />
-              <NavLink to="/scoring"       icon={Award}         label="Scoring" />
-              <NavLink to="/tickets"       icon={MessageSquare} label="Tickets" />
-              <NavLink to="/contrats"      icon={FileText}      label="Contrats" />
+              <NavLink to="/scoring"       icon={Award}         label={t('sb_scoring')} />
+              <NavLink to="/tickets"       icon={MessageSquare} label={t('sb_tickets')} />
+              <NavLink to="/contrats"      icon={FileText}      label={t('sb_contrats')} />
             </NavSection>
-            <NavSection title="Intelligence">
+            <NavSection title={t('sb_intelligence')}>
               <NavLink to="/rapports"   icon={BarChart2}   label={t('reports')} />
               <NavLink to="/heatmap"    icon={Activity}    label={t('heatmap')} />
-              <NavLink to="/previsions" icon={TrendingUp}  label="Previsions" />
+              <NavLink to="/previsions" icon={TrendingUp}  label={t('sb_previsions')} />
             </NavSection>
-            <NavSection title="Outils Admin">
-              <NavLink to="/impersonation" icon={UserCog}   label="Impersonation" />
-              <NavLink to="/bannieres"     icon={Megaphone} label="Bannieres" />
-              <NavLink to="/blacklist"     icon={Ban}       label="Blacklist" />
+            <NavSection title={t('sb_outils_admin')}>
+              <NavLink to="/impersonation" icon={UserCog}   label={t('sb_impersonation')} />
+              <NavLink to="/bannieres"     icon={Megaphone} label={t('sb_bannieres')} />
+              <NavLink to="/blacklist"     icon={Ban}       label={t('sb_blacklist')} />
               <NavLink to="/settings"      icon={Settings}  label={t('settings')} />
             </NavSection>
           </>
@@ -158,20 +163,20 @@ export function AppSidebar() {
 
         {isFondateur && (
           <>
-            <NavSection title="Ma Boutique">
-              <NavLink to="/boutique"           icon={LayoutDashboard} label="Tableau de bord" />
-              <NavLink to="/boutique/commandes" icon={Package}         label="Commandes" />
-              <NavLink to="/boutique/produits"  icon={Store}           label="Produits & Stock" />
-              <NavLink to="/boutique/galerie"   icon={Image}           label="Galerie" />
+            <NavSection title={t('sb_ma_boutique')}>
+              <NavLink to="/boutique"           icon={LayoutDashboard} label={t('sb_dashboard')} />
+              <NavLink to="/boutique/commandes" icon={Package}         label={t('sb_commandes')} />
+              <NavLink to="/boutique/produits"  icon={Store}           label={t('sb_produits')} />
+              <NavLink to="/boutique/galerie"   icon={Image}           label={t('sb_galerie')} />
             </NavSection>
-            <NavSection title="Clients">
-              <NavLink to="/boutique/avis" icon={Star}          label="Avis clients" />
-              <NavLink to="/tickets"       icon={MessageSquare} label="Tickets support" />
+            <NavSection title={t('sb_clients_section')}>
+              <NavLink to="/boutique/avis" icon={Star}          label={t('sb_avis')} />
+              <NavLink to="/tickets"       icon={MessageSquare} label={t('sb_tickets_support')} />
             </NavSection>
-            <NavSection title="Analytics">
-              <NavLink to="/boutique/analytics" icon={BarChart2} label="Analytiques" />
+            <NavSection title={t('sb_analytics')}>
+              <NavLink to="/boutique/analytics" icon={BarChart2} label={t('sb_analytiques')} />
             </NavSection>
-            <NavSection title="Parametres">
+            <NavSection title={t('sb_parametres')}>
               <NavLink to="/settings" icon={Settings} label={t('settings')} />
             </NavSection>
           </>
@@ -180,7 +185,7 @@ export function AppSidebar() {
         {!isAdmin && !isFondateur && (
           <NavSection title="">
             <NavLink to="/"         icon={LayoutDashboard} label={t('dashboard')} />
-            <NavLink to="/tickets"  icon={MessageSquare}   label="Tickets" />
+            <NavLink to="/tickets"  icon={MessageSquare}   label={t('sb_tickets')} />
             <NavLink to="/settings" icon={Settings}        label={t('settings')} />
           </NavSection>
         )}
@@ -207,7 +212,7 @@ export function AppSidebar() {
             variant="ghost" size="icon"
             onClick={logout}
             className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-            title="Se deconnecter"
+            title={t('sb_logout')}
           >
             <LogOut className="h-4 w-4" />
           </Button>

@@ -29,18 +29,19 @@ const STATUT_COLORS = {
   EN_ROUTE: '#06b6d4', LIVREE: '#10b981', ANNULEE: '#ef4444',
 };
 
+// Labels traduits via i18nKey -> t() au rendu
 const HEATMAP_TYPES = [
-  { key: 'commandes', label: 'Commandes',  icon: Package,       color: '#3b82f6', desc: 'Densite des commandes' },
-  { key: 'retards',   label: 'Retards',    icon: Clock,         color: '#f59e0b', desc: 'Zones a fort taux de retard' },
-  { key: 'incidents', label: 'Incidents',  icon: AlertTriangle, color: '#ef4444', desc: 'Localisation des incidents' },
-  { key: 'profits',   label: 'Profits',    icon: DollarSign,    color: '#10b981', desc: 'Chiffre d\'affaires par zone' },
-  { key: 'trafic',    label: 'Trafic',     icon: Truck,         color: '#8b5cf6', desc: 'Passages de transporteurs' },
+  { key: 'commandes', i18nKey: 'hm_tab_orders',    icon: Package,       color: '#3b82f6' },
+  { key: 'retards',   i18nKey: 'hm_tab_delays',    icon: Clock,         color: '#f59e0b' },
+  { key: 'incidents', i18nKey: 'hm_tab_incidents', icon: AlertTriangle, color: '#ef4444' },
+  { key: 'profits',   i18nKey: 'hm_tab_profits',   icon: DollarSign,    color: '#10b981' },
+  { key: 'trafic',    i18nKey: 'hm_tab_traffic',   icon: Truck,         color: '#8b5cf6' },
 ];
 
 const PERIODES = [
-  { value: '7j',  label: '7 jours'  },
-  { value: '30j', label: '30 jours' },
-  { value: '90j', label: '90 jours' },
+  { value: '7j',  i18nKey: 'hm_7_days'  },
+  { value: '30j', i18nKey: 'hm_30_days' },
+  { value: '90j', i18nKey: 'hm_90_days' },
 ];
 
 const normalizeGeoPoint = (p) => {
@@ -200,16 +201,16 @@ const HeatmapPage = () => {
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Activity size={26} /> Heatmap &amp; Couverture territoriale
+            <Activity size={26} /> {t('hm_title')}
           </h2>
-          <p className="page-subtitle">Visualisation géographique avancée avec 5 types de données</p>
+          <p className="page-subtitle">{t('hm_title')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchHeatmap} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <RefreshCw size={14} /> Actualiser
+            <RefreshCw size={14} /> {t('common_retry')}
           </button>
           <button onClick={exportCSV} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Download size={14} /> Export CSV
+            <Download size={14} /> {t('export_csv')}
           </button>
         </div>
       </div>
@@ -229,7 +230,7 @@ const HeatmapPage = () => {
                 cursor: 'pointer', fontSize: 13, fontWeight: active ? 700 : 400,
                 transition: 'all 0.15s',
               }}>
-              <Icon size={14} /> {ht.label}
+              <Icon size={14} /> {t(ht.i18nKey)}
             </button>
           );
         })}
@@ -243,7 +244,7 @@ const HeatmapPage = () => {
                 color: periode === p.value ? '#22c55e' : 'var(--text-secondary)',
                 cursor: 'pointer', fontSize: 12,
               }}>
-              {p.label}
+              {t(p.i18nKey)}
             </button>
           ))}
         </div>
@@ -251,10 +252,10 @@ const HeatmapPage = () => {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
-        <KPI icon={currentTypeCfg?.icon || Package} label="Points de données" value={totalPoints} color={currentTypeCfg?.color || '#3b82f6'} />
-        <KPI icon={Store} label="Boutiques" value={boutiquesFiltrees.length} sub={`${new Set(boutiquesFiltrees.map(b => b.ville)).size} villes`} color="#10b981" />
-        <KPI icon={Target} label="Valeur moyenne" value={moyenneWeight} color="#f59e0b" />
-        <KPI icon={TrendingUp} label="Zones chaudes" value={hotCells} sub="intensite > 50%" color="#ef4444" />
+        <KPI icon={currentTypeCfg?.icon || Package} label={t('hm_data_points')} value={totalPoints} color={currentTypeCfg?.color || '#3b82f6'} />
+        <KPI icon={Store} label={t('hm_stores')} value={boutiquesFiltrees.length} sub={`${new Set(boutiquesFiltrees.map(b => b.ville)).size} ${t('hm_cities_count')}`} color="#10b981" />
+        <KPI icon={Target} label={t('hm_avg_value')} value={moyenneWeight} color="#f59e0b" />
+        <KPI icon={TrendingUp} label={t('hm_hot_zones')} value={hotCells} sub={t('hm_intensity_50')} color="#ef4444" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.25rem' }}>
@@ -264,19 +265,19 @@ const HeatmapPage = () => {
           <div style={{ padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
               style={{ width: 170, padding: '5px 10px', fontSize: 12 }}>
-              <option value="">Tous les statuts</option>
+              <option value="">{t('adm_all_status')}</option>
               {Object.keys(STATUT_COLORS).map(k => <option key={k} value={k}>{k}</option>)}
             </select>
             <select className="glass-input" value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
               style={{ width: 160, padding: '5px 10px', fontSize: 12 }}>
-              <option value="">Toutes villes</option>
+              <option value="">{t('cl_all_cities')}</option>
               {Object.keys(VILLES_COORDS).map(v => <option key={v} value={v}>{v}</option>)}
             </select>
             <div style={{ display: 'flex', gap: 5, marginLeft: 'auto' }}>
               {[
-                { state: showHeatmap, set: setShowHeatmap, label: 'Heatmap', color: 'rgba(239,68,68,0.2)', activeColor: '#fca5a5' },
-                { state: showBoutiques, set: setShowBoutiques, label: 'Boutiques', color: 'rgba(16,185,129,0.2)', activeColor: '#86efac' },
-                { state: showRayons, set: setShowRayons, label: 'Rayons', color: 'rgba(59,130,246,0.2)', activeColor: '#93c5fd' },
+                { state: showHeatmap, set: setShowHeatmap, label: t('hm_layer_heatmap'), color: 'rgba(239,68,68,0.2)', activeColor: '#fca5a5' },
+                { state: showBoutiques, set: setShowBoutiques, label: t('hm_layer_stores'), color: 'rgba(16,185,129,0.2)', activeColor: '#86efac' },
+                { state: showRayons, set: setShowRayons, label: t('hm_layer_radius'), color: 'rgba(59,130,246,0.2)', activeColor: '#93c5fd' },
               ].map(btn => (
                 <button key={btn.label} onClick={() => btn.set(s => !s)}
                   style={{ padding: '5px 9px', fontSize: 10, borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -288,7 +289,7 @@ const HeatmapPage = () => {
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-secondary)' }}>
-              Grille :
+              {t('hm_grid')} :
               <input type="range" min="0.005" max="0.05" step="0.005" value={gridSize}
                 onChange={e => setGridSize(parseFloat(e.target.value))} style={{ width: 70 }} />
             </div>
@@ -353,14 +354,14 @@ const HeatmapPage = () => {
           {/* Legende */}
           <div className="glass-card animate-fade-in">
             <h4 style={{ margin: '0 0 10px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Layers size={14} /> Légende — {currentTypeCfg?.label}
+              <Layers size={14} /> {t('hm_legend')} — {currentTypeCfg ? t(currentTypeCfg.i18nKey) : ''}
             </h4>
             <div style={{ fontSize: 11.5, display: 'flex', flexDirection: 'column', gap: 7 }}>
               {[
-                { color: '#3b82f6', label: 'Zone froide (faible activité)' },
-                { color: '#10b981', label: 'Zone modérée' },
-                { color: '#f59e0b', label: 'Zone active' },
-                { color: '#ef4444', label: 'Zone très chaude' },
+                { color: '#3b82f6', label: t('hm_zone_cold') },
+                { color: '#10b981', label: t('hm_zone_moderate') },
+                { color: '#f59e0b', label: t('hm_zone_active') },
+                { color: '#ef4444', label: t('hm_zone_hot') },
               ].map(l => (
                 <div key={l.color} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 14, height: 14, background: l.color, borderRadius: '50%', flexShrink: 0 }} />
@@ -373,12 +374,12 @@ const HeatmapPage = () => {
           {/* Couverture territoriale */}
           <div className="glass-card animate-fade-in" style={{ flex: 1, overflowY: 'auto', maxHeight: 460 }}>
             <h4 style={{ margin: '0 0 12px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Target size={14} /> Couverture territoriale
+              <Target size={14} /> {t('hm_coverage')}
             </h4>
             {couverture.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)', fontSize: 12 }}>
                 <AlertCircle size={20} style={{ opacity: 0.4 }} />
-                <div style={{ marginTop: 8 }}>Aucune donnée de couverture</div>
+                <div style={{ marginTop: 8 }}>{t('dash_no_data')}</div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -10,6 +10,8 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { useI18n } from '../../contexts/I18nContext';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi, chauffeurApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { SignalerIncidentPanel } from './SignalerIncident';
@@ -54,6 +56,7 @@ const MiniStat = ({ icon: Icon, label, value, color, sub }) => (
 
 // ─── Mission Card ─────────────────────────────────────────────────────────────
 const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
+  const { t } = useI18n();
   const s = STATUT_STYLE[commande.statut] || STATUT_STYLE.EN_ATTENTE;
   return (
     <div className="glass-card animate-fade-in" style={{ borderLeft: `4px solid ${s.color}`, position: 'relative' }}>
@@ -90,11 +93,11 @@ const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444', fontSize: 12 }}
               onClick={() => onRefuse(commande.id)}>
-              Refuser
+              {t('drv_refuse')}
             </button>
             <button className="btn btn-sm btn-primary" style={{ fontSize: 12 }}
               onClick={() => onAccept(commande.id)}>
-              <CheckCircle size={13} /> Accepter
+              <CheckCircle size={13} /> {t('drv_accept')}
             </button>
           </div>
         )}
@@ -398,6 +401,7 @@ const TabNav = ({ tabs, active, onChange }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ChauffeurDashboard = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [tab, setTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
@@ -653,14 +657,14 @@ const ChauffeurDashboard = () => {
   const noteColor = !profile?.note_moyenne ? '#64748b' : profile.note_moyenne >= 4.5 ? '#10b981' : profile.note_moyenne >= 3.5 ? '#f59e0b' : '#ef4444';
 
   const TABS = [
-    { id: 'dashboard',  label: 'Accueil',    icon: Zap },
-    { id: 'missions',   label: 'Missions',   icon: Package, badge: proposees.length },
-    { id: 'map',        label: 'Carte',      icon: Map },
-    { id: 'objectifs',  label: 'Objectifs',  icon: Target },
-    { id: 'historique', label: 'Historique', icon: History },
-    { id: 'conduite',   label: 'Conduite',   icon: Crosshair },
-    { id: 'support',    label: 'Support',    icon: MessageSquare },
-    { id: 'profil',     label: 'Profil',     icon: User },
+    { id: 'dashboard',  label: t('drv_dashboard'),       icon: Zap },
+    { id: 'missions',   label: t('drv_my_deliveries'),   icon: Package, badge: proposees.length },
+    { id: 'map',        label: t('map_tracking'),        icon: Map },
+    { id: 'objectifs',  label: t('drv_gamification'),    icon: Target },
+    { id: 'historique', label: t('drv_history'),         icon: History },
+    { id: 'conduite',   label: t('drv_navigate'),        icon: Crosshair },
+    { id: 'support',    label: t('chat_send'),           icon: MessageSquare },
+    { id: 'profil',     label: t('drv_profile'),         icon: User },
   ];
 
   return (
@@ -703,13 +707,15 @@ const ChauffeurDashboard = () => {
               color: profile?.is_available ? '#10b981' : '#ef4444',
             }}>
             {profile?.is_available ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-            {profile?.is_available ? 'Disponible' : 'Indisponible'}
+            {profile?.is_available ? t('drv_status_available') : t('drv_status_offline')}
           </button>
+          {/* Sélecteur de langue */}
+          <LanguageSwitcher variant="dark" />
           {/* SOS Button */}
           <button
             onClick={handleSOS}
             disabled={sosLoading}
-            title="Envoyer une alerte SOS aux admins"
+            title="SOS"
             style={{
               background: 'rgba(239,68,68,0.9)', border: 'none', color: '#fff',
               borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
@@ -732,7 +738,7 @@ const ChauffeurDashboard = () => {
             )}
           </div>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Bonjour, <strong style={{ color: 'var(--text-primary)' }}>{user?.first_name}</strong>
+            {t('welcome')}, <strong style={{ color: 'var(--text-primary)' }}>{user?.first_name}</strong>
           </span>
           <button className="btn btn-icon" onClick={handleLogout}
             style={{ background: 'transparent', color: '#ef4444', padding: '6px' }}>
@@ -759,7 +765,7 @@ const ChauffeurDashboard = () => {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 20 }}>Bonjour {user?.first_name} ! 👋</div>
+                <div style={{ fontWeight: 800, fontSize: 20 }}>{t('welcome')} {user?.first_name} ! 👋</div>
                 <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4 }}>
                   {profile?.is_available ? '✅ Vous êtes disponible pour des livraisons' : '⏸ Vous êtes actuellement indisponible'}
                 </div>
@@ -841,7 +847,7 @@ const ChauffeurDashboard = () => {
                 {missions.filter(m => m.statut === 'EN_ROUTE').length === 0 ? (
                   <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13, padding: '16px 0' }}>
                     <Truck size={24} style={{ opacity: 0.3, marginBottom: 8 }} />
-                    <div>Aucune mission active</div>
+                    <div>{t('drv_no_active_delivery')}</div>
                   </div>
                 ) : missions.filter(m => m.statut === 'EN_ROUTE').slice(0, 1).map(m => (
                   <div key={m.id}>
@@ -910,7 +916,7 @@ const ChauffeurDashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Package size={18} /> Mes missions
+                <Package size={18} /> {t('drv_my_deliveries')}
                 {missions.length > 0 && <span style={{ background: '#10b98120', color: '#10b981', fontSize: 11, padding: '2px 10px', borderRadius: 20, fontWeight: 700 }}>{missions.length} active{missions.length > 1 ? 's' : ''}</span>}
               </h3>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -991,7 +997,7 @@ const ChauffeurDashboard = () => {
             {proposees.length === 0 && missions.length === 0 && (
               <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                 <Package size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <div style={{ fontWeight: 600 }}>Aucune mission pour le moment</div>
+                <div style={{ fontWeight: 600 }}>{t('drv_no_active_delivery')}</div>
                 <div style={{ fontSize: 13, marginTop: 6 }}>Passez en disponible pour recevoir des missions</div>
                 {!profile?.is_available && (
                   <button className="btn btn-primary btn-sm" onClick={handleToggleDispo} style={{ marginTop: 16 }}>
@@ -1262,7 +1268,7 @@ const ChauffeurDashboard = () => {
             ) : (
               <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                 <Crosshair size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <div style={{ fontWeight: 600 }}>Aucune mission en route</div>
+                <div style={{ fontWeight: 600 }}>{t('drv_no_active_delivery')}</div>
                 <div style={{ fontSize: 13, marginTop: 6 }}>Le mode conduite s'active lors d'une livraison EN_ROUTE</div>
               </div>
             )}

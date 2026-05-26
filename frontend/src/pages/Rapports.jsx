@@ -216,21 +216,21 @@ const Rapports = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            📊 Rapports & Analytics
+            📊 {t('reports')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-            Vue globale de la performance de la plateforme
+            {t('reports_subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
           <button onClick={() => setShowExportMenu(v => !v)} style={{
             padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)',
             background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
-          }}>⬇️ Exporter</button>
+          }}>⬇️ {t('export')}</button>
           <button onClick={handlePrint} style={{
             padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)',
             background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
-          }}>🖨️ Imprimer</button>
+          }}>🖨️ {t('print')}</button>
           {showExportMenu && (
             <div style={{
               position: 'absolute', top: '110%', right: 0, background: 'var(--bg-elevated,rgba(20,26,42,0.98))',
@@ -258,10 +258,10 @@ const Rapports = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 16, marginBottom: 28 }}>
         {[
-          { label: 'Total Commandes', value: kpis.total_commandes ?? 0, icon: '📦' },
-          { label: 'CA Total (MAD)', value: `${(kpis.ca_total ?? 0).toLocaleString()}`, icon: '💰' },
-          { label: 'Taux Livraison', value: `${kpis.taux_livraison ?? 0}%`, icon: '✅' },
-          { label: 'Boutiques actives', value: kpis.boutiques_actives ?? 0, icon: '🏪' },
+          { label: t('rp_total_orders'),  value: kpis.total_commandes ?? 0, icon: '📦' },
+          { label: t('rp_total_revenue'), value: `${(kpis.ca_total ?? 0).toLocaleString()}`, icon: '💰' },
+          { label: t('rp_delivery_rate'), value: `${kpis.taux_livraison ?? 0}%`, icon: '✅' },
+          { label: t('rp_active_stores'), value: kpis.boutiques_actives ?? 0, icon: '🏪' },
         ].map(k => (
           <div key={k.label} style={{
             background: 'var(--bg-card,rgba(255,255,255,0.04))', borderRadius: 14,
@@ -275,7 +275,7 @@ const Rapports = () => {
       </div>
 
       <div style={{ color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center', padding: 40 }}>
-        Données chargées. Consultez les autres sections pour plus de détails.
+        {t('rp_data_loaded')}
       </div>
     </div>
   );

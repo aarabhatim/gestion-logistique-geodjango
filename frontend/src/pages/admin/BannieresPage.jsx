@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { bannieresApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 
 const TYPE_STYLES = {
   info:    { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.4)',  color: '#93c5fd', icon: 'ℹ️' },
@@ -11,7 +12,7 @@ const TYPE_STYLES = {
 const ROLES = ['all', 'ADMIN', 'FONDATEUR', 'TRANSPORTEUR', 'CLIENT'];
 const TYPES = ['info', 'warning', 'danger', 'success'];
 
-const BannierePreview = ({ b }) => {
+const BannierePreview = ({ b, t }) => {
   const s = TYPE_STYLES[b.type] || TYPE_STYLES.info;
   return (
     <div style={{
@@ -20,7 +21,7 @@ const BannierePreview = ({ b }) => {
       display: 'flex', alignItems: 'center', gap: 10, marginTop: 12
     }}>
       <span style={{ fontSize: 18 }}>{s.icon}</span>
-      <div style={{ flex: 1, color: s.color, fontSize: 14 }}>{b.message || 'Aperçu du message…'}</div>
+      <div style={{ flex: 1, color: s.color, fontSize: 14 }}>{b.message || t('bn_preview_placeholder')}</div>
       {b.dismissible && (
         <button style={{
           background: 'none', border: 'none', color: s.color,
@@ -37,6 +38,7 @@ const EMPTY = {
 };
 
 export default function BannieresPage() {
+  const { t } = useI18n();
   const [list, setList]           = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -80,12 +82,12 @@ export default function BannieresPage() {
       : bannieresApi.create(payload);
     call
       .then(() => { setShowModal(false); load(); })
-      .catch(e => setError(e.response?.data?.message || JSON.stringify(e.response?.data) || 'Erreur'))
+      .catch(e => setError(e.response?.data?.message || JSON.stringify(e.response?.data) || t('toast_error')))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm('Supprimer cette bannière ?')) return;
+    if (!window.confirm(t('bn_confirm_delete'))) return;
     bannieresApi.delete(id).then(load).catch(() => {});
   };
 
@@ -104,10 +106,10 @@ export default function BannieresPage() {
         }}>📢</div>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>
-            Gestionnaire de bannières
+            {t('bn_title')}
           </h1>
           <div style={{ color: '#64748b', fontSize: 13 }}>
-            Messages d'alerte et maintenance affichés aux utilisateurs
+            {t('sb_bannieres')}
           </div>
         </div>
         <button
@@ -119,20 +121,20 @@ export default function BannieresPage() {
             padding: '9px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14
           }}
         >
-          + Nouvelle bannière
+          {t('bn_btn_new')}
         </button>
       </div>
 
       {/* List */}
       {loading ? (
-        <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>Chargement…</div>
+        <div style={{ color: '#64748b', textAlign: 'center', padding: 40 }}>{t('common_loading')}</div>
       ) : list.length === 0 ? (
         <div style={{
           background: 'rgba(13,32,21,0.88)', border: '1px solid rgba(34,197,94,0.12)',
           borderRadius: 14, padding: 40, textAlign: 'center', color: '#64748b'
         }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>📢</div>
-          Aucune bannière configurée
+          {t('bn_empty')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -165,11 +167,11 @@ export default function BannieresPage() {
                         <span style={{
                           background: 'rgba(71,85,105,0.3)', color: '#94a3b8',
                           borderRadius: 6, padding: '2px 8px', fontSize: 11
-                        }}>Dismissible</span>
+                        }}>{t('bn_dismissible_text')}</span>
                       )}
                       {b.date_debut && (
                         <span style={{ color: '#64748b', fontSize: 11 }}>
-                          Du {b.date_debut?.slice(0,10)} au {b.date_fin?.slice(0,10) || '∞'}
+                          {b.date_debut?.slice(0,10)} → {b.date_fin?.slice(0,10) || '∞'}
                         </span>
                       )}
                     </div>
@@ -185,7 +187,7 @@ export default function BannieresPage() {
                         cursor: 'pointer', fontSize: 12, fontWeight: 600
                       }}
                     >
-                      {b.active ? 'Active' : 'Inactive'}
+                      {b.active ? t('bn_status_active') : t('bn_status_inactive')}
                     </button>
                     <button
                       onClick={() => openEdit(b)}
@@ -220,7 +222,7 @@ export default function BannieresPage() {
             borderRadius: 18, padding: '28px 32px', width: '100%', maxWidth: 560
           }}>
             <h2 style={{ margin: '0 0 20px', color: '#f1f5f9', fontSize: 17 }}>
-              {editId ? 'Modifier la bannière' : 'Nouvelle bannière'}
+              {editId ? t('bn_modal_edit') : t('bn_new')}
             </h2>
 
             {error && (
@@ -231,7 +233,7 @@ export default function BannieresPage() {
             )}
 
             <label style={{ display: 'block', marginBottom: 14 }}>
-              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Message *</div>
+              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('bn_field_message')}</div>
               <textarea
                 value={form.message}
                 onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
@@ -242,13 +244,13 @@ export default function BannieresPage() {
                   borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box'
                 }}
-                placeholder="Message affiché aux utilisateurs…"
+                placeholder={t('bn_msg_placeholder')}
               />
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               <label>
-                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Type</div>
+                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('adm_type')}</div>
                 <select
                   value={form.type}
                   onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
@@ -258,11 +260,11 @@ export default function BannieresPage() {
                     borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
                   }}
                 >
-                  {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
                 </select>
               </label>
               <label>
-                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Rôle cible</div>
+                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('bn_field_role')}</div>
                 <select
                   value={form.role_cible}
                   onChange={e => setForm(f => ({ ...f, role_cible: e.target.value }))}
@@ -272,14 +274,14 @@ export default function BannieresPage() {
                     borderRadius: 8, color: '#f1f5f9', fontSize: 14, outline: 'none'
                   }}
                 >
-                  {ROLES.map(r => <option key={r} value={r}>{r === 'all' ? 'Tous' : r}</option>)}
+                  {ROLES.map(r => <option key={r} value={r}>{r === 'all' ? t('adm_all') : r}</option>)}
                 </select>
               </label>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               <label>
-                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Date début</div>
+                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('pr_field_date_start')}</div>
                 <input
                   type="datetime-local"
                   value={form.date_debut}
@@ -293,7 +295,7 @@ export default function BannieresPage() {
                 />
               </label>
               <label>
-                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Date fin</div>
+                <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('pr_field_date_end')}</div>
                 <input
                   type="datetime-local"
                   value={form.date_fin}
@@ -314,19 +316,19 @@ export default function BannieresPage() {
                   type="checkbox" checked={form.dismissible}
                   onChange={e => setForm(f => ({ ...f, dismissible: e.target.checked }))}
                 />
-                <span style={{ color: '#94a3b8', fontSize: 13 }}>Dismissible (peut être fermée)</span>
+                <span style={{ color: '#94a3b8', fontSize: 13 }}>{t('bn_dismissible_text')}</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <input
                   type="checkbox" checked={form.active}
                   onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
                 />
-                <span style={{ color: '#94a3b8', fontSize: 13 }}>Active immédiatement</span>
+                <span style={{ color: '#94a3b8', fontSize: 13 }}>{t('bn_active_immediately')}</span>
               </label>
             </div>
 
             {/* Preview */}
-            <BannierePreview b={form} />
+            <BannierePreview b={form} t={t} />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
               <button
@@ -336,7 +338,7 @@ export default function BannieresPage() {
                   color: '#94a3b8', borderRadius: 9, padding: '9px 20px',
                   cursor: 'pointer', fontSize: 14
                 }}
-              >Annuler</button>
+              >{t('adm_cancel')}</button>
               <button
                 onClick={handleSave}
                 disabled={saving || !form.message.trim()}
@@ -347,7 +349,7 @@ export default function BannieresPage() {
                   fontWeight: 600, fontSize: 14, opacity: saving ? 0.7 : 1
                 }}
               >
-                {saving ? 'Enregistrement…' : editId ? 'Modifier' : 'Créer'}
+                {saving ? t('bn_saving') : editId ? t('adm_edit') : t('adm_create')}
               </button>
             </div>
           </div>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { ticketsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
 
 const PRIORITE_CONFIG = {
   urgent: { label: 'Urgent',  class: 'badge-danger',   color: '#ef4444' },
@@ -23,6 +24,7 @@ const STATUT_CONFIG = {
 
 const Tickets = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const isAdmin = user?.role === 'ADMIN';
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,22 +94,22 @@ const Tickets = () => {
           <Filter size={13} style={{ color: 'var(--text-secondary)' }} />
           <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
             style={{ width: 150, padding: '5px 10px', fontSize: 12 }}>
-            <option value="">Tous les statuts</option>
+            <option value="">{t('adm_all_status')}</option>
             {Object.entries(STATUT_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           <select className="glass-input" value={filtrePriorite} onChange={e => setFiltrePriorite(e.target.value)}
             style={{ width: 140, padding: '5px 10px', fontSize: 12 }}>
-            <option value="">Toutes priorités</option>
+            <option value="">{t('adm_priority')}</option>
             {Object.entries(PRIORITE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {(filtreStatut || filtrePriorite) && (
             <button onClick={() => { setFiltreStatut(''); setFiltrePriorite(''); }}
               className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }}>
-              <X size={11} /> Effacer
+              <X size={11} /> {t('adm_filters_clear')}
             </button>
           )}
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>
-            {tickets.length} ticket{tickets.length > 1 ? 's' : ''}
+            {tickets.length} {t('tickets')}
           </span>
         </div>
       )}
@@ -122,52 +124,52 @@ const Tickets = () => {
           ) : tickets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontSize: 13 }}>
               <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <div>Aucun ticket.</div>
+              <div>{t('cl_tickets_empty')}</div>
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Sujet</th>
-                  {isAdmin && <th>Demandeur</th>}
-                  <th>Priorité</th>
-                  <th>Statut</th>
-                  <th>Date</th>
+                  <th>{t('tk_col_subject')}</th>
+                  {isAdmin && <th>{t('tk_col_requester')}</th>}
+                  <th>{t('adm_priority')}</th>
+                  <th>{t('tk_col_status')}</th>
+                  <th>{t('tk_col_date')}</th>
                   <th>SLA</th>
                 </tr>
               </thead>
               <tbody>
-                {tickets.map(t => {
-                  const pCfg = PRIORITE_CONFIG[t.priorite] || {};
-                  const sCfg = STATUT_CONFIG[t.statut] || {};
-                  const slaOk = !t.sla_depasse;
-                  const isActive = selected?.id === t.id;
+                {tickets.map(tk => {
+                  const pCfg = PRIORITE_CONFIG[tk.priorite] || {};
+                  const sCfg = STATUT_CONFIG[tk.statut] || {};
+                  const slaOk = !tk.sla_depasse;
+                  const isActive = selected?.id === tk.id;
                   return (
-                    <tr key={t.id} onClick={() => openTicket(t)}
+                    <tr key={tk.id} onClick={() => openTicket(tk)}
                       style={{ cursor: 'pointer', background: isActive ? 'rgba(99,102,241,0.1)' : '' }}>
-                      <td style={{ fontWeight: 600, fontSize: 12 }}>#{t.id}</td>
+                      <td style={{ fontWeight: 600, fontSize: 12 }}>#{tk.id}</td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{t.sujet}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.categorie}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.sujet}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{tk.categorie}</div>
                       </td>
                       {isAdmin && (
                         <td style={{ fontSize: 12 }}>
-                          {t.demandeur_nom || t.demandeur || '-'}
+                          {tk.demandeur_nom || tk.demandeur || '-'}
                         </td>
                       )}
                       <td>
                         <span className={`badge ${pCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
-                          {pCfg.label || t.priorite}
+                          {pCfg.label || tk.priorite}
                         </span>
                       </td>
                       <td>
                         <span className={`badge ${sCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
-                          {sCfg.label || t.statut}
+                          {sCfg.label || tk.statut}
                         </span>
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        {new Date(t.created_at).toLocaleDateString('fr-FR')}
+                        {new Date(tk.created_at).toLocaleDateString('fr-FR')}
                       </td>
                       <td>
                         <span style={{ fontSize: 10, color: slaOk ? '#10b981' : '#ef4444',

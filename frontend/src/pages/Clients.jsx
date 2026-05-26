@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Mail, Phone, MapPin, Search, UserX, Shield, RefreshCw } from 'lucide-react';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 const roleColor = (role) => {
   const map = { CLIENT: 'badge-info', ADMIN: 'badge-danger', FONDATEUR: 'badge-warning', TRANSPORTEUR: 'badge-success' };
@@ -8,6 +9,7 @@ const roleColor = (role) => {
 };
 
 const Clients = () => {
+  const { t, lang } = useI18n();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,11 +52,11 @@ const Clients = () => {
     <div className="dashboard-container">
       <div className="dashboard-header animate-fade-in">
         <div>
-          <h2 className="page-title text-gradient">Gestion des Clients</h2>
-          <p className="page-subtitle">{count} utilisateurs enregistrés sur DeliverMap</p>
+          <h2 className="page-title text-gradient">{t('clients')}</h2>
+          <p className="page-subtitle">{count} {t('clients')}</p>
         </div>
         <button className="btn btn-secondary" onClick={() => fetchClients()}>
-          <RefreshCw size={16} /> Actualiser
+          <RefreshCw size={16} /> {t('common_retry')}
         </button>
       </div>
 
@@ -64,13 +66,13 @@ const Clients = () => {
         <input
           type="text"
           className="glass-input"
-          placeholder="Rechercher par nom, email, téléphone..."
+          placeholder={t('cli_search_placeholder')}
           value={search}
           onChange={handleSearch}
           style={{ flex: 1, maxWidth: '400px' }}
         />
         <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '13px' }}>
-          {count} résultat{count !== 1 ? 's' : ''}
+          {count} {t('cli_results')}
         </span>
       </div>
 
@@ -79,19 +81,19 @@ const Clients = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Client</th>
-              <th>Contact</th>
-              <th>Rôle</th>
-              <th>Localisation</th>
-              <th>Statut</th>
-              <th>Inscrit le</th>
+              <th>{t('cli_columns_client')}</th>
+              <th>{t('cli_columns_contact')}</th>
+              <th>{t('cli_columns_role')}</th>
+              <th>{t('cli_columns_location')}</th>
+              <th>{t('cli_columns_status')}</th>
+              <th>{t('cli_columns_registered')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Chargement...</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>{t('common_loading')}</td></tr>
             ) : clients.length === 0 ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Aucun client trouvé.</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>{t('common_no_results')}</td></tr>
             ) : clients.map((u) => (
               <tr key={u.id}>
                 <td>
@@ -138,16 +140,16 @@ const Clients = () => {
                 <td>
                   {u.is_banned ? (
                     <span className="badge badge-danger" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
-                      <UserX size={12} /> Banni
+                      <UserX size={12} /> {t('cli_status_inactive')}
                     </span>
                   ) : (
                     <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
-                      <Shield size={12} /> Actif
+                      <Shield size={12} /> {t('cli_status_active')}
                     </span>
                   )}
                 </td>
                 <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {u.date_joined ? new Date(u.date_joined).toLocaleDateString('fr-FR') : '—'}
+                  {u.date_joined ? new Date(u.date_joined).toLocaleDateString(lang === 'ar' ? 'ar-MA' : lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'fr-FR') : '—'}
                 </td>
               </tr>
             ))}
