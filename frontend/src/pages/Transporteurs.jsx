@@ -7,6 +7,7 @@ import {
   BarChart2, Download,
 } from 'lucide-react';
 import { transporteursApi, scoringApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
 const exportTransporteursCSV = (rows) => {
@@ -197,6 +198,7 @@ const ScoreTab = ({ transporteurId }) => {
 
 // ─── Transporteur Card ────────────────────────────────────────────────────────
 const TransporteurCard = ({ t, onSelect }) => {
+  const { t: tr } = useI18n();
   const vColor = VEHICULE_COLORS[t.vehicule_type] || '#64748b';
   const vIcon  = VEHICULE_ICONS[t.vehicule_type]  || '🚗';
   return (
@@ -221,7 +223,7 @@ const TransporteurCard = ({ t, onSelect }) => {
           background: t.is_on_delivery ? '#f59e0b20' : t.is_available ? '#10b98120' : '#47556920',
           color:      t.is_on_delivery ? '#f59e0b'   : t.is_available ? '#10b981'   : '#94a3b8',
         }}>
-          {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Dispo' : '⭕ Hors ligne'}
+          {t.is_on_delivery ? `🚚 ${tr('drv_in_progress')}` : t.is_available ? `✅ ${tr('drv_card_available')}` : `⭕ ${tr('tr_offline')}`}
         </span>
       </div>
 
@@ -237,18 +239,18 @@ const TransporteurCard = ({ t, onSelect }) => {
           </span>
         )}
         {t.is_verified
-          ? <span style={{ fontSize: 10, color: '#10b981', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><CheckCircle size={11} /> Vérifié</span>
-          : <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={11} /> En attente</span>
+          ? <span style={{ fontSize: 10, color: '#10b981', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><CheckCircle size={11} /> {tr('drv_card_verified')}</span>
+          : <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={11} /> {tr('drv_card_pending')}</span>
         }
       </div>
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
         {[
-          { label: 'Livraisons', value: t.nombre_livraisons || 0,                              icon: Truck,      color: '#3b82f6' },
-          { label: 'Note',       value: t.note_moyenne?.toFixed(1) || '–',                     icon: Star,       color: '#f59e0b' },
-          { label: 'Avis',       value: t.nombre_avis || 0,                                    icon: Award,      color: '#22c55e' },
-          { label: 'Revenus',    value: `${Math.round((t.revenus_total || 0) / 1000)}k`,       icon: DollarSign, color: '#10b981' },
+          { label: tr('drv_card_deliveries'), value: t.nombre_livraisons || 0,                              icon: Truck,      color: '#3b82f6' },
+          { label: tr('drv_card_rating'),     value: t.note_moyenne?.toFixed(1) || '–',                     icon: Star,       color: '#f59e0b' },
+          { label: tr('drv_card_reviews'),    value: t.nombre_avis || 0,                                    icon: Award,      color: '#22c55e' },
+          { label: tr('drv_card_revenue'),    value: `${Math.round((t.revenus_total || 0) / 1000)}k`,       icon: DollarSign, color: '#10b981' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} style={{ flex: 1, textAlign: 'center' }}>
             <Icon size={12} color={color} style={{ display: 'block', margin: '0 auto 2px' }} />
@@ -405,6 +407,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Transporteurs = () => {
+  const { t } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -477,8 +480,8 @@ const Transporteurs = () => {
 
       <div className="dashboard-header animate-fade-in">
         <div>
-          <h2 className="page-title text-gradient">Flotte de Transporteurs</h2>
-          <p className="page-subtitle">{count} chauffeurs · {stats.pending} en attente de vérification</p>
+          <h2 className="page-title text-gradient">{t('tr_title')}</h2>
+          <p className="page-subtitle">{count} {t('transporteurs')} · {stats.pending} {t('tr_pending')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={() => exportTransporteursCSV(transporteurs)}
@@ -487,7 +490,7 @@ const Transporteurs = () => {
             <Download size={15} /> CSV
           </button>
           <button className="btn btn-secondary" onClick={fetchData}>
-            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualiser
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> {t('common_retry')}
           </button>
         </div>
       </div>
@@ -495,12 +498,12 @@ const Transporteurs = () => {
       {/* Stats KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: '1.25rem' }}>
         {[
-          { label: 'Total', value: stats.total, color: '#3b82f6', icon: Truck },
-          { label: 'Vérifiés', value: stats.verified, color: '#10b981', icon: Shield },
-          { label: 'En attente', value: stats.pending, color: '#f59e0b', icon: AlertTriangle },
-          { label: 'Disponibles', value: stats.available, color: '#22c55e', icon: CheckCircle },
-          { label: 'En livraison', value: stats.delivering, color: '#06b6d4', icon: Truck },
-          { label: 'Hors ligne', value: stats.offline, color: '#64748b', icon: XCircle },
+          { label: t('adm_total'),       value: stats.total,      color: '#3b82f6', icon: Truck },
+          { label: t('tr_verified'),     value: stats.verified,   color: '#10b981', icon: Shield },
+          { label: t('tr_pending'),      value: stats.pending,    color: '#f59e0b', icon: AlertTriangle },
+          { label: t('tr_available'),    value: stats.available,  color: '#22c55e', icon: CheckCircle },
+          { label: t('drv_in_progress'), value: stats.delivering, color: '#06b6d4', icon: Truck },
+          { label: t('tr_offline'),      value: stats.offline,    color: '#64748b', icon: XCircle },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="glass-card" style={{ padding: '0.75rem 1rem', borderLeft: `3px solid ${color}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -538,33 +541,33 @@ const Transporteurs = () => {
       <div className="glass-card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           className="glass-input"
-          placeholder="Rechercher un chauffeur..."
+          placeholder={t('tr_search_placeholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ flex: 1, minWidth: 180, padding: '6px 10px', fontSize: 13 }}
         />
         <select className="glass-input" value={filterType} onChange={e => setFilterType(e.target.value)}
           style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
-          <option value="">Tous types</option>
-          {['moto', 'voiture', 'van', 'camion'].map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          <option value="">{t('tr_all_types')}</option>
+          {['moto', 'voiture', 'van', 'camion'].map(vt => (
+            <option key={vt} value={vt}>{vt.charAt(0).toUpperCase() + vt.slice(1)}</option>
           ))}
         </select>
         <select className="glass-input" value={filterVerified} onChange={e => setFilterVerified(e.target.value)}
           style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
-          <option value="">Verification</option>
-          <option value="true">Verifies</option>
-          <option value="false">En attente</option>
+          <option value="">{t('tr_verification')}</option>
+          <option value="true">{t('tr_verified')}</option>
+          <option value="false">{t('tr_pending')}</option>
         </select>
         <select className="glass-input" value={filterDispo} onChange={e => setFilterDispo(e.target.value)}
           style={{ width: 140, padding: '6px 10px', fontSize: 13 }}>
-          <option value="">Disponibilite</option>
-          <option value="true">Disponibles</option>
-          <option value="false">Hors ligne</option>
+          <option value="">{t('tr_availability')}</option>
+          <option value="true">{t('tr_available')}</option>
+          <option value="false">{t('tr_offline')}</option>
         </select>
         {(search || filterType || filterVerified || filterDispo) && (
           <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setFilterType(''); setFilterVerified(''); setFilterDispo(''); }}>
-            Effacer
+            {t('adm_filters_clear')}
           </button>
         )}
       </div>

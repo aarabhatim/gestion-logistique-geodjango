@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Package, AlertTriangle } from 'lucide-react';
 import { calendrierApi } from '../../services/api';
-
-const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+import { useI18n } from '../../contexts/I18nContext';
 
 const STATUT_COLORS = {
   VALIDEE: '#3b82f6', EN_PREPARATION: '#f59e0b',
@@ -11,13 +9,26 @@ const STATUT_COLORS = {
 };
 
 export default function CalendrierPage() {
+  const { t } = useI18n();
+
+  // Day and month arrays defined inside component so they react to language changes
+  const JOURS = [
+    t('cal_day_mon'), t('cal_day_tue'), t('cal_day_wed'),
+    t('cal_day_thu'), t('cal_day_fri'), t('cal_day_sat'), t('cal_day_sun'),
+  ];
+  const MOIS = [
+    t('cal_month_jan'), t('cal_month_feb'), t('cal_month_mar'),
+    t('cal_month_apr'), t('cal_month_may'), t('cal_month_jun'),
+    t('cal_month_jul'), t('cal_month_aug'), t('cal_month_sep'),
+    t('cal_month_oct'), t('cal_month_nov'), t('cal_month_dec'),
+  ];
+
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-based
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
-  const [view, setView] = useState('month'); // 'month' | 'week'
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -54,9 +65,9 @@ export default function CalendrierPage() {
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Calendar size={22} /> Calendrier des livraisons
+            <Calendar size={22} /> {t('cal_title')}
           </h2>
-          <p className="page-subtitle">{events.length} livraison{events.length !== 1 ? 's' : ''} ce mois</p>
+          <p className="page-subtitle">{events.length} · {t('this_month')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={prevMonth}><ChevronLeft size={16} /></button>
@@ -70,7 +81,11 @@ export default function CalendrierPage() {
       <div style={{ display: 'grid', gridTemplateColumns: selectedDay ? '1fr 300px' : '1fr', gap: '1.25rem' }}>
         {/* Grid calendrier */}
         <div className="glass-card animate-fade-in" style={{ padding: '1rem' }}>
-          {loading && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}><div className="spinner" style={{ margin: 'auto' }} /></div>}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+              <div className="spinner" style={{ margin: 'auto' }} />
+            </div>
+          )}
           {!loading && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
@@ -119,10 +134,12 @@ export default function CalendrierPage() {
         {selectedDay && (
           <div className="glass-card animate-fade-in" style={{ padding: '1rem' }}>
             <div style={{ fontWeight: 700, marginBottom: '0.75rem', fontSize: 14 }}>
-              {selectedDay} {MOIS[month]} {year} — {selectedEvents.length} livraison{selectedEvents.length !== 1 ? 's' : ''}
+              {selectedDay} {MOIS[month]} {year} — {selectedEvents.length} {selectedEvents.length !== 1 ? t('cal_deliveries_plural') : t('cal_deliveries_single')}
             </div>
             {selectedEvents.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: 12 }}>Aucune livraison</div>
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: 12 }}>
+                {t('cal_no_deliveries')}
+              </div>
             ) : (
               selectedEvents.map(e => (
                 <div key={e.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>

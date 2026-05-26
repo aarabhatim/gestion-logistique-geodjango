@@ -3,14 +3,16 @@ import {
   ShoppingCart, Package, Map as MapIcon, User, LogOut, Star, Plus, Minus,
   Trash2, MapPin, Clock, CheckCircle, Truck, Tag, X, Search, ChevronRight,
   Heart, Zap, ArrowLeft, CreditCard, Gift, RefreshCw, Navigation, TicketIcon,
-  AlertCircle, MessageSquare, Send, SlidersHorizontal, Filter,
+  AlertCircle, MessageSquare, Send, SlidersHorizontal, Filter, Globe, Check,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useI18n } from '../../contexts/I18nContext';
 import { fondateursApi, commandesApi, ticketsApi, clientApi, mediaUrl } from '../../services/api';
 import useCartStore from '../../stores/cartStore';
 import useFavoritesStore from '../../stores/favoritesStore';
 import useLoyaltyStore from '../../stores/loyaltyStore';
 import ChatbotWidget from '../../components/ChatbotWidget';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 import SuiviTimeline from '../../components/SuiviTimeline';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
@@ -32,13 +34,15 @@ const iconOrange = _pin('#E30613', '🚚');
 const iconRed    = _pin('#ef4444', '📍');
 
 /* ── Constantes ───────────────────────────────────────────────────────────── */
+// `i18nKey` est résolu via t() lors du rendu pour permettre le changement de
+// langue à chaud. On garde `label` comme fallback français.
 const CATEGORIES = [
-  { key: '', label: 'Tout', icon: '🏪' },
-  { key: 'RESTAURATION', label: 'Restauration', icon: '🍽️' },
-  { key: 'SUPERMARCHE', label: 'Supermarché', icon: '🛒' },
-  { key: 'PHARMACIE', label: 'Pharmacie', icon: '💊' },
-  { key: 'ELECTRONIQUE', label: 'Électronique', icon: '📱' },
-  { key: 'BOUTIQUE', label: 'Mode', icon: '👗' },
+  { key: '',             i18nKey: 'cl_cat_all',         label: 'Tout',         icon: '🏪' },
+  { key: 'RESTAURATION', i18nKey: 'cl_cat_restaurant',  label: 'Restauration', icon: '🍽️' },
+  { key: 'SUPERMARCHE',  i18nKey: 'cl_cat_supermarket', label: 'Supermarché',  icon: '🛒' },
+  { key: 'PHARMACIE',    i18nKey: 'cl_cat_pharmacy',    label: 'Pharmacie',    icon: '💊' },
+  { key: 'ELECTRONIQUE', i18nKey: 'cl_cat_electronics', label: 'Électronique', icon: '📱' },
+  { key: 'BOUTIQUE',     i18nKey: 'cl_cat_fashion',     label: 'Mode',         icon: '👗' },
 ];
 
 const PRODUCT_GRADIENTS = {
@@ -73,13 +77,14 @@ const STATUT_CONFIG = {
   ANNULEE:        { label: 'Annulée',         color: '#EF4444', icon: '❌', step: 0 },
 };
 
+// `label` est désormais une clé i18n - le composant la passe à t()
 const TABS = [
-  { id: 'catalogue', label: 'Catalogue',      icon: ShoppingCart },
-  { id: 'commandes', label: 'Mes commandes',   icon: Package },
-  { id: 'suivi',     label: 'Suivi live',      icon: MapIcon },
-  { id: 'favoris',   label: 'Favoris',         icon: Heart },
-  { id: 'tickets',   label: 'Tickets',         icon: TicketIcon },
-  { id: 'profil',    label: 'Mon profil',      icon: User },
+  { id: 'catalogue', label: 'cl_tab_catalogue', icon: ShoppingCart },
+  { id: 'commandes', label: 'cl_tab_orders',    icon: Package },
+  { id: 'suivi',     label: 'cl_tab_tracking',  icon: MapIcon },
+  { id: 'favoris',   label: 'cl_tab_favorites', icon: Heart },
+  { id: 'tickets',   label: 'cl_tab_tickets',   icon: TicketIcon },
+  { id: 'profil',    label: 'cl_tab_profile',   icon: User },
 ];
 
 const QUARTIERS_PAR_VILLE = {
@@ -186,6 +191,7 @@ const ProductImage = ({ produit, height = 140 }) => {
 
 /* ── ChatSidebar ──────────────────────────────────────────────────────────── */
 const ChatSidebar = ({ commande, onClose }) => {
+  const { t } = useI18n();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -229,7 +235,7 @@ const ChatSidebar = ({ commande, onClose }) => {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--mj-text)' }}>
-                {commande.transporteur_detail ? `${commande.transporteur_detail.first_name} ${commande.transporteur_detail.last_name}` : 'Livreur'}
+                {commande.transporteur_detail ? `${commande.transporteur_detail.first_name} ${commande.transporteur_detail.last_name}` : t('chat_driver_label')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--mj-red)', fontWeight: 600 }}>#{commande.reference}</div>
             </div>
@@ -242,13 +248,13 @@ const ChatSidebar = ({ commande, onClose }) => {
           {loading ? (
             <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--mj-text-4)' }}>
               <RefreshCw size={24} className="mj-spin" style={{ margin: '0 auto 8px' }} />
-              <div style={{ fontSize: 12 }}>Chargement...</div>
+              <div style={{ fontSize: 12 }}>{t('common_loading')}</div>
             </div>
           ) : messages.length === 0 ? (
             <div className="mj-empty" style={{ margin: 'auto' }}>
               <div className="mj-empty-icon">💬</div>
-              <div className="mj-empty-title">Aucun message</div>
-              <div className="mj-empty-desc">Démarrez la conversation avec votre livreur</div>
+              <div className="mj-empty-title">{t('chat_no_message_yet')}</div>
+              <div className="mj-empty-desc">{t('chat_start_with_driver')}</div>
             </div>
           ) : messages.map((msg, i) => {
             const isMe = msg.auteur_role === 'CLIENT';
@@ -269,7 +275,7 @@ const ChatSidebar = ({ commande, onClose }) => {
         {/* Input */}
         <div className="mj-sidebar-footer">
           <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
-            <input value={input} onChange={e => setInput(e.target.value)} placeholder="Votre message..." className="mj-input" style={{ fontSize: 13 }} />
+            <input value={input} onChange={e => setInput(e.target.value)} placeholder={t('chat_placeholder')} className="mj-input" style={{ fontSize: 13 }} />
             <button type="submit" disabled={!input.trim()} className="mj-btn mj-btn-primary mj-btn-sm" style={{ padding: '10px 14px' }}>
               <Send size={14} />
             </button>
@@ -282,6 +288,7 @@ const ChatSidebar = ({ commande, onClose }) => {
 
 /* ── CartSidebar ──────────────────────────────────────────────────────────── */
 const CartSidebar = ({ onClose, onOrder }) => {
+  const { t } = useI18n();
   const { items, fondateur, updateQuantite, removeItem, clearCart } = useCartStore();
   const [codePromo, setCodePromo] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
@@ -297,16 +304,16 @@ const CartSidebar = ({ onClose, onOrder }) => {
       const res = await fondateursApi.verifierCode({ code: codePromo, fondateur_id: fondateur?.id, montant: sousTotal });
       const data = res.data;
       if (data.valide) { setDiscount(data.reduction); setPromoApplied(true); setPromoError(''); }
-      else setPromoError(data.message || 'Code invalide');
-    } catch { setPromoError('Code invalide ou expiré'); }
+      else setPromoError(data.message || t('cl_cart_promo_invalid'));
+    } catch { setPromoError(t('cl_cart_promo_invalid')); }
   };
 
   if (items.length === 0) return (
     <div className="mj-overlay">
       <div className="mj-sidebar mj-fade-in" style={{ width: 400, height: '100vh', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
         <ShoppingCart size={48} style={{ color: 'var(--mj-text-4)' }} />
-        <p style={{ color: 'var(--mj-text-3)', fontWeight: 600 }}>Votre panier est vide</p>
-        <button className="mj-btn mj-btn-secondary" onClick={onClose}>Continuer les achats</button>
+        <p style={{ color: 'var(--mj-text-3)', fontWeight: 600 }}>{t('cl_cart_empty')}</p>
+        <button className="mj-btn mj-btn-secondary" onClick={onClose}>{t('cl_cart_continue')}</button>
       </div>
     </div>
   );
@@ -316,7 +323,7 @@ const CartSidebar = ({ onClose, onOrder }) => {
       <div className="mj-sidebar mj-fade-in" style={{ width: 400, height: '100vh' }}>
         <div className="mj-sidebar-header">
           <div>
-            <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--mj-text)' }}>Mon panier</h3>
+            <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--mj-text)' }}>{t('cl_my_cart')}</h3>
             <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2 }}>
               {fondateur?.nom_boutique} · {items.length} article{items.length > 1 ? 's' : ''}
             </div>
@@ -364,12 +371,12 @@ const CartSidebar = ({ onClose, onOrder }) => {
         <div style={{ padding: '0 16px 12px', background: 'var(--mj-bg)' }}>
           {!promoApplied ? (
             <div style={{ display: 'flex', gap: 8 }}>
-              <input className="mj-input" placeholder="Code promo..." value={codePromo} onChange={e => setCodePromo(e.target.value)} style={{ fontSize: 13 }} />
+              <input className="mj-input" placeholder={t('cl_cart_promo')} value={codePromo} onChange={e => setCodePromo(e.target.value)} style={{ fontSize: 13 }} />
               <button className="mj-btn mj-btn-outline-red" onClick={handlePromo} style={{ flexShrink: 0 }}><Gift size={15} /></button>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mj-green)', fontSize: 13, padding: '10px 14px', background: 'var(--mj-green-light)', borderRadius: 10 }}>
-              <CheckCircle size={14} /> Code appliqué ! -{discount} MAD
+              <CheckCircle size={14} /> {t('cl_cart_promo_applied')} -{discount} MAD
             </div>
           )}
           {promoError && <div style={{ color: 'var(--mj-danger)', fontSize: 11, marginTop: 4 }}>{promoError}</div>}
@@ -378,25 +385,25 @@ const CartSidebar = ({ onClose, onOrder }) => {
         <div className="mj-sidebar-footer">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)' }}>
-              <span>Sous-total</span><span>{sousTotal.toFixed(2)} MAD</span>
+              <span>{t('cl_cart_subtotal')}</span><span>{sousTotal.toFixed(2)} MAD</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)' }}>
-              <span>Frais de livraison</span><span>{frais.toFixed(2)} MAD</span>
+              <span>{t('cl_cart_delivery')}</span><span>{frais.toFixed(2)} MAD</span>
             </div>
             {discount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-green)' }}>
-                <span>Réduction</span><span>-{discount.toFixed(2)} MAD</span>
+                <span>{t('cl_cart_discount')}</span><span>-{discount.toFixed(2)} MAD</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, paddingTop: 8, borderTop: '1px solid var(--mj-border)' }}>
-              <span>Total</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
+              <span>{t('cl_cart_total')}</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
             </div>
           </div>
           <button className="mj-btn mj-btn-primary mj-btn-full" onClick={onOrder}>
-            <CreditCard size={16} /> Commander — {total.toFixed(2)} MAD
+            <CreditCard size={16} /> {t('cl_cart_checkout')} — {total.toFixed(2)} MAD
           </button>
           <button onClick={clearCart} style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mj-danger)', fontSize: 12, fontFamily: 'var(--mj-font)' }}>
-            Vider le panier
+            {t('common_close')}
           </button>
         </div>
       </div>
@@ -690,24 +697,28 @@ const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
 };
 
 /* ── CategorySidebar ──────────────────────────────────────────────────────── */
-const CategorySidebar = ({ categorie, setCategorie }) => (
-  <aside className="mj-cat-sidebar">
-    <div className="mj-cat-sidebar-title">Catégories</div>
-    {CATEGORIES.map(c => (
-      <div
-        key={c.key}
-        className={`mj-cat-sidebar-item${categorie === c.key ? ' active' : ''}`}
-        onClick={() => setCategorie(c.key)}
-      >
-        <span style={{ fontSize: 18 }}>{c.icon}</span>
-        <span>{c.label}</span>
-      </div>
-    ))}
-  </aside>
-);
+const CategorySidebar = ({ categorie, setCategorie }) => {
+  const { t } = useI18n();
+  return (
+    <aside className="mj-cat-sidebar">
+      <div className="mj-cat-sidebar-title">{t('cl_categories')}</div>
+      {CATEGORIES.map(c => (
+        <div
+          key={c.key}
+          className={`mj-cat-sidebar-item${categorie === c.key ? ' active' : ''}`}
+          onClick={() => setCategorie(c.key)}
+        >
+          <span style={{ fontSize: 18 }}>{c.icon}</span>
+          <span>{t(c.i18nKey)}</span>
+        </div>
+      ))}
+    </aside>
+  );
+};
 
 /* ── CatalogueTab ─────────────────────────────────────────────────────────── */
 const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMembers, selectedBoutique, setSelectedBoutique }) => {
+  const { t } = useI18n();
   const [boutiques, setBoutiques] = useState([]);
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState('');
@@ -800,7 +811,7 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {/* Search */}
       <div style={{ position: 'relative', marginBottom: 20 }}>
         <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
-        <input className="mj-header-search" placeholder="Rechercher un produit..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 44, borderRadius: 12 }} />
+        <input className="mj-header-search" placeholder={t('common_search')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 44, borderRadius: 12 }} />
       </div>
 
       {/* Products grid — Marjane Mall cards */}
@@ -850,7 +861,7 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
                   </div>
                 ) : (
                   <button className="mj-mm-add-btn" onClick={() => addItem(p, selectedBoutique)} disabled={!p.en_stock}>
-                    <Plus size={14} /> Ajouter
+                    <Plus size={14} /> {t('cl_add_to_cart')}
                   </button>
                 )}
               </div>
@@ -860,7 +871,7 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
         {!loadingProduits && filteredProduits.length === 0 && (
           <div style={{ gridColumn: '1/-1' }} className="mj-empty">
             <div className="mj-empty-icon">🔍</div>
-            <div className="mj-empty-title">Aucun produit trouvé</div>
+            <div className="mj-empty-title">{t('common_no_results')}</div>
           </div>
         )}
       </div>
@@ -889,11 +900,11 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
         }} />
         {/* Contenu */}
         <div className="mj-hero-content" style={{ padding: '36px 40px', position: 'relative', zIndex: 2 }}>
-          <div className="mj-hero-title">Livraison rapide<br /><span>chez vous</span></div>
-          <div className="mj-hero-sub">Commandez auprès de boutiques locales vérifiées</div>
+          <div className="mj-hero-title">{t('cl_hero_title')}<br /><span>{t('cl_hero_subtitle')}</span></div>
+          <div className="mj-hero-sub">{t('cl_hero_text')}</div>
           <button className="mj-hero-cta">
             <ShoppingCart size={16} />
-            {boutiques.length} boutiques disponibles
+            {t('cl_hero_stores_available').replace('{n}', boutiques.length)}
           </button>
         </div>
       </div>
@@ -901,11 +912,10 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {/* Features strip */}
       <div className="mj-features-strip" style={{ marginBottom: 28 }}>
         {[
-          { icon: '🚚', label: 'Livraison rapide', sub: '30 à 60 min' },
-          { icon: '🔒', label: 'Paiement sécurisé', sub: 'Cash ou carte' },
-          { icon: '⭐', label: 'Boutiques vérifiées', sub: 'Qualité garantie' },
-          { icon: '📍', label: 'Suivi GPS live', sub: 'Temps réel' },
-          { icon: '🎁', label: 'Points fidélité', sub: 'À chaque commande' },
+          { icon: '🚚', label: t('cl_feature_fast_delivery'),    sub: t('cl_feature_fast_delivery_desc') },
+          { icon: '🔒', label: t('cl_feature_secure_payment'),   sub: t('cl_feature_secure_payment_desc') },
+          { icon: '⭐', label: t('cl_feature_verified_stores'),  sub: t('cl_feature_verified_stores_desc') },
+          { icon: '📍', label: t('cl_feature_gps'),              sub: t('cl_feature_gps_desc') },
         ].map((f, i) => (
           <div key={i} className="mj-feature-item">
             <div className="mj-feature-icon">{f.icon}</div>
@@ -919,13 +929,13 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: '2 1 220px' }}>
           <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
-          <input className="mj-header-search" placeholder="Rechercher une boutique…" value={searchBoutique} onChange={e => setSearchBoutique(e.target.value)} style={{ paddingLeft: 42, borderRadius: 12, height: 38 }} />
+          <input className="mj-header-search" placeholder={t('cl_search_store')} value={searchBoutique} onChange={e => setSearchBoutique(e.target.value)} style={{ paddingLeft: 42, borderRadius: 12, height: 38 }} />
         </div>
         <select
           value={filtreVille} onChange={e => setFiltreVille(e.target.value)}
           style={{ height: 38, background: '#1C1C1C', border: '1px solid #2D2D2D', borderRadius: 12, color: '#CBD5E1', fontSize: 13, padding: '0 12px', cursor: 'pointer', fontFamily: 'var(--mj-font)' }}
         >
-          <option value="">🌍 Toutes les villes</option>
+          <option value="">🌍 {t('cl_all_cities')}</option>
           {villesDisponibles.map(v => <option key={v} value={v}>📍 {v}</option>)}
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: '#94A3B8', whiteSpace: 'nowrap' }}>
@@ -936,12 +946,12 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
           onClick={() => setShowFilters(!showFilters)}
           style={{ height: 38, padding: '0 14px', background: showFilters ? 'rgba(249,115,22,0.15)' : '#1C1C1C', border: `1px solid ${showFilters ? 'var(--mj-red)' : '#2D2D2D'}`, borderRadius: 12, color: showFilters ? 'var(--mj-red)' : '#94A3B8', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mj-font)' }}
         >
-          <SlidersHorizontal size={14} /> Filtres
+          <SlidersHorizontal size={14} /> {t('cl_filters')}
         </button>
         {(filtreVille || searchBoutique || showOnlyOpen || noteMin > 0 || fraisMax < 50 || delaiMax < 90) && (
           <button onClick={() => { setFiltreVille(''); setSearchBoutique(''); setShowOnlyOpen(false); setNoteMin(0); setFraisMax(50); setDelaiMax(90); }}
             style={{ height: 38, padding: '0 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, color: '#ef4444', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mj-font)' }}>
-            <X size={12} /> Réinitialiser
+            <X size={12} /> {t('cl_reset')}
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748B', fontWeight: 600 }}>
@@ -970,7 +980,7 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {/* Section title */}
       <div className="mj-section-bar" style={{ marginBottom: 16 }}>
         <div className="mj-section-title">
-          {categorie ? (CATEGORIES.find(c => c.key === categorie)?.label || 'Boutiques') : 'Toutes les boutiques'}
+          {categorie ? (CATEGORIES.find(c => c.key === categorie)?.label || t('boutiques')) : t('cl_all_stores')}
         </div>
         <span style={{ fontSize: 12, color: '#64748B' }}>{boutiquesFiltrees.length} résultats</span>
       </div>
@@ -983,8 +993,8 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       ) : boutiquesFiltrees.length === 0 ? (
         <div className="mj-empty">
           <div className="mj-empty-icon">🔍</div>
-          <div className="mj-empty-title">Aucune boutique correspondante</div>
-          <div className="mj-empty-desc">Essayez de modifier vos filtres.</div>
+          <div className="mj-empty-title">{t('cl_no_store')}</div>
+          <div className="mj-empty-desc">{t('common_no_results')}</div>
         </div>
       ) : (
         <div className="mj-boutiques-grid">
@@ -1005,6 +1015,15 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
 
 /* ── CommandesTab ─────────────────────────────────────────────────────────── */
 const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
+  const { t } = useI18n();
+  const STATUT_I18N = {
+    EN_ATTENTE: t('cl_status_en_attente'),
+    VALIDEE: t('cl_status_validee'),
+    EN_PREPARATION: t('cl_status_en_preparation'),
+    EN_ROUTE: t('cl_status_en_route'),
+    LIVREE: t('cl_status_livree'),
+    ANNULEE: t('cl_status_annulee'),
+  };
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
@@ -1042,7 +1061,7 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
                 <div style={{ width: 24, height: 24, borderRadius: '50%', background: done || active ? 'var(--mj-red)' : 'var(--mj-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: done || active ? 'white' : 'var(--mj-text-4)', border: active ? '2px solid var(--mj-red-dark)' : 'none', transition: 'var(--mj-ease)' }}>
                   {done ? '✓' : STATUT_CONFIG[s]?.icon}
                 </div>
-                <div style={{ fontSize: 9, color: active ? 'var(--mj-red)' : 'var(--mj-text-4)', marginTop: 3, textAlign: 'center', maxWidth: 50 }}>{STATUT_CONFIG[s]?.label}</div>
+                <div style={{ fontSize: 9, color: active ? 'var(--mj-red)' : 'var(--mj-text-4)', marginTop: 3, textAlign: 'center', maxWidth: 50 }}>{STATUT_I18N[s] || STATUT_CONFIG[s]?.label}</div>
               </div>
               {i < steps.length - 1 && (
                 <div style={{ flex: 1, height: 2, background: done ? 'var(--mj-red)' : 'var(--mj-border)', minWidth: 16, marginBottom: 14, transition: 'var(--mj-ease)' }} />
@@ -1059,8 +1078,8 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   if (commandes.length === 0) return (
     <div className="mj-empty">
       <div className="mj-empty-icon"><Package size={48} /></div>
-      <div className="mj-empty-title">Aucune commande</div>
-      <div className="mj-empty-desc">Explorez notre catalogue et passez votre première commande !</div>
+      <div className="mj-empty-title">{t('cl_orders_empty')}</div>
+      <div className="mj-empty-desc">{t('cl_tab_catalogue')} →</div>
     </div>
   );
 
@@ -1084,7 +1103,7 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 800, color: 'var(--mj-text)', fontSize: 16 }}>{cmd.total_price} MAD</div>
                 <span className="mj-badge" style={{ background: `${sc.color}18`, color: sc.color, marginTop: 4 }}>
-                  {sc.icon} {sc.label}
+                  {sc.icon} {STATUT_I18N[cmd.statut] || sc.label}
                 </span>
               </div>
             </div>
@@ -1179,6 +1198,7 @@ const fetchClientRoute = async (from, to) => {
 };
 
 const SuiviTab = ({ user, onOpenChat }) => {
+  const { t } = useI18n();
   const [livraisons, setLivraisons] = useState([]);
   const [boutiques, setBoutiques] = useState([]);
   const [routes, setRoutes] = useState({});
@@ -1279,8 +1299,8 @@ const SuiviTab = ({ user, onOpenChat }) => {
       {livraisons.length === 0 ? (
         <div className="mj-empty" style={{ marginTop: 24 }}>
           <div className="mj-empty-icon"><CheckCircle size={36} color="var(--mj-green)" /></div>
-          <div className="mj-empty-title">Aucune livraison en cours</div>
-          <div className="mj-empty-desc">Toutes vos commandes ont été livrées 🎉</div>
+          <div className="mj-empty-title">{t('cl_tracking_empty')}</div>
+          <div className="mj-empty-desc">🎉</div>
         </div>
       ) : (
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1334,31 +1354,35 @@ const SuiviTab = ({ user, onOpenChat }) => {
 };
 
 /* ── ProfilTab ────────────────────────────────────────────────────────────── */
-const ProfilTab = ({ user }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-    <div className="mj-card" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 20, padding: 22 }}>
-      <div className="mj-avatar" style={{ width: 72, height: 72 }}>
-        {user?.first_name?.[0]}{user?.last_name?.[0]}
+const ProfilTab = ({ user }) => {
+  const { t, lang } = useI18n();
+  const locale = lang === 'ar' ? 'ar-MA' : lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'fr-FR';
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="mj-card" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 20, padding: 22 }}>
+        <div className="mj-avatar" style={{ width: 72, height: 72 }}>
+          {user?.first_name?.[0]}{user?.last_name?.[0]}
+        </div>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--mj-text)' }}>{user?.first_name} {user?.last_name}</div>
+          <div style={{ color: 'var(--mj-text-3)', marginTop: 4 }}>{user?.email}</div>
+          <div style={{ color: 'var(--mj-text-4)', fontSize: 13, marginTop: 2 }}>{user?.phone || '—'}</div>
+        </div>
       </div>
-      <div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--mj-text)' }}>{user?.first_name} {user?.last_name}</div>
-        <div style={{ color: 'var(--mj-text-3)', marginTop: 4 }}>{user?.email}</div>
-        <div style={{ color: 'var(--mj-text-4)', fontSize: 13, marginTop: 2 }}>{user?.phone || 'Téléphone non renseigné'}</div>
-      </div>
+      {[
+        { label: t('cl_profile_first_name'), value: user?.first_name || '—' },
+        { label: t('cl_profile_last_name'),  value: user?.last_name || '—' },
+        { label: t('cl_profile_email'),      value: user?.email || '—' },
+        { label: t('cl_profile_phone'),      value: user?.phone || '—' },
+      ].map(({ label, value }) => (
+        <div key={label} className="mj-stat-card">
+          <div style={{ fontSize: 12, color: 'var(--mj-text-4)', marginBottom: 4 }}>{label}</div>
+          <div style={{ fontWeight: 700, color: 'var(--mj-text)', fontSize: 15 }}>{value}</div>
+        </div>
+      ))}
     </div>
-    {[
-      { label: 'Nom d\'utilisateur', value: `@${user?.username}` },
-      { label: 'Rôle', value: 'Client DeliverMap' },
-      { label: 'Membre depuis', value: user?.date_joined ? new Date(user.date_joined).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' },
-      { label: 'Adresses sauvegardées', value: user?.adresses_sauvegardees?.length || 0 },
-    ].map(({ label, value }) => (
-      <div key={label} className="mj-stat-card">
-        <div style={{ fontSize: 12, color: 'var(--mj-text-4)', marginBottom: 4 }}>{label}</div>
-        <div style={{ fontWeight: 700, color: 'var(--mj-text)', fontSize: 15 }}>{value}</div>
-      </div>
-    ))}
-  </div>
-);
+  );
+};
 
 /* ── TicketsTab ───────────────────────────────────────────────────────────── */
 const TICKET_CATEGORIES = [
@@ -1371,6 +1395,7 @@ const TICKET_CATEGORIES = [
 ];
 
 const TicketsTab = ({ userId }) => {
+  const { t } = useI18n();
   const [tickets, setTickets] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [sujet, setSujet] = React.useState('');
@@ -1396,20 +1421,20 @@ const TicketsTab = ({ userId }) => {
   return (
     <div>
       <div className="mj-card" style={{ padding: 20, marginBottom: 20 }}>
-        <div className="mj-section-title" style={{ marginBottom: 16 }}>Nouveau ticket</div>
-        <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder="Sujet du ticket" className="mj-input" style={{ marginBottom: 10 }} />
+        <div className="mj-section-title" style={{ marginBottom: 16 }}>{t('cl_tickets_new')}</div>
+        <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder={t('cl_tickets_subject')} className="mj-input" style={{ marginBottom: 10 }} />
         <select value={categorie} onChange={e => setCategorie(e.target.value)} className="mj-select" style={{ marginBottom: 10 }}>
           {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description détaillée..." rows={3} className="mj-input" style={{ marginBottom: 14, resize: 'vertical' }} />
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder={t('cl_tickets_description')} rows={3} className="mj-input" style={{ marginBottom: 14, resize: 'vertical' }} />
         <button onClick={handleSubmit} disabled={submitting || !sujet.trim()} className="mj-btn mj-btn-primary">
-          {submitting ? 'Envoi...' : '📨 Envoyer le ticket'}
+          {submitting ? t('common_loading') : `📨 ${t('cl_tickets_send')}`}
         </button>
       </div>
 
       {loading ? <div className="mj-empty"><RefreshCw size={24} className="mj-spin" style={{ margin: '0 auto' }} /></div> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {tickets.length === 0 && <div className="mj-empty"><div className="mj-empty-title">Aucun ticket</div></div>}
+          {tickets.length === 0 && <div className="mj-empty"><div className="mj-empty-title">{t('cl_tickets_empty')}</div></div>}
           {tickets.map(t => (
             <div key={t.id} className="mj-ticket-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -1430,6 +1455,7 @@ const TicketsTab = ({ userId }) => {
 /* ── Main Component ───────────────────────────────────────────────────────── */
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [tab, setTab] = useState('catalogue');
   const [cartOpen, setCartOpen] = useState(false);
@@ -1467,20 +1493,23 @@ const ClientDashboard = () => {
         <div className="mj-header-search-wrap">
           <input
             className="mj-header-search"
-            placeholder="Rechercher boutiques, produits…"
+            placeholder={t('cl_search_placeholder')}
             onFocus={() => setTab('catalogue')}
           />
           <Search size={16} className="mj-header-search-icon" />
         </div>
 
         <div className="mj-header-actions">
+          {/* Sélecteur de langue */}
+          <LanguageSwitcher variant="client" />
+
           {/* Favoris */}
-          <button className="mj-header-icon-btn" onClick={() => setTab('favoris')} title="Mes favoris">
+          <button className="mj-header-icon-btn" onClick={() => setTab('favoris')} title={t('cl_my_favorites')}>
             <Heart size={18} />
           </button>
 
           {/* Panier */}
-          <button className="mj-header-icon-btn" onClick={() => setCartOpen(true)} title="Mon panier">
+          <button className="mj-header-icon-btn" onClick={() => setCartOpen(true)} title={t('cl_my_cart')}>
             <ShoppingCart size={18} />
             {cartCount > 0 && <span className="mj-header-cart-badge">{cartCount}</span>}
           </button>
@@ -1496,7 +1525,7 @@ const ClientDashboard = () => {
           <button
             className="mj-header-icon-btn"
             onClick={() => { logout(); navigate('/login'); }}
-            title="Déconnexion"
+            title={t('cl_logout')}
           >
             <LogOut size={16} />
           </button>
@@ -1505,17 +1534,17 @@ const ClientDashboard = () => {
 
       {/* ── Tab bar ── */}
       <nav className="mj-client-tabs">
-        {TABS.map(t => {
-          const Icon = t.icon;
+        {TABS.map(tabItem => {
+          const Icon = tabItem.icon;
           return (
             <button
-              key={t.id}
-              className={`mj-client-tab${tab === t.id ? ' active' : ''}`}
-              onClick={() => setTab(t.id)}
+              key={tabItem.id}
+              className={`mj-client-tab${tab === tabItem.id ? ' active' : ''}`}
+              onClick={() => setTab(tabItem.id)}
             >
               <Icon size={15} />
-              {t.label}
-              {t.id === 'commandes' && activeDelivery && (
+              {t(tabItem.label)}
+              {tabItem.id === 'commandes' && activeDelivery && (
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', display: 'inline-block', marginLeft: 2, boxShadow: '0 0 5px #22C55E' }} />
               )}
             </button>
@@ -1567,7 +1596,7 @@ const ClientDashboard = () => {
       {activeDelivery && !activeChatCommande && (
         <button
           onClick={() => setActiveChatCommande(activeDelivery)}
-          title="Chat avec le livreur"
+          title={t('chat_with_driver_title')}
           style={{
             position: 'fixed', bottom: 90, right: 24, zIndex: 9998,
             background: 'var(--mj-red)', border: 'none', borderRadius: 28,
@@ -1579,12 +1608,12 @@ const ClientDashboard = () => {
           }}
         >
           <MessageSquare size={15} />
-          <span>Chat livreur</span>
+          <span>{t('chat_driver')}</span>
           <span style={{ background: '#22C55E', borderRadius: '50%', width: 8, height: 8, display: 'inline-block', boxShadow: '0 0 6px #22C55E' }} />
         </button>
       )}
 
-      <ChatbotWidget />
+      {!activeChatCommande && <ChatbotWidget />}
     </div>
   );
 };

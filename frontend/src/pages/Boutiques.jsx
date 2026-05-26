@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Store, MapPin, Star, Clock, Check, X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { fondateursApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 const CATEGORIE_COLORS = {
   SUPERMARCHE: '#10b981',
@@ -28,6 +29,7 @@ const StarRating = ({ note }) => (
 );
 
 const BoutiqueCard = ({ b, onValider }) => {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const color = CATEGORIE_COLORS[b.categorie] || '#64748b';
 
@@ -44,32 +46,32 @@ const BoutiqueCard = ({ b, onValider }) => {
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
           {b.is_verified ? (
             <span className="badge badge-success" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <Check size={11} /> Vérifié
+              <Check size={11} /> {t('st_verified')}
             </span>
           ) : (
             <span className="badge badge-warning" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              En attente
+              {t('st_pending')}
             </span>
           )}
           {b.is_open ? (
-            <span className="badge badge-success">Ouvert</span>
+            <span className="badge badge-success">{t('st_open')}</span>
           ) : (
-            <span className="badge badge-danger">Fermé</span>
+            <span className="badge badge-danger">{t('st_closed')}</span>
           )}
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '12px' }}>
         <div>
-          <div style={{ color: 'var(--text-secondary)' }}>Catégorie</div>
+          <div style={{ color: 'var(--text-secondary)' }}>{t('adm_category')}</div>
           <div style={{ fontWeight: 600, color }}>{b.categorie}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--text-secondary)' }}>Commandes</div>
+          <div style={{ color: 'var(--text-secondary)' }}>{t('st_orders')}</div>
           <div style={{ fontWeight: 600 }}>{b.nombre_commandes || 0}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--text-secondary)' }}>Note</div>
+          <div style={{ color: 'var(--text-secondary)' }}>{t('st_rating')}</div>
           <StarRating note={b.note_moyenne || 0} />
         </div>
       </div>
@@ -92,11 +94,11 @@ const BoutiqueCard = ({ b, onValider }) => {
           <div style={{ display: 'flex', gap: '8px' }}>
             {!b.is_verified && (
               <button className="btn btn-sm btn-primary" onClick={() => onValider(b.id, 'valider')}>
-                <Check size={14} /> Valider
+                <Check size={14} /> {t('st_validate')}
               </button>
             )}
             <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }} onClick={() => onValider(b.id, 'rejeter')}>
-              <X size={14} /> {b.is_verified ? 'Désactiver' : 'Rejeter'}
+              <X size={14} /> {t('st_reject')}
             </button>
           </div>
         </div>
@@ -106,6 +108,7 @@ const BoutiqueCard = ({ b, onValider }) => {
 };
 
 const Boutiques = () => {
+  const { t } = useI18n();
   const [boutiques, setBoutiques] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterCategorie, setFilterCategorie] = useState('');
@@ -147,10 +150,10 @@ const Boutiques = () => {
     <div className="dashboard-container">
       <div className="dashboard-header animate-fade-in">
         <div>
-          <h2 className="page-title text-gradient">Gestion des Boutiques</h2>
-          <p className="page-subtitle">{count} boutiques sur la plateforme</p>
+          <h2 className="page-title text-gradient">{t('boutiques')}</h2>
+          <p className="page-subtitle">{count} {t('boutiques')}</p>
         </div>
-        <button className="btn btn-secondary" onClick={fetch}><RefreshCw size={16} /> Actualiser</button>
+        <button className="btn btn-secondary" onClick={fetch}><RefreshCw size={16} /> {t('common_retry')}</button>
       </div>
 
       {/* Stats par catégorie */}
@@ -176,17 +179,17 @@ const Boutiques = () => {
       {/* Filtres */}
       <div className="glass-card animate-fade-in" style={{ padding: '1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <select className="glass-input" value={filterVerified} onChange={e => setFilterVerified(e.target.value)} style={{ maxWidth: '200px' }}>
-          <option value="">Toutes</option>
-          <option value="true">Vérifiées</option>
-          <option value="false">En attente</option>
+          <option value="">{t('st_all_status')}</option>
+          <option value="true">{t('st_verified')}</option>
+          <option value="false">{t('st_pending')}</option>
         </select>
         <select className="glass-input" value={filterCategorie} onChange={e => setFilterCategorie(e.target.value)} style={{ maxWidth: '200px' }}>
-          <option value="">Toutes catégories</option>
+          <option value="">{t('st_all_categories')}</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         {(filterVerified || filterCategorie) && (
           <button className="btn btn-secondary btn-sm" onClick={() => { setFilterVerified(''); setFilterCategorie(''); }}>
-            × Effacer filtres
+            × {t('adm_filters_clear')}
           </button>
         )}
       </div>
@@ -200,7 +203,7 @@ const Boutiques = () => {
         ) : boutiques.length === 0 ? (
           <div className="glass-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
             <Store size={40} style={{ marginBottom: '1rem', opacity: 0.4 }} />
-            <div>Aucune boutique trouvée</div>
+            <div>{t('common_no_results')}</div>
           </div>
         ) : boutiques.map(b => (
           <BoutiqueCard key={b.id} b={b} onValider={handleValider} />

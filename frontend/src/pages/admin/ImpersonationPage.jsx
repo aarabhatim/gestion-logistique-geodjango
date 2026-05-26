@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
 import { impersonationApi } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function ImpersonationPage() {
+  const { t } = useI18n();
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
   const [searching, setSearching] = useState(false);
@@ -65,10 +67,10 @@ export default function ImpersonationPage() {
         }}>🕵️</div>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>
-            Mode Impersonation
+            {t('imp_title')}
           </h1>
           <div style={{ color: '#64748b', fontSize: 13 }}>
-            Connexion temporaire en tant qu'un autre utilisateur (debug)
+            {t('imp_select_user')}
           </div>
         </div>
       </div>
@@ -81,9 +83,7 @@ export default function ImpersonationPage() {
       }}>
         <span style={{ fontSize: 18 }}>⚠️</span>
         <div style={{ color: '#fcd34d', fontSize: 13 }}>
-          <strong>Usage debug uniquement.</strong> Toutes les actions effectuées en mode
-          impersonation sont tracées. Ne jamais utiliser pour modifier des données sans
-          consentement de l'utilisateur.
+          <strong>{t('imp_warning_title')}</strong> {t('imp_warning_text')}
         </div>
       </div>
 
@@ -104,10 +104,10 @@ export default function ImpersonationPage() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#86efac', fontWeight: 700, fontSize: 16 }}>
-                Session active — {active.first_name || ''} {active.last_name || ''} ({active.username})
+                {active.first_name || ''} {active.last_name || ''} ({active.username})
               </div>
               <div style={{ color: '#4ade80', fontSize: 13 }}>
-                Rôle : {active.role} · ID : {active.id}
+                {t('adm_role')} : {active.role} · ID : {active.id}
               </div>
               {active.tokens && (
                 <div style={{
@@ -127,7 +127,7 @@ export default function ImpersonationPage() {
                 cursor: 'pointer', fontWeight: 600, fontSize: 13
               }}
             >
-              Terminer session
+              {t('common_close')}
             </button>
           </div>
         </div>
@@ -152,13 +152,13 @@ export default function ImpersonationPage() {
         borderRadius: 16, padding: '20px 24px'
       }}>
         <h3 style={{ margin: '0 0 14px', color: '#e2e8f0', fontSize: 15 }}>
-          Rechercher un utilisateur
+          {t('imp_search_user')}
         </h3>
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <input
             value={query}
             onChange={e => handleSearch(e.target.value)}
-            placeholder="Nom, email ou username…"
+            placeholder={t('imp_search_placeholder')}
             style={{
               width: '100%', padding: '10px 14px',
               background: 'rgba(7,18,11,0.8)', border: '1px solid rgba(34,197,94,0.25)',

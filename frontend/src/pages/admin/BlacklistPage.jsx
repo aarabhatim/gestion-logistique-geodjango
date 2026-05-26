@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { blacklistApi } from '../../services/api';
-
-const RAISONS = [
-  { value: 'fraude',        label: 'Fraude',              icon: '🚫' },
-  { value: 'inaccessible', label: 'Adresse inaccessible', icon: '🔒' },
-  { value: 'dangereux',    label: 'Zone dangereuse',      icon: '⚠️' },
-  { value: 'faux',         label: 'Fausse adresse',       icon: '❌' },
-  { value: 'autre',        label: 'Autre',                icon: '📝' },
-];
+import { useI18n } from '../../contexts/I18nContext';
 
 const RAISON_COLORS = {
   fraude:        { bg: 'rgba(239,68,68,0.15)',  border: 'rgba(239,68,68,0.4)',  color: '#fca5a5' },
@@ -20,6 +13,17 @@ const RAISON_COLORS = {
 const EMPTY_FORM = { adresse: '', raison: 'fraude', notes: '' };
 
 export default function BlacklistPage() {
+  const { t } = useI18n();
+
+  // RAISONS defined inside component so labels react to language changes
+  const RAISONS = [
+    { value: 'fraude',        label: t('bl_reason_fraude'),        icon: '🚫' },
+    { value: 'inaccessible',  label: t('bl_reason_inaccessible'),  icon: '🔒' },
+    { value: 'dangereux',     label: t('bl_reason_dangereux'),     icon: '⚠️' },
+    { value: 'faux',          label: t('bl_reason_faux'),          icon: '❌' },
+    { value: 'autre',         label: t('bl_reason_autre'),         icon: '📝' },
+  ];
+
   const [list, setList]             = useState([]);
   const [loading, setLoading]       = useState(true);
   const [showForm, setShowForm]     = useState(false);
@@ -43,21 +47,21 @@ export default function BlacklistPage() {
   useEffect(() => { load(); }, []);
 
   const handleAdd = () => {
-    if (!form.adresse.trim()) { setError("L'adresse est obligatoire"); return; }
+    if (!form.adresse.trim()) { setError(t('bl_error_address_required')); return; }
     setSaving(true); setError(null); setSuccess(null);
     blacklistApi.create(form)
       .then(() => {
-        setSuccess('Adresse ajoutée à la blacklist');
+        setSuccess(t('bl_success_added'));
         setForm(EMPTY_FORM);
         setShowForm(false);
         load();
       })
-      .catch(e => setError(e.response?.data?.adresse?.[0] || e.response?.data?.detail || 'Erreur'))
+      .catch(e => setError(e.response?.data?.adresse?.[0] || e.response?.data?.detail || t('toast_error')))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm('Retirer cette adresse de la blacklist ?')) return;
+    if (!window.confirm(t('bl_confirm_delete'))) return;
     blacklistApi.delete(id).then(load).catch(() => {});
   };
 
@@ -85,10 +89,10 @@ export default function BlacklistPage() {
         }}>🚫</div>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>
-            Blacklist d'adresses
+            {t('bl_title')}
           </h1>
           <div style={{ color: '#64748b', fontSize: 13 }}>
-            Adresses bloquées automatiquement lors des livraisons
+            {t('bl_new')}
           </div>
         </div>
         <button
@@ -100,7 +104,7 @@ export default function BlacklistPage() {
             padding: '9px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14
           }}
         >
-          {showForm ? '✕ Annuler' : '+ Bloquer une adresse'}
+          {showForm ? `✕ ${t('adm_cancel')}` : t('bl_btn_block')}
         </button>
       </div>
 
@@ -118,7 +122,7 @@ export default function BlacklistPage() {
           borderRadius: 14, padding: '20px 24px', marginBottom: 24
         }}>
           <h3 style={{ margin: '0 0 16px', color: '#f1f5f9', fontSize: 15 }}>
-            Bloquer une nouvelle adresse
+            {t('bl_form_title')}
           </h3>
           {error && (
             <div style={{
@@ -128,7 +132,7 @@ export default function BlacklistPage() {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
             <label>
-              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Adresse *</div>
+              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('bl_field_address')}</div>
               <input
                 value={form.adresse}
                 onChange={e => setForm(f => ({ ...f, adresse: e.target.value }))}
@@ -142,7 +146,7 @@ export default function BlacklistPage() {
               />
             </label>
             <label>
-              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Raison</div>
+              <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('bl_reason')}</div>
               <select
                 value={form.raison}
                 onChange={e => setForm(f => ({ ...f, raison: e.target.value }))}
@@ -159,7 +163,7 @@ export default function BlacklistPage() {
             </label>
           </div>
           <label style={{ display: 'block', marginBottom: 14 }}>
-            <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>Notes (optionnel)</div>
+            <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 5 }}>{t('bl_field_notes_optional')}</div>
             <input
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
@@ -182,7 +186,7 @@ export default function BlacklistPage() {
               fontWeight: 600, fontSize: 14, opacity: saving ? 0.7 : 1
             }}
           >
-            {saving ? 'Enregistrement…' : '🚫 Bloquer l\'adresse'}
+            {saving ? t('bn_saving') : t('bl_btn_submit')}
           </button>
         </div>
       )}
@@ -193,14 +197,14 @@ export default function BlacklistPage() {
         borderRadius: 14, padding: '16px 20px', marginBottom: 24
       }}>
         <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 8 }}>
-          🔍 Vérifier si une adresse est blacklistée
+          {t('bl_verify_title')}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <input
             value={verifyAddr}
             onChange={e => setVerifyAddr(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleVerify()}
-            placeholder="Entrer une adresse…"
+            placeholder={t('bl_verify_placeholder')}
             style={{
               flex: 1, padding: '8px 12px',
               background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
@@ -216,7 +220,7 @@ export default function BlacklistPage() {
               cursor: 'pointer', fontWeight: 600, fontSize: 14
             }}
           >
-            {verifying ? '…' : 'Vérifier'}
+            {verifying ? '…' : t('bl_verify_btn')}
           </button>
         </div>
         {verifyResult && (
@@ -228,8 +232,8 @@ export default function BlacklistPage() {
             fontSize: 13
           }}>
             {verifyResult.blacklistee
-              ? `🚫 Adresse blacklistée — raison : ${verifyResult.raison || 'inconnue'}`
-              : '✅ Adresse non bloquée'}
+              ? `${t('bl_is_blacklisted')} ${verifyResult.raison || 'inconnue'}`
+              : t('bl_not_blacklisted')}
           </div>
         )}
       </div>
@@ -241,12 +245,12 @@ export default function BlacklistPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 15 }}>
-            Adresses bloquées ({filtered.length})
+            {t('bl_list_title')} ({filtered.length})
           </h3>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Filtrer par adresse…"
+            placeholder={t('bl_filter_placeholder')}
             style={{
               padding: '7px 12px',
               background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
@@ -256,10 +260,10 @@ export default function BlacklistPage() {
         </div>
 
         {loading ? (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: 30 }}>Chargement…</div>
+          <div style={{ color: '#64748b', textAlign: 'center', padding: 30 }}>{t('common_loading')}</div>
         ) : filtered.length === 0 ? (
           <div style={{ color: '#64748b', textAlign: 'center', padding: 30 }}>
-            {search ? 'Aucun résultat' : 'Aucune adresse blacklistée'}
+            {search ? t('adm_no_results') : t('bl_empty')}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

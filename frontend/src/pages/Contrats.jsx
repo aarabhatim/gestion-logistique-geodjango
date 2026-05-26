@@ -5,6 +5,7 @@ import {
   Plus, Eye, AlertCircle, Calendar, User,
 } from 'lucide-react';
 import { contratsApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 const TYPE_CONFIG = {
   transporteur: { label: 'Transporteur', color: '#3b82f6' },
@@ -22,6 +23,7 @@ const STATUT_CONFIG = {
 };
 
 const Contrats = () => {
+  const { t } = useI18n();
   const [contrats, setContrats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -104,9 +106,9 @@ const Contrats = () => {
       <div className="dashboard-header animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <FileText size={24} /> Gestion des Contrats
+            <FileText size={24} /> {t('ct_title')}
           </h2>
-          <p className="page-subtitle">Cycle de vie des contrats : génération PDF, signature, activation, résiliation.</p>
+          <p className="page-subtitle">{t('contrats')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => contratsApi.verifierExpirations().then(fetchContrats)}
@@ -115,7 +117,7 @@ const Contrats = () => {
           </button>
           <button onClick={() => setShowCreate(true)} className="btn btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={15} /> Nouveau contrat
+            <Plus size={15} /> {t('ct_new')}
           </button>
         </div>
       </div>
@@ -125,22 +127,22 @@ const Contrats = () => {
         display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
           style={{ width: 150, padding: '5px 10px', fontSize: 12 }}>
-          <option value="">Tous les statuts</option>
+          <option value="">{t('adm_all_status')}</option>
           {Object.entries(STATUT_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <select className="glass-input" value={filtreType} onChange={e => setFiltreType(e.target.value)}
           style={{ width: 150, padding: '5px 10px', fontSize: 12 }}>
-          <option value="">Tous les types</option>
+          <option value="">{t('adm_all_types')}</option>
           {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         {(filtreStatut || filtreType) && (
           <button onClick={() => { setFiltreStatut(''); setFiltreType(''); }}
             className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }}>
-            Effacer
+            {t('adm_filters_clear')}
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>
-          {contrats.length} contrat{contrats.length > 1 ? 's' : ''}
+          {contrats.length} {t('contrats')}
         </span>
       </div>
 
@@ -154,19 +156,19 @@ const Contrats = () => {
           ) : contrats.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', fontSize: 13 }}>
               <FileText size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <div>Aucun contrat trouvé.</div>
+              <div>{t('common_no_results')}</div>
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Référence</th>
-                  <th>Type</th>
-                  <th>Partie</th>
-                  <th>Statut</th>
-                  <th>Validité</th>
+                  <th>{t('co_col_reference')}</th>
+                  <th>{t('ct_col_type')}</th>
+                  <th>{t('ct_col_party')}</th>
+                  <th>{t('ct_col_status')}</th>
+                  <th>{t('adm_date')}</th>
                   <th>PDF</th>
-                  <th>Actions</th>
+                  <th>{t('ct_col_actions')}</th>
                 </tr>
               </thead>
               <tbody>
