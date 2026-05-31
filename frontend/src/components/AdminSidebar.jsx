@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * AdminSidebar améliorée
@@ -8,50 +9,48 @@ import api from '../services/api';
  * - Favoris personnels épinglés (localStorage)
  * - Badges live : incidents ouverts, tickets non assignés
  * - Barre de recherche rapide intégrée
- *
- * Usage : remplacer votre sidebar admin actuelle par ce composant
  */
 
-const NAV_ITEMS = [
-  { key: 'dashboard',      label: 'Dashboard',       icon: '📊', path: '/admin',                  badge: null },
-  { key: 'live',           label: 'Live',             icon: '🗺️', path: '/admin/live',             badge: null },
-  { key: 'commandes',      label: 'Commandes',        icon: '📦', path: '/admin/commandes',        badge: null },
-  { key: 'clients',        label: 'Clients',          icon: '👤', path: '/admin/clients',          badge: null },
-  { key: 'transporteurs',  label: 'Transporteurs',    icon: '🚗', path: '/admin/transporteurs',    badge: null },
-  { key: 'incidents',      label: 'Incidents',        icon: '⚠️', path: '/admin/incidents',        badge: 'incidents' },
-  { key: 'tickets',        label: 'Tickets',          icon: '🎫', path: '/admin/tickets',          badge: 'tickets' },
-  { key: 'contrats',       label: 'Contrats',         icon: '📋', path: '/admin/contrats',         badge: null },
-  { key: 'zones',          label: 'Zones',            icon: '🗾', path: '/admin/zones',            badge: null },
-  { key: 'promotions',     label: 'Promotions',       icon: '🏷️', path: '/admin/promotions',       badge: null },
-  { key: 'bannieres',      label: 'Bannières',        icon: '🖼️', path: '/admin/bannieres',        badge: null },
-  { key: 'blacklist',      label: 'Blacklist',        icon: '🚫', path: '/admin/blacklist',        badge: null },
-  { key: 'heatmap',        label: 'Heatmap',          icon: '🌡️', path: '/admin/heatmap',          badge: null },
-  { key: 'calendrier',     label: 'Calendrier',       icon: '📅', path: '/admin/calendrier',       badge: null },
-  { key: 'previsions',     label: 'Prévisions',       icon: '📈', path: '/admin/previsions',       badge: null },
-  { key: 'impersonation',  label: 'Impersonation',    icon: '🎭', path: '/admin/impersonation',    badge: null },
-  { key: 'settings',       label: 'Paramètres',       icon: '⚙️', path: '/admin/settings',         badge: null },
+const getNavItems = (t) => [
+  { key: 'dashboard',     label: t('dashboard'),          icon: '📊', path: '/admin',               badge: null },
+  { key: 'live',          label: t('sb_live'),             icon: '🗺️', path: '/admin/live',          badge: null },
+  { key: 'commandes',     label: t('commandes'),           icon: '📦', path: '/admin/commandes',     badge: null },
+  { key: 'clients',       label: t('clients'),             icon: '👤', path: '/admin/clients',       badge: null },
+  { key: 'transporteurs', label: t('transporteurs'),       icon: '🚗', path: '/admin/transporteurs', badge: null },
+  { key: 'incidents',     label: t('incidents'),           icon: '⚠️', path: '/admin/incidents',     badge: 'incidents' },
+  { key: 'tickets',       label: t('tickets'),             icon: '🎫', path: '/admin/tickets',       badge: 'tickets' },
+  { key: 'contrats',      label: t('contrats'),            icon: '📋', path: '/admin/contrats',      badge: null },
+  { key: 'zones',         label: t('sb_zones'),            icon: '🗾', path: '/admin/zones',         badge: null },
+  { key: 'promotions',    label: t('sb_promotions'),       icon: '🏷️', path: '/admin/promotions',    badge: null },
+  { key: 'bannieres',     label: t('sb_bannieres'),        icon: '🖼️', path: '/admin/bannieres',     badge: null },
+  { key: 'blacklist',     label: t('sb_blacklist'),        icon: '🚫', path: '/admin/blacklist',     badge: null },
+  { key: 'heatmap',       label: t('heatmap'),             icon: '🌡️', path: '/admin/heatmap',       badge: null },
+  { key: 'calendrier',    label: t('sb_calendrier'),       icon: '📅', path: '/admin/calendrier',    badge: null },
+  { key: 'previsions',    label: t('sb_previsions'),       icon: '📈', path: '/admin/previsions',    badge: null },
+  { key: 'impersonation', label: t('sb_impersonation'),    icon: '🎭', path: '/admin/impersonation', badge: null },
+  { key: 'settings',      label: t('settings'),            icon: '⚙️', path: '/admin/settings',      badge: null },
 ];
 
 const STORAGE_KEY = 'delivermap_sidebar_favorites';
 
 const AdminSidebar = () => {
+  const { t } = useI18n();
   const location = useLocation();
   const [compact, setCompact] = useState(() => JSON.parse(localStorage.getItem('delivermap_sidebar_compact') || 'false'));
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
   const [badges, setBadges] = useState({ incidents: 0, tickets: 0 });
   const [search, setSearch] = useState('');
 
-  // Persister l'état compact
+  const NAV_ITEMS = getNavItems(t);
+
   useEffect(() => {
     localStorage.setItem('delivermap_sidebar_compact', JSON.stringify(compact));
   }, [compact]);
 
-  // Persister les favoris
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
   }, [favorites]);
 
-  // Badges live (poll toutes les 30s)
   useEffect(() => {
     const fetchBadges = async () => {
       try {
@@ -106,28 +105,25 @@ const AdminSidebar = () => {
           )}
         </Link>
 
-        {/* Badge en mode compact */}
         {compact && badgeCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-[var(--color-danger)] text-white text-xs font-bold px-1 rounded-full min-w-4 text-center z-10">
             {badgeCount > 9 ? '9+' : badgeCount}
           </span>
         )}
 
-        {/* Tooltip en mode compact */}
         {compact && (
           <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-secondary)] text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             {item.label}
           </div>
         )}
 
-        {/* Bouton favori */}
         {!compact && pinnable && (
           <button
             onClick={(e) => { e.preventDefault(); toggleFavorite(item.key); }}
             className={`absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded
               ${favorites.includes(item.key) ? 'text-yellow-500 opacity-100' : 'text-[var(--color-text-muted)]'}
             `}
-            title={favorites.includes(item.key) ? 'Retirer des favoris' : 'Épingler'}
+            title={favorites.includes(item.key) ? t('cl_favorites_remove') : t('sidebar_pin')}
           >
             {favorites.includes(item.key) ? '★' : '☆'}
           </button>
@@ -152,13 +148,13 @@ const AdminSidebar = () => {
         <button
           onClick={() => setCompact(prev => !prev)}
           className="p-1.5 rounded-lg hover:bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] transition-colors"
-          title={compact ? 'Étendre' : 'Réduire'}
+          title={compact ? t('sidebar_expand') : t('sidebar_collapse')}
         >
           {compact ? '→' : '←'}
         </button>
       </div>
 
-      {/* Search (mode étendu) */}
+      {/* Search */}
       {!compact && (
         <div className="px-3 py-2">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-surface-alt)]">
@@ -168,7 +164,7 @@ const AdminSidebar = () => {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Filtrer le menu..."
+              placeholder={t('sidebar_filter_menu')}
               className="flex-1 bg-transparent text-xs text-[var(--color-text)] placeholder-[var(--color-text-muted)] outline-none"
             />
           </div>
@@ -177,20 +173,17 @@ const AdminSidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
-        {/* Favoris épinglés */}
         {!search && pinnedItems.length > 0 && (
           <>
             {!compact && (
               <p className="px-3 py-1 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                Favoris
+                {t('sidebar_favorites')}
               </p>
             )}
             {pinnedItems.map(item => <NavItem key={item.key} item={item} />)}
             {!compact && <hr className="border-[var(--color-border)] my-2" />}
           </>
         )}
-
-        {/* Tous les items */}
         {regularItems.map(item => <NavItem key={item.key} item={item} />)}
       </nav>
 
@@ -199,7 +192,7 @@ const AdminSidebar = () => {
         <div className="p-3 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-alt)] font-mono">⌘K</kbd>
-            <span>Recherche globale</span>
+            <span>{t('sidebar_global_search')}</span>
           </div>
         </div>
       )}

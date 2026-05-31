@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Camera, MapPin, Send, X, ChevronLeft, CheckCircle } from 'lucide-react';
 import { incidentsApi, commandesApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../../contexts/I18nContext';
 
 const TYPES_INCIDENT = [
-  { value: 'accident', label: 'Accident', emoji: '🚨', desc: 'Collision ou accident de la route' },
-  { value: 'panne', label: 'Panne véhicule', emoji: '🔧', desc: 'Panne moteur, crevaison...' },
-  { value: 'vol', label: 'Vol / Tentative', emoji: '🔓', desc: 'Vol du colis ou agression' },
-  { value: 'colis_endommage', label: 'Colis endommagé', emoji: '📦', desc: 'Colis cassé ou mouillé' },
-  { value: 'retard', label: 'Retard majeur', emoji: '⏱', desc: 'Retard imprévisible > 1h' },
-  { value: 'client_absent', label: 'Client absent', emoji: '🚪', desc: 'Personne absente à la livraison' },
-  { value: 'adresse_introuvable', label: 'Adresse introuvable', emoji: '🗺', desc: 'Adresse incorrecte ou inaccessible' },
-  { value: 'autre', label: 'Autre', emoji: '❓', desc: 'Autre problème non listé' },
+  { value: 'accident',          labelKey: 'inc_type_ACCIDENT',      emoji: '🚨', descKey: 'inc_type_ACCIDENT_desc' },
+  { value: 'panne',             labelKey: 'inc_type_PANNE',         emoji: '🔧', descKey: 'inc_type_PANNE_desc' },
+  { value: 'vol',               labelKey: 'inc_type_VOL',           emoji: '🔓', descKey: 'inc_type_VOL_desc' },
+  { value: 'colis_endommage',   labelKey: 'inc_type_COLIS_ENDOMMAGE', emoji: '📦', descKey: 'inc_type_COLIS_ENDOMMAGE_desc' },
+  { value: 'retard',            labelKey: 'inc_type_RETARD',        emoji: '⏱', descKey: 'inc_type_RETARD_desc' },
+  { value: 'client_absent',     labelKey: 'inc_type_CLIENT_ABSENT', emoji: '🚪', descKey: 'inc_type_CLIENT_ABSENT_desc' },
+  { value: 'adresse_introuvable', labelKey: 'inc_type_ADRESSE_INTRO', emoji: '🗺', descKey: 'inc_type_ADRESSE_INTRO_desc' },
+  { value: 'autre',             labelKey: 'inc_type_AUTRE',         emoji: '❓', descKey: 'inc_type_AUTRE_desc' },
 ];
 
 const StepBadge = ({ n, active }) => (
@@ -28,6 +29,7 @@ export const SignalerIncidentPanel = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useI18n();
   const [step, setStep] = useState(1);
   const [type, setType] = useState('');
   const [commandes, setCommandes] = useState(commandesProp || []);
@@ -65,7 +67,7 @@ export const SignalerIncidentPanel = ({
         setPosition({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         setGpsLoading(false);
       },
-      () => { setGpsError('GPS non disponible.'); setGpsLoading(false); },
+      () => { setGpsError(t('si_gps_error')); setGpsLoading(false); },
       { timeout: 10000 },
     );
   };
@@ -82,8 +84,8 @@ export const SignalerIncidentPanel = ({
   };
 
   const handleSubmit = async () => {
-    if (commandeIds.length === 0) { setError('Sélectionnez au moins une commande.'); return; }
-    if (!description.trim()) { setError('La description est obligatoire.'); return; }
+    if (commandeIds.length === 0) { setError(t('si_order_required')); return; }
+    if (!description.trim()) { setError(t('si_desc_required')); return; }
     setSubmitting(true);
     setError('');
     try {
@@ -106,7 +108,7 @@ export const SignalerIncidentPanel = ({
       setStep(3);
       onSuccess?.();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erreur lors du signalement.');
+      setError(err.response?.data?.detail || t('state_error'));
     } finally {
       setSubmitting(false);
     }
@@ -119,11 +121,11 @@ export const SignalerIncidentPanel = ({
     body = (
       <div style={{ textAlign: 'center', padding: '1rem 0' }}>
         <CheckCircle size={48} color="#10b981" style={{ marginBottom: '1rem' }} />
-        <h3 style={{ marginBottom: '0.5rem' }}>Incident signalé !</h3>
+        <h3 style={{ marginBottom: '0.5rem' }}>{t('si_success_title')}</h3>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: 14 }}>
-          Votre signalement a été transmis à l&apos;équipe.
+          {t('si_success_msg')}
         </p>
-        <button type="button" onClick={onClose} className="btn btn-primary" style={{ width: '100%' }}>Fermer</button>
+        <button type="button" onClick={onClose} className="btn btn-primary" style={{ width: '100%' }}>{t('action_close_lbl')}</button>
       </div>
     );
   } else {
@@ -142,27 +144,27 @@ export const SignalerIncidentPanel = ({
 
         <div style={{ display: 'flex', marginBottom: '1.25rem', alignItems: 'center' }}>
           <StepBadge n={1} active={step >= 1} />
-          <span style={{ fontSize: 13, marginLeft: 8, marginRight: 12 }}>Type</span>
+          <span style={{ fontSize: 13, marginLeft: 8, marginRight: 12 }}>{t('si_step_type')}</span>
           <div style={{ flex: 1, height: 2, background: step > 1 ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)' }} />
           <StepBadge n={2} active={step >= 2} />
-          <span style={{ fontSize: 13, marginLeft: 8 }}>Détails</span>
+          <span style={{ fontSize: 13, marginLeft: 8 }}>{t('si_step_details')}</span>
         </div>
 
         {step === 1 && (
           <>
-            <h4 style={{ marginBottom: '1rem', fontSize: 14 }}>Quel est le type d&apos;incident ?</h4>
+            <h4 style={{ marginBottom: '1rem', fontSize: 14 }}>{t('si_type_question')}</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-              {TYPES_INCIDENT.map(t => (
-                <div key={t.value} onClick={() => setType(t.value)} role="button" tabIndex={0}
-                  onKeyDown={e => e.key === 'Enter' && setType(t.value)}
+              {TYPES_INCIDENT.map(tp => (
+                <div key={tp.value} onClick={() => setType(tp.value)} role="button" tabIndex={0}
+                  onKeyDown={e => e.key === 'Enter' && setType(tp.value)}
                   style={{
                     padding: '1rem', borderRadius: 12, cursor: 'pointer',
-                    border: `2px solid ${type === t.value ? 'var(--accent-color)' : 'rgba(255,255,255,0.08)'}`,
-                    background: type === t.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
+                    border: `2px solid ${type === tp.value ? 'var(--accent-color)' : 'rgba(255,255,255,0.08)'}`,
+                    background: type === tp.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
                   }}>
-                  <div style={{ fontSize: 22, marginBottom: 6 }}>{t.emoji}</div>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{t.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.desc}</div>
+                  <div style={{ fontSize: 22, marginBottom: 6 }}>{tp.emoji}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{t(tp.labelKey)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}></div>
                 </div>
               ))}
             </div>
@@ -175,13 +177,13 @@ export const SignalerIncidentPanel = ({
         {step === 2 && (
           <>
             <button type="button" onClick={() => setStep(1)} className="btn btn-secondary" style={{ marginBottom: '1rem', fontSize: 12 }}>
-              <ChevronLeft size={14} /> Changer le type
+              <ChevronLeft size={14} /> {t('si_change_type')}
             </button>
-            <h4 style={{ marginBottom: '1rem', fontSize: 14 }}>{typeLabel?.emoji} {typeLabel?.label}</h4>
+            <h4 style={{ marginBottom: '1rem', fontSize: 14 }}>{typeLabel?.emoji} {typeLabel ? t(typeLabel.labelKey) : ''}</h4>
 
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Commande(s) avec vous *</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{t('si_orders_with')}</p>
             {commandes.length === 0 ? (
-              <p style={{ fontSize: 12, color: '#f59e0b', marginBottom: '1rem' }}>Aucune mission en cours.</p>
+              <p style={{ fontSize: 12, color: '#f59e0b', marginBottom: '1rem' }}>{t('si_no_mission')}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1rem' }}>
                 {commandes.map(c => (
@@ -204,7 +206,7 @@ export const SignalerIncidentPanel = ({
             )}
 
             <textarea className="glass-input" value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Description de l'incident *"
+              placeholder={t('si_desc_ph')}
               style={{ width: '100%', minHeight: 90, marginBottom: '1rem', fontSize: 13 }} />
 
             {position ? (

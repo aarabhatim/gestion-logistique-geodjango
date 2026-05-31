@@ -8,6 +8,7 @@
  *   <SkeletonTable rows={5} cols={4} />
  */
 import React from 'react';
+import { useI18n } from '../../contexts/I18nContext';
 import {
   Package, AlertCircle, RefreshCw, Inbox,
   SearchX, WifiOff, ShieldOff, FileX,
@@ -28,7 +29,9 @@ export function Spinner({ size = 28, color = 'var(--primary, #E30613)' }) {
 }
 
 /* ── État chargement ─────────────────────────────────────────────────────── */
-export function LoadingState({ message = 'Chargement…', size = 'md' }) {
+export function LoadingState({ message, size = 'md' }) {
+  const { t } = useI18n();
+  const msg = message ?? t('state_loading');
   const pad = size === 'sm' ? 24 : size === 'lg' ? 80 : 48;
   return (
     <div style={{
@@ -37,7 +40,7 @@ export function LoadingState({ message = 'Chargement…', size = 'md' }) {
       color: 'var(--text-secondary, #94a3b8)',
     }}>
       <Spinner />
-      <span style={{ fontSize: 14 }}>{message}</span>
+      <span style={{ fontSize: 14 }}>{msg}</span>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -46,11 +49,13 @@ export function LoadingState({ message = 'Chargement…', size = 'md' }) {
 /* ── État vide ───────────────────────────────────────────────────────────── */
 export function EmptyState({
   icon: Icon = Inbox,
-  title = 'Aucune donnée',
+  title,
   desc = '',
   action = null,   // { label, onClick }
   size = 'md',
 }) {
+  const { t } = useI18n();
+  const displayTitle = title ?? t('state_no_data');
   const iconSize = size === 'sm' ? 36 : size === 'lg' ? 72 : 52;
   const pad      = size === 'sm' ? 20 : size === 'lg' ? 80 : 48;
   return (
@@ -60,7 +65,7 @@ export function EmptyState({
       color: 'var(--text-secondary, #94a3b8)', textAlign: 'center',
     }}>
       <Icon size={iconSize} style={{ opacity: 0.25 }} />
-      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary, #f1f5f9)', marginTop: 6 }}>{title}</div>
+      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary, #f1f5f9)', marginTop: 6 }}>{displayTitle}</div>
       {desc && <div style={{ fontSize: 13, maxWidth: 320, lineHeight: 1.5 }}>{desc}</div>}
       {action && (
         <button onClick={action.onClick}
@@ -75,10 +80,12 @@ export function EmptyState({
 
 /* ── État erreur ─────────────────────────────────────────────────────────── */
 export function ErrorState({
-  message = 'Une erreur est survenue.',
+  message,
   onRetry = null,
   icon: Icon = AlertCircle,
 }) {
+  const { t } = useI18n();
+  const msg = message ?? t('state_error');
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -86,15 +93,15 @@ export function ErrorState({
     }}>
       <Icon size={48} color="var(--danger, #ef4444)" style={{ opacity: 0.7 }} />
       <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary, #f1f5f9)', marginTop: 6 }}>
-        Erreur de chargement
+        {t('err_loading_title')}
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-secondary, #94a3b8)', maxWidth: 320, lineHeight: 1.5 }}>
-        {message}
+        {msg}
       </div>
       {onRetry && (
         <button onClick={onRetry} className="btn btn-secondary"
           style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <RefreshCw size={14} /> Réessayer
+          <RefreshCw size={14} /> {t('common_retry')}
         </button>
       )}
     </div>
@@ -140,13 +147,13 @@ export function SkeletonCard({ height = 100 }) {
 
 /* ── Pré-sets vides courants ─────────────────────────────────────────────── */
 export const EMPTY_PRESETS = {
-  commandes:     { icon: Package,    title: 'Aucune commande',     desc: 'Les commandes apparaîtront ici une fois créées.' },
-  incidents:     { icon: AlertCircle, title: 'Aucun incident',    desc: 'Aucun incident signalé pour le moment.' },
-  tickets:       { icon: FileX,      title: 'Aucun ticket',        desc: 'Aucune demande de support en cours.' },
-  notifications: { icon: Inbox,      title: 'Aucune notification', desc: 'Vous êtes à jour !' },
-  recherche:     { icon: SearchX,    title: 'Aucun résultat',      desc: 'Essayez avec d\'autres mots-clés.' },
-  connexion:     { icon: WifiOff,    title: 'Hors ligne',          desc: 'Vérifiez votre connexion et réessayez.' },
-  acces:         { icon: ShieldOff,  title: 'Accès refusé',        desc: 'Vous n\'avez pas les droits pour voir cette page.' },
+  commandes:     { icon: Package,     titleKey: 'ep_commandes_title', descKey: 'ep_commandes_desc' },
+  incidents:     { icon: AlertCircle, titleKey: 'ep_incidents_title', descKey: 'ep_incidents_desc' },
+  tickets:       { icon: FileX,       titleKey: 'ep_tickets_title',   descKey: 'ep_tickets_desc' },
+  notifications: { icon: Inbox,       titleKey: 'ep_notif_title',     descKey: 'ep_notif_desc' },
+  recherche:     { icon: SearchX,     titleKey: 'ep_search_title',    descKey: 'ep_search_desc' },
+  connexion:     { icon: WifiOff,     titleKey: 'ep_connexion_title', descKey: 'ep_connexion_desc' },
+  acces:         { icon: ShieldOff,   titleKey: 'ep_acces_title',     descKey: 'ep_acces_desc' },
 };
 
 export default { LoadingState, EmptyState, ErrorState, SkeletonTable, SkeletonCard, Spinner, EMPTY_PRESETS };

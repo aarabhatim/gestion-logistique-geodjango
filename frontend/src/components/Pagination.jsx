@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * Composant Pagination universel
@@ -19,6 +20,7 @@ const Pagination = ({
   onPageSizeChange,
   pageSizeOptions = [10, 20, 50],
 }) => {
+  const { t } = useI18n();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
@@ -54,18 +56,18 @@ const Pagination = ({
     }}>
       {/* Info comptage */}
       <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-        Affichage <strong style={{ color: 'var(--text-primary)' }}>{start}–{end}</strong> sur{' '}
+        {t('showing')} <strong style={{ color: 'var(--text-primary)' }}>{start}–{end}</strong> {t('of')}{' '}
         <strong style={{ color: 'var(--text-primary)' }}>{total}</strong>
       </div>
 
       {/* Boutons navigation */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button style={btnStyle(false, page === 1)} disabled={page === 1}
-          onClick={() => onPageChange(1)} title="Première page">
+          onClick={() => onPageChange(1)} title={t('pag_first_page')}>
           <ChevronsLeft size={14} />
         </button>
         <button style={btnStyle(false, page === 1)} disabled={page === 1}
-          onClick={() => onPageChange(page - 1)} title="Page précédente">
+          onClick={() => onPageChange(page - 1)} title={t('pag_prev_page')}>
           <ChevronLeft size={14} />
         </button>
 
@@ -81,11 +83,11 @@ const Pagination = ({
         )}
 
         <button style={btnStyle(false, page === totalPages)} disabled={page === totalPages}
-          onClick={() => onPageChange(page + 1)} title="Page suivante">
+          onClick={() => onPageChange(page + 1)} title={t('pag_next_page')}>
           <ChevronRight size={14} />
         </button>
         <button style={btnStyle(false, page === totalPages)} disabled={page === totalPages}
-          onClick={() => onPageChange(totalPages)} title="Dernière page">
+          onClick={() => onPageChange(totalPages)} title={t('pag_last_page')}>
           <ChevronsRight size={14} />
         </button>
       </div>
@@ -93,7 +95,7 @@ const Pagination = ({
       {/* Sélecteur taille de page */}
       {onPageSizeChange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-          <span>Lignes :</span>
+          <span>{t('pag_rows_label')}</span>
           <select
             value={pageSize}
             onChange={e => { onPageSizeChange(Number(e.target.value)); onPageChange(1); }}

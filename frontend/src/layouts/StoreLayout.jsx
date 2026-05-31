@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
 import Header from '../components/Header';
 import { LayoutDashboard, Package, ShoppingBag, BarChart2, LogOut } from 'lucide-react';
 
@@ -18,35 +19,36 @@ const SidebarItem = ({ icon: Icon, label, path }) => {
 
 const StoreSidebar = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-container">
           <div className="logo-icon"><ShoppingBag size={24} color="white" /></div>
-          <h1 className="logo-text text-gradient">Boutique</h1>
+          <h1 className="logo-text text-gradient">{t('store_boutique')}</h1>
         </div>
       </div>
       <nav className="sidebar-nav">
-        <div className="nav-section">MENU FONDATEUR</div>
-        <SidebarItem icon={LayoutDashboard} label="Tableau de bord" path="/store" />
-        <SidebarItem icon={Package} label="Catalogue" path="/store/products" />
-        <SidebarItem icon={ShoppingBag} label="Commandes (Kanban)" path="/store/orders" />
-        <SidebarItem icon={BarChart2} label="Analytiques" path="/store/analytics" />
+        <div className="nav-section">{t('store_menu_fondateur')}</div>
+        <SidebarItem icon={LayoutDashboard} label={t('dashboard')} path="/store" />
+        <SidebarItem icon={Package} label={t('catalogue')} path="/store/products" />
+        <SidebarItem icon={ShoppingBag} label={t('store_orders_kanban')} path="/store/orders" />
+        <SidebarItem icon={BarChart2} label={t('sb_analytiques')} path="/store/analytics" />
       </nav>
       <div className="sidebar-footer">
         <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div className="avatar">F</div>
             <div className="user-info">
-              <div className="user-name">{user?.username || 'Fondateur'}</div>
-              <div className="user-role">Fondateur</div>
+              <div className="user-name">{user?.username || t('sb_role_fondateur')}</div>
+              <div className="user-role">{t('sb_role_fondateur')}</div>
             </div>
           </div>
-          <button 
-            onClick={logout} 
-            className="btn btn-icon" 
+          <button
+            onClick={logout}
+            className="btn btn-icon"
             style={{ background: 'transparent', color: 'var(--danger-color)' }}
-            title="Se déconnecter"
+            title={t('logout')}
           >
             <LogOut size={20} />
           </button>

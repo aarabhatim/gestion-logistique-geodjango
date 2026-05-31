@@ -16,6 +16,7 @@ from .serializers import (
     AdminUserSerializer,
 )
 from .permissions import IsAdminRole
+from .email_service import send_welcome_email
 
 
 class LoginView(TokenObtainPairView):
@@ -31,6 +32,8 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
+            # Envoi de l'email de bienvenue (non bloquant)
+            send_welcome_email(user)
             return Response({
                 'message': 'Compte créé avec succès.',
                 'access': str(refresh.access_token),

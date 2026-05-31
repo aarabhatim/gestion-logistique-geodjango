@@ -7,43 +7,20 @@
  *   <SuiviTimeline commande={cmd} livraison={liv} onContact={() => {}} />
  */
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle, Clock, Package, Truck, MapPin, Phone, MessageSquare, Star } from 'lucide-react';
+import { CheckCircle, Clock, Package, Truck, MessageSquare, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useI18n } from '../contexts/I18nContext';
 
-// ─── Config des étapes ────────────────────────────────────────────────────────
-const ETAPES = [
-  {
-    statuts: ['EN_ATTENTE'],
-    label: 'Commande reçue',
-    desc: 'Votre commande a été enregistrée et est en attente de validation.',
-    icon: Package,
-    color: '#f59e0b',
-  },
-  {
-    statuts: ['VALIDEE', 'EN_PREPARATION'],
-    label: 'En préparation',
-    desc: 'La boutique prépare votre commande.',
-    icon: Package,
-    color: '#8b5cf6',
-  },
-  {
-    statuts: ['EN_ROUTE'],
-    label: 'En route',
-    desc: 'Votre commande est en cours de livraison.',
-    icon: Truck,
-    color: '#06b6d4',
-  },
-  {
-    statuts: ['LIVREE'],
-    label: 'Livrée',
-    desc: 'Votre commande a été livrée avec succès !',
-    icon: CheckCircle,
-    color: '#10b981',
-  },
+// ─── Config des étapes (clés i18n pour label/desc) ───────────────────────────
+const ETAPES_CONFIG = [
+  { statuts: ['EN_ATTENTE'],           labelKey: 'timeline_received',        descKey: 'timeline_received_desc',  icon: Package,     color: '#f59e0b' },
+  { statuts: ['VALIDEE', 'EN_PREPARATION'], labelKey: 'status_EN_PREPARATION', descKey: 'timeline_preparing_desc', icon: Package,     color: '#8b5cf6' },
+  { statuts: ['EN_ROUTE'],             labelKey: 'status_EN_ROUTE',           descKey: 'timeline_enroute_desc',   icon: Truck,       color: '#06b6d4' },
+  { statuts: ['LIVREE'],               labelKey: 'status_LIVREE',             descKey: 'timeline_delivered_desc', icon: CheckCircle, color: '#10b981' },
 ];
 
 function getEtapeIndex(statut) {
-  return ETAPES.findIndex(e => e.statuts.includes(statut));
+  return ETAPES_CONFIG.findIndex(e => e.statuts.includes(statut));
 }
 
 // ─── Confetti simple CSS ───────────────────────────────────────────────────────
@@ -73,6 +50,7 @@ function Confetti({ active }) {
 
 // ─── Barre ETA ────────────────────────────────────────────────────────────────
 function ETABar({ eta }) {
+  const { t } = useI18n();
   const [minutesLeft, setMinutesLeft] = useState(null);
   const [progress, setProgress] = useState(0);
 
@@ -84,7 +62,6 @@ function ETABar({ eta }) {
       const diffMs = etaMs - now;
       const mins = Math.max(0, Math.ceil(diffMs / 60000));
       setMinutesLeft(mins);
-      // assume ~30 min total pour la progression
       const totalMs = 30 * 60 * 1000;
       const pct = Math.min(100, Math.max(0, (1 - diffMs / totalMs) * 100));
       setProgress(pct);
@@ -106,10 +83,10 @@ function ETABar({ eta }) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
         <span style={{ color: '#06b6d4', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Clock size={14} /> Arrivée estimée
+          <Clock size={14} /> {t('timeline_eta_arrival')}
         </span>
         <span style={{ color: 'white', fontWeight: 700 }}>
-          {minutesLeft === 0 ? 'Imminent !' : `~${minutesLeft} min`}
+          {minutesLeft === 0 ? t('timeline_eta_imminent') : `~${minutesLeft} ${t('timeline_min')}`}
         </span>
       </div>
       <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
@@ -126,8 +103,9 @@ function ETABar({ eta }) {
 
 // ─── Carte chauffeur ──────────────────────────────────────────────────────────
 function CardChauffeur({ transporteur, onContact }) {
+  const { t } = useI18n();
   if (!transporteur) return null;
-  const nom = transporteur.nom_complet || `${transporteur.first_name || ''} ${transporteur.last_name || ''}`.trim() || 'Chauffeur';
+  const nom = transporteur.nom_complet || `${transporteur.first_name || ''} ${transporteur.last_name || ''}`.trim() || t('timeline_driver_assigned');
   const note = transporteur.note_moyenne || transporteur.rating;
   const vehicule = transporteur.vehicule_type || '';
 
@@ -180,7 +158,7 @@ function CardChauffeur({ transporteur, onContact }) {
             transition: 'background 0.15s',
           }}
         >
-          <MessageSquare size={13} /> Contacter
+          <MessageSquare size={13} /> {t('timeline_contact')}
         </button>
       )}
     </motion.div>
@@ -189,12 +167,12 @@ function CardChauffeur({ transporteur, onContact }) {
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 export default function SuiviTimeline({ commande, livraison, onContact }) {
+  const { t } = useI18n();
   const statut = commande?.statut || 'EN_ATTENTE';
   const etapeActive = getEtapeIndex(statut);
   const [showConfetti, setShowConfetti] = useState(false);
   const prevStatut = useRef(statut);
 
-  // Déclencher confetti quand la commande passe à LIVREE
   useEffect(() => {
     if (prevStatut.current !== 'LIVREE' && statut === 'LIVREE') {
       setShowConfetti(true);
@@ -230,7 +208,7 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
         {/* Progression de la ligne */}
         <motion.div
           initial={{ height: 0 }}
-          animate={{ height: `${(etapeActive / (ETAPES.length - 1)) * 100}%` }}
+          animate={{ height: `${(etapeActive / (ETAPES_CONFIG.length - 1)) * 100}%` }}
           transition={{ duration: 1, ease: 'easeOut' }}
           style={{
             position: 'absolute', left: 11, top: 8,
@@ -240,7 +218,7 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
           }}
         />
 
-        {ETAPES.map((etape, idx) => {
+        {ETAPES_CONFIG.map((etape, idx) => {
           const done = idx < etapeActive;
           const active = idx === etapeActive;
           const Icon = etape.icon;
@@ -253,7 +231,7 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
               transition={{ delay: idx * 0.1, duration: 0.3 }}
               style={{
                 position: 'relative',
-                marginBottom: idx < ETAPES.length - 1 ? '1.5rem' : 0,
+                marginBottom: idx < ETAPES_CONFIG.length - 1 ? '1.5rem' : 0,
               }}
             >
               {/* Dot */}
@@ -296,7 +274,7 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
                   marginBottom: 2,
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}>
-                  {etape.label}
+                  {t(etape.labelKey)}
                   {active && statut !== 'LIVREE' && (
                     <motion.span
                       animate={{ opacity: [1, 0.3, 1] }}
@@ -310,7 +288,7 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
                   {active && statut === 'LIVREE' && <span>🎉</span>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {etape.desc}
+                  {t(etape.descKey)}
                 </div>
               </div>
             </motion.div>
@@ -326,11 +304,11 @@ export default function SuiviTimeline({ commande, livraison, onContact }) {
           style={{ marginTop: '1rem' }}
         >
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-            📷 Photo de preuve de livraison
+            📷 {t('timeline_photo_proof')}
           </div>
           <img
             src={livraison.photo_preuve}
-            alt="Preuve de livraison"
+            alt={t('timeline_photo_proof')}
             style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}
           />
         </motion.div>

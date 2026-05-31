@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { commandesApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 
 /* ── Thème ───────────────────────────────────────────────────────────────── */
 const C = {
@@ -23,12 +24,12 @@ const C = {
 
 /* ── Étapes de suivi ─────────────────────────────────────────────────────── */
 const ETAPES_SUIVI = [
-  { statut: 'EN_ATTENTE',     icon: '📋', label: 'Commande reçue',     desc: 'En attente de validation par la boutique' },
-  { statut: 'VALIDEE',        icon: '✅', label: 'Validée',            desc: 'La boutique a accepté votre commande' },
-  { statut: 'EN_PREPARATION', icon: '👨‍🍳', label: 'En préparation',   desc: 'Votre commande est en cours de préparation' },
-  { statut: 'ASSIGNEE',       icon: '🚴', label: 'Livreur assigné',    desc: 'Un livreur a été désigné pour votre commande' },
-  { statut: 'EN_ROUTE',       icon: '🛵', label: 'En route',           desc: 'Votre livreur est en chemin' },
-  { statut: 'LIVREE',         icon: '🎉', label: 'Livrée',             desc: 'Commande livrée avec succès' },
+  { statut: 'EN_ATTENTE',     icon: '📋', labelKey: 'ot_step_received',  descKey: 'ot_step_received_desc' },
+  { statut: 'VALIDEE',        icon: '✅', labelKey: 'status_VALIDEE',    descKey: 'ot_step_validated_desc' },
+  { statut: 'EN_PREPARATION', icon: '👨‍🍳', labelKey: 'status_EN_PREPARATION', descKey: 'ot_step_prep_desc' },
+  { statut: 'ASSIGNEE',       icon: '🚴', labelKey: 'ot_step_assigned',  descKey: 'ot_step_assigned_desc' },
+  { statut: 'EN_ROUTE',       icon: '🛵', labelKey: 'status_EN_ROUTE',   descKey: 'ot_step_enroute_desc' },
+  { statut: 'LIVREE',         icon: '🎉', labelKey: 'status_LIVREE',     descKey: 'ot_step_delivered_desc' },
 ];
 
 const STATUT_ORDER = ['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'ASSIGNEE', 'EN_ROUTE', 'LIVREE'];
@@ -50,11 +51,12 @@ const ICON_BOUTIQUE= makeIcon('#f59e0b', '🏪', 34);
 
 /* ── Timeline verticale ──────────────────────────────────────────────────── */
 const Timeline = ({ statut }) => {
+  const { t } = useI18n();
   const currentIdx = getEtapeIndex(statut);
   const isCancelled = statut === 'ANNULEE';
   return (
     <div style={{ background: C.card, borderRadius: 16, padding: '20px 18px', border: `1px solid ${C.border}` }}>
-      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 20 }}>Suivi de commande</div>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 20 }}>{t('ot_tracking_title')}</div>
       {ETAPES_SUIVI.map((e, i) => {
         const done    = i <= currentIdx && !isCancelled;
         const active  = i === currentIdx && !isCancelled;
@@ -84,17 +86,17 @@ const Timeline = ({ statut }) => {
             {/* Texte */}
             <div style={{ flex: 1, paddingBottom: 20 }}>
               <div style={{ fontWeight: active ? 700 : 600, fontSize: 14, color: done ? C.text : C.text2 }}>
-                {e.label}
-                {active && <span style={{ marginLeft: 8, fontSize: 11, background: `${C.primary}20`, color: C.primary, padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>En cours</span>}
+                {t(e.labelKey)}
+                {active && <span style={{ marginLeft: 8, fontSize: 11, background: `${C.primary}20`, color: C.primary, padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>{t('ot_in_progress')}</span>}
               </div>
-              <div style={{ fontSize: 12, color: C.text2, marginTop: 2 }}>{e.desc}</div>
+              <div style={{ fontSize: 12, color: C.text2, marginTop: 2 }}></div>
             </div>
           </div>
         );
       })}
       {isCancelled && (
         <div style={{ background: `${C.error}18`, border: `1px solid ${C.error}44`, borderRadius: 10, padding: '10px 14px', marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.error }}>
-          <AlertCircle size={14} /> Cette commande a été annulée.
+          <AlertCircle size={14} /> {t('ot_cancelled_msg')}
         </div>
       )}
     </div>
@@ -103,6 +105,7 @@ const Timeline = ({ statut }) => {
 
 /* ── Carte de suivi ──────────────────────────────────────────────────────── */
 const CarteTracking = ({ commande }) => {
+  const { t } = useI18n();
   const livreurLat = commande?.tracking?.latitude;
   const livreurLon = commande?.tracking?.longitude;
   const hasMap = livreurLat && livreurLon;
@@ -111,7 +114,7 @@ const CarteTracking = ({ commande }) => {
     return (
       <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, height: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: C.text2 }}>
         <MapPin size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-        <div style={{ fontWeight: 600, fontSize: 14 }}>Carte disponible quand le livreur est en route</div>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>{t('ot_map_not_ready')}</div>
         <div style={{ fontSize: 12, marginTop: 4 }}>Statut actuel : {commande?.statut || '–'}</div>
       </div>
     );
@@ -125,7 +128,7 @@ const CarteTracking = ({ commande }) => {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
         <Marker position={[livreurLat, livreurLon]} icon={ICON_LIVREUR}>
-          <Popup>🛵 Votre livreur</Popup>
+          <Popup>🛵 {t('ot_your_driver')}</Popup>
         </Marker>
       </MapContainer>
     </div>
@@ -136,6 +139,7 @@ const CarteTracking = ({ commande }) => {
    Page principale
 ══════════════════════════════════════════════════════════════════════════ */
 export default function OrderTrackingPage() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const [commande, setCommande] = useState(null);
@@ -182,7 +186,7 @@ export default function OrderTrackingPage() {
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.text }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: 48, height: 48, border: `3px solid ${C.primary}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-        <div style={{ fontSize: 15, color: C.text2 }}>Chargement du suivi…</div>
+        <div style={{ fontSize: 15, color: C.text2 }}>{t('ot_loading')}</div>
       </div>
     </div>
   );
@@ -190,11 +194,11 @@ export default function OrderTrackingPage() {
   if (error || !commande) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: C.text, padding: 24 }}>
       <AlertCircle size={48} color={C.error} style={{ marginBottom: 16 }} />
-      <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Commande introuvable</div>
+      <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>{t('ot_not_found')}</div>
       <div style={{ fontSize: 14, color: C.text2, marginBottom: 24 }}>{error}</div>
       <button onClick={() => navigate('/client')}
         style={{ background: C.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontWeight: 700, cursor: 'pointer' }}>
-        Retour à l'accueil
+        {t('ot_back_home')}
       </button>
     </div>
   );
@@ -213,8 +217,8 @@ export default function OrderTrackingPage() {
           <ArrowLeft size={16} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 17 }}>Suivi commande #{commande.reference || commande.id}</div>
-          <div style={{ fontSize: 11, color: C.text2 }}>Mis à jour : {lastRefresh.toLocaleTimeString('fr-FR')}</div>
+          <div style={{ fontWeight: 800, fontSize: 17 }}>{t('otp_order_title')} #{commande.reference || commande.id}</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>{t('common_updated_at')} : {lastRefresh.toLocaleTimeString()}</div>
         </div>
         <button onClick={fetchCommande}
           style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px', color: C.text2, cursor: 'pointer' }}>
@@ -238,7 +242,7 @@ export default function OrderTrackingPage() {
             <div style={{ fontSize: 13, color: C.text2 }}>{etapeActuelle.desc}</div>
             {!isLivree && (
               <div style={{ fontSize: 12, color: C.text2, marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Clock size={12} /> Actualisation automatique toutes les 20 secondes
+                <Clock size={12} /> {t('otp_auto_refresh')}
               </div>
             )}
           </div>
@@ -252,15 +256,15 @@ export default function OrderTrackingPage() {
 
         {/* Infos commande */}
         <div style={{ background: C.card, borderRadius: 16, padding: '18px 18px', border: `1px solid ${C.border}` }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Détails</div>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t('otp_details')}</div>
           {[
-            { label: 'Boutique', value: commande.fondateur_detail?.nom_boutique || '–' },
-            { label: 'Adresse', value: commande.adresse_livraison || '–' },
-            { label: 'Articles', value: `${commande.lignes?.length || 0} article(s)` },
-            { label: 'Total', value: `${parseFloat(commande.montant_total || 0).toFixed(2)} MAD` },
+            { labelKey: 'otp_shop_label', value: commande.fondateur_detail?.nom_boutique || '–' },
+            { labelKey: 'otp_address_label', value: commande.adresse_livraison || '–' },
+            { labelKey: 'otp_articles_label', value: `${commande.lignes?.length || 0} article(s)` },
+            { labelKey: 'otp_total_label', value: `${parseFloat(commande.montant_total || 0).toFixed(2)} MAD` },
           ].map(r => (
-            <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color: C.text2 }}>{r.label}</span>
+            <div key={r.labelKey} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: C.text2 }}>{t(r.labelKey)}</span>
               <span style={{ fontSize: 13, color: C.text, fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>{r.value}</span>
             </div>
           ))}
@@ -270,7 +274,7 @@ export default function OrderTrackingPage() {
         {commande.transporteur_detail && (
           <div style={{ background: C.card, borderRadius: 16, padding: '16px 18px', border: `1px solid ${C.border}` }}>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Truck size={16} color={C.primary} /> Votre livreur
+              <Truck size={16} color={C.primary} /> {t('ot_your_driver')}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: `${C.primary}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🛵</div>
@@ -289,7 +293,7 @@ export default function OrderTrackingPage() {
         {/* Avis (si livrée) */}
         {isLivree && !avisSent && (
           <div style={{ background: C.card, borderRadius: 16, padding: '18px 18px', border: `1px solid ${C.border}` }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>⭐ Notez votre expérience</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t('otp_rate_experience')}</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14, justifyContent: 'center' }}>
               {[1, 2, 3, 4, 5].map(n => (
                 <button key={n} onClick={() => setAvis(a => ({ ...a, note: n }))}
@@ -301,28 +305,29 @@ export default function OrderTrackingPage() {
             <textarea
               value={avis.commentaire}
               onChange={e => setAvis(a => ({ ...a, commentaire: e.target.value }))}
-              placeholder="Votre commentaire (optionnel)…"
+              placeholder={t('ot_comment_ph')}
               rows={3}
               style={{ width: '100%', padding: '10px 14px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, fontSize: 14, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
             <button onClick={envoyerAvis}
               style={{ width: '100%', marginTop: 12, background: C.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-              Envoyer mon avis
+              {t('otp_send_review')}
             </button>
           </div>
         )}
         {avisSent && (
           <div style={{ background: `${C.success}15`, border: `1px solid ${C.success}44`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.success }}>
-            <CheckCircle size={18} /> Merci pour votre avis !
+            <CheckCircle size={18} /> {t('otp_thanks_review')}
           </div>
         )}
 
         <button onClick={() => navigate('/client')}
           style={{ background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 0', fontWeight: 600, fontSize: 15, cursor: 'pointer', marginTop: 4 }}>
-          Retour à l'accueil
+          {t('ot_back_home')}
         </button>
       </div>
 
+      
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>

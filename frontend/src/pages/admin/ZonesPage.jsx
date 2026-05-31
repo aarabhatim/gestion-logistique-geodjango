@@ -104,7 +104,7 @@ export default function ZonesPage() {
         <div className="glass-card animate-fade-in" style={{ overflow: 'hidden', borderRadius: 14 }}>
           <MapContainer center={[33.589886, -7.603869]} zoom={11} style={{ height: 500 }}>
             <TileLayer
-              url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
             />
             {zones.map(z => z.polygone?.coordinates && (

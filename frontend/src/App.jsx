@@ -54,7 +54,8 @@ import ChauffeurDashboard   from './pages/chauffeur/ChauffeurDashboard';
 import SignalerIncident      from './pages/chauffeur/SignalerIncident';
 import DashboardFinancier   from './pages/chauffeur/DashboardFinancier';
 import GamificationPage     from './pages/chauffeur/GamificationPage';
-import ModeLivraison        from './pages/chauffeur/ModeLivraison';
+import ModeLivraison              from './pages/chauffeur/ModeLivraison';
+import TransporteurParametresPage from './pages/chauffeur/TransporteurParametresPage';
 
 // Client
 import ClientDashboard   from './pages/client/ClientDashboard';
@@ -65,6 +66,7 @@ import OrderTrackingPage from './pages/client/OrderTrackingPage';
 // Nouvelles fonctionnalités globales
 import GlobalSearch from './components/GlobalSearch';
 
+import NotFoundPage    from './pages/NotFoundPage';
 import './index.css';
 import './pages/Pages.css';
 
@@ -152,6 +154,13 @@ function AppRoutes() {
             <ChauffeurDashboard />
           </ProtectedRoute>
         } />
+        <Route path="/chauffeur/missions"   element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/map"         element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/historique"  element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/conduite"    element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/objectifs"   element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/support"     element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
+        <Route path="/chauffeur/profil"      element={<ProtectedRoute allowedRoles={['TRANSPORTEUR']}><ChauffeurDashboard /></ProtectedRoute>} />
         <Route path="/chauffeur/signaler-incident" element={
           <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
             <AdminShell><SignalerIncident /></AdminShell>
@@ -179,6 +188,13 @@ function AppRoutes() {
         <Route path="/chauffeur/livraison/:id" element={
           <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
             <ModeLivraison />
+          </ProtectedRoute>
+        } />
+        <Route path="/chauffeur/parametres" element={
+          <ProtectedRoute allowedRoles={['TRANSPORTEUR']}>
+            <TransporteurLayout pageTitleKey="nav_settings" pageIcon="⚙️">
+              <TransporteurParametresPage />
+            </TransporteurLayout>
           </ProtectedRoute>
         } />
 
@@ -216,7 +232,7 @@ function AppRoutes() {
         <Route path="/blacklist"      element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><BlacklistPage /></AdminShell></ProtectedRoute>} />
         <Route path="/alertes"        element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><AlertesCentrePage /></AdminShell></ProtectedRoute>} />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AnimatePresence>
   );

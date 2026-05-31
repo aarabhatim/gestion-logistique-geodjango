@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { bannieresApi } from '../../services/api';
 import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const TYPE_STYLES = {
   info:    { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.4)',  color: '#93c5fd', icon: 'ℹ️' },
@@ -42,6 +43,7 @@ export default function BannieresPage() {
   const [list, setList]           = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const [form, setForm]           = useState(EMPTY);
   const [editId, setEditId]       = useState(null);
   const [saving, setSaving]       = useState(false);
@@ -87,8 +89,7 @@ export default function BannieresPage() {
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm(t('bn_confirm_delete'))) return;
-    bannieresApi.delete(id).then(load).catch(() => {});
+    setConfirmState({ open: true, message: t('bn_confirm_delete'), onConfirm: () => bannieresApi.delete(id).then(load).catch(() => {}) });
   };
 
   const toggleActive = (b) => {

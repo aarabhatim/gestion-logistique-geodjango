@@ -15,8 +15,9 @@ import {
   ResponsiveContainer, XAxis, YAxis, Tooltip,
 } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
+import { useI18n } from '../../contexts/I18nContext';
 import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi, chauffeurApi } from '../../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SignalerIncidentPanel } from './SignalerIncident';
 import '../../utils/leafletIcons';
 
@@ -212,7 +213,7 @@ const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel }) => {
       {myPosition && destination && (
         <div style={{ height: 200, borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
           <MapContainer center={myPosition} zoom={12} style={{ height: '100%', width: '100%' }}>
-            <TileLayer url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL" attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
+            <TileLayer url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`} attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
             <Marker position={myPosition} icon={MY_ICON}><Popup>📍 Moi</Popup></Marker>
             <Marker position={destination} icon={statusConfig.dest === 'boutique' ? BOUTIQUE_ICON : CLIENT_ICON}><Popup><strong>{statusConfig.dest === 'boutique' ? `🏪 ${mission.fondateur_detail?.nom_boutique}` : `🏠 ${mission.client_detail?.first_name}`}</strong></Popup></Marker>
             {route?.coords?.length > 0 && <Polyline positions={route.coords} pathOptions={{ color: statusConfig.color, weight: 4, opacity: 0.85 }} />}
@@ -248,6 +249,7 @@ const formatDuration = (minutes) => {
 };
 
 const WorkingHoursCard = ({ profile }) => {
+  const { t: wT } = useI18n();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!profile?.is_available) return;
@@ -267,14 +269,14 @@ const WorkingHoursCard = ({ profile }) => {
   return (
     <div style={{ background: T.surface, borderRadius: 16, padding: '1.25rem', border: `1px solid ${T.border}`, borderLeft: `4px solid #a78bfa` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: T.text }}><Clock size={16} color="#a78bfa" /> Mes heures de travail</h4>
+        <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: T.text }}><Clock size={16} color="#a78bfa" /> {wT('chd_working_hours')}</h4>
         {profile?.is_available && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.success, fontWeight: 600 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: T.success, display: 'inline-block' }} />En activité depuis {formatDuration(sessionMin)}</div>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
         {[
-          { label: "Aujourd'hui", value: formatDuration(todayMin), color: '#a78bfa', big: true },
-          { label: 'Cette semaine', value: formatDuration(weekMin), color: '#3b82f6' },
-          { label: 'Ce mois', value: formatDuration(monthMin), color: T.success },
+          { label: wT('chd_today_rev'), value: formatDuration(todayMin), color: '#a78bfa', big: true },
+          { label: wT('chd_this_week'), value: formatDuration(weekMin), color: '#3b82f6' },
+          { label: wT('chd_this_month_w'), value: formatDuration(monthMin), color: T.success },
         ].map(({ label, value, color, big }) => (
           <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 12px', textAlign: 'center', border: big ? `1px solid ${color}30` : `1px solid transparent` }}>
             <div style={{ fontSize: 10, color: T.text2, fontWeight: 600, marginBottom: 4 }}>{label.toUpperCase()}</div>
@@ -284,13 +286,13 @@ const WorkingHoursCard = ({ profile }) => {
       </div>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-          <span style={{ color: T.text2 }}>🎯 Objectif quotidien (8h)</span>
+          <span style={{ color: T.text2 }}>{wT('chd_daily_goal')}</span>
           <span style={{ fontWeight: 700, color: goalPct >= 100 ? T.success : '#a78bfa' }}>{goalPct}%</span>
         </div>
         <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
           <div style={{ width: `${Math.min(100, goalPct)}%`, height: '100%', background: goalPct >= 100 ? `linear-gradient(90deg, ${T.success}, #22c55e)` : 'linear-gradient(90deg, #8b5cf6, #a78bfa)', transition: 'width 0.6s ease' }} />
         </div>
-        {goalPct >= 100 && <div style={{ fontSize: 11, color: T.success, marginTop: 6, textAlign: 'center', fontWeight: 600 }}>🏆 Objectif atteint ! Bravo</div>}
+        {goalPct >= 100 && <div style={{ fontSize: 11, color: T.success, marginTop: 6, textAlign: 'center', fontWeight: 600 }}>🏆 {wT('chd_objective_reached')}</div>}
       </div>
     </div>
   );
@@ -323,17 +325,50 @@ const NavItem = ({ icon: Icon, label, active, onClick, badge, collapsed }) => (
 
 // ─── Revenue chart data (illustrative) ───────────────────────────────────────
 const MONTHS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const buildRevenueData = (revMois) => {
+const buildRevenueData = (revMois, months) => {
   const base = [8200,11500,9800,14200,12800,16500,18900,21200,19500,22800,24100, revMois || 24550];
-  return MONTHS.map((m, i) => ({ month: m, revenus: base[i] }));
+  return months.map((m, i) => ({ month: m, revenus: base[i] }));
+};
+
+
+// ─── Tab ↔ URL mapping ───────────────────────────────────────────────────────
+const PATH_TO_TAB = {
+  '/chauffeur':            'dashboard',
+  '/chauffeur/missions':   'missions',
+  '/chauffeur/map':        'map',
+  '/chauffeur/historique': 'historique',
+  '/chauffeur/conduite':   'conduite',
+  '/chauffeur/objectifs':  'objectifs',
+  '/chauffeur/support':    'support',
+  '/chauffeur/profil':     'profil',
+};
+const TAB_TO_PATH = {
+  dashboard:  '/chauffeur',
+  missions:   '/chauffeur/missions',
+  map:        '/chauffeur/map',
+  historique: '/chauffeur/historique',
+  conduite:   '/chauffeur/conduite',
+  objectifs:  '/chauffeur/objectifs',
+  support:    '/chauffeur/support',
+  profil:     '/chauffeur/profil',
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ChauffeurDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useI18n();
 
-  const [tab, setTab]                   = useState('dashboard');
+  // tab is derived from URL; chat is an internal overlay with no route
+  const [chatOpen, setChatOpen] = useState(false);
+  const urlTab = PATH_TO_TAB[location.pathname] || 'dashboard';
+  const tab = chatOpen ? 'chat' : urlTab;
+  const setTab = (id) => {
+    if (id === 'chat') { setChatOpen(true); return; }
+    setChatOpen(false);
+    if (TAB_TO_PATH[id]) navigate(TAB_TO_PATH[id]);
+  };
   const [sidebarOpen, setSidebarOpen]   = useState(true);
   const [profile, setProfile]           = useState(null);
   const [missions, setMissions]         = useState([]);
@@ -474,7 +509,7 @@ const ChauffeurDashboard = () => {
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'T';
   const noteColor = !profile?.note_moyenne ? '#64748b' : profile.note_moyenne >= 4.5 ? T.success : profile.note_moyenne >= 3.5 ? T.warning : T.danger;
   const vType = profile?.vehicule_type || profile?.type_vehicule || 'CAMION';
-  const revenueData = buildRevenueData(profile?.revenus_mois);
+  const revenueData = buildRevenueData(profile?.revenus_mois, MONTHS);
   const donutData = [
     { name: 'Livrées',   value: profile?.nombre_livraisons || 34, color: T.primary },
     { name: 'En cours',  value: missions.length || 8,             color: T.warning },
@@ -541,7 +576,7 @@ const ChauffeurDashboard = () => {
           <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
           <NavItem icon={BarChart3} label="Finances" active={false} onClick={() => navigate('/chauffeur/finances')} collapsed={!sidebarOpen} />
           <NavItem icon={Award}     label="Gamification" active={false} onClick={() => navigate('/chauffeur/gamification')} collapsed={!sidebarOpen} />
-          <NavItem icon={Settings}  label="Paramètres" active={false} onClick={() => {}} collapsed={!sidebarOpen} />
+          <NavItem icon={Settings}  label={t('nav_settings')} active={false} onClick={() => navigate('/chauffeur/parametres')} collapsed={!sidebarOpen} />
         </nav>
 
         {/* Status toggle */}
@@ -821,7 +856,7 @@ const ChauffeurDashboard = () => {
                   </div>
                   <div style={{ height: 240 }}>
                     <MapContainer center={myPosition || [31.7917, -7.0926]} zoom={myPosition ? 10 : 5} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                      <TileLayer url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL" attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
+                      <TileLayer url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`} attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
                       {myPosition && <Marker position={myPosition} icon={MY_ICON}><Popup>📍 Ma position</Popup></Marker>}
                       {missions.map(cmd => cmd.latitude_livraison && cmd.longitude_livraison && (
                         <Marker key={cmd.id} position={[cmd.latitude_livraison, cmd.longitude_livraison]} icon={DELIVERY_ICON}><Popup>#{cmd.reference}</Popup></Marker>
@@ -934,7 +969,7 @@ const ChauffeurDashboard = () => {
               </div>
               <div style={{ background: T.surface, borderRadius: 16, overflow: 'hidden', border: `1px solid ${T.border}`, height: 460 }}>
                 <MapContainer center={myPosition || [33.5731, -7.5898]} zoom={myPosition ? 13 : 6} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL" attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
+                  <TileLayer url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`} attribution="&copy; MapTiler &copy; OpenStreetMap contributors" />
                   {myPosition && (<><Marker position={myPosition} icon={MY_ICON}><Popup><strong>📍 Ma position</strong></Popup></Marker><Circle center={myPosition} radius={300} pathOptions={{ color: T.primary, fillColor: T.primary, fillOpacity: 0.1, weight: 2, dashArray: '6 4' }} /></>)}
                   {missions.map(cmd => cmd.latitude_livraison && cmd.longitude_livraison && (
                     <Marker key={cmd.id} position={[cmd.latitude_livraison, cmd.longitude_livraison]} icon={DELIVERY_ICON}><Popup><strong>📦 {cmd.reference}</strong><br />{cmd.adresse_livraison}</Popup></Marker>

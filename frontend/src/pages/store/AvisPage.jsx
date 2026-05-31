@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { avisApi } from '../../services/api';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
 const NOTE_COLOR = (n) => {
   if (n >= 4) return '#22C55E';
@@ -20,6 +21,7 @@ const StarRow = ({ note }) => {
 };
 
 export default function AvisPage() {
+  const { t } = useI18n();
   const [avis, setAvis]           = useState([]);
   const [loading, setLoading]     = useState(true);
   const [replyId, setReplyId]     = useState(null);
@@ -87,9 +89,9 @@ export default function AvisPage() {
       {/* ── KPI Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Note moyenne', value: moyenne, icon: '⭐', color: '#F59E0B' },
-          { label: 'Total avis', value: total, icon: '💬', color: '#3b82f6' },
-          { label: 'Sans réponse', value: sansReponse, icon: '📬', color: sansReponse ? '#E30613' : '#22C55E' },
+          { label: t('av_avg_rating'), value: moyenne, icon: '⭐', color: '#F59E0B' },
+          { label: t('av_total_reviews'), value: total, icon: '💬', color: '#3b82f6' },
+          { label: t('av_no_reply_badge'), value: sansReponse, icon: '📬', color: sansReponse ? '#E30613' : '#22C55E' },
         ].map((k, i) => (
           <div key={i} className="mj-stat-card" style={{ borderLeft: `3px solid ${k.color}`, borderTop: 'none' }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>{k.icon}</div>
@@ -127,9 +129,9 @@ export default function AvisPage() {
       {/* ── Filtres ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {[
-          { v: 'tous', l: 'Tous' },
-          { v: 'sans_reponse', l: '📬 Sans réponse' },
-          { v: 'avec_reponse', l: '✅ Avec réponse' },
+          { v: 'tous', l: t('state_all') },
+          { v: 'sans_reponse', l: `📬 ${t('av_no_reply_badge')}` },
+          { v: 'avec_reponse', l: `✅ ${t('av_with_reply')}` },
         ].map(f => (
           <button
             key={f.v}
@@ -142,7 +144,7 @@ export default function AvisPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher…"
+          placeholder={t('action_search')}
           className="mj-input mj-search"
           style={{ marginLeft: 'auto', width: 200 }}
         />
@@ -167,9 +169,9 @@ export default function AvisPage() {
       ) : filtered.length === 0 ? (
         <div className="mj-empty">
           <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
-          <h3 style={{ margin: '0 0 8px', color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>Aucun avis</h3>
+          <h3 style={{ margin: '0 0 8px', color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>{t('av_no_reviews')}</h3>
           <p style={{ margin: 0, color: 'var(--mj-text-3)', fontSize: 14 }}>
-            {search ? `Aucun résultat pour "${search}"` : 'Aucun avis pour ce filtre.'}
+            {search ? `${t('av_no_results_for')} "${search}"` : t('av_no_filter')}
           </p>
         </div>
       ) : (
@@ -184,7 +186,7 @@ export default function AvisPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--mj-text)', fontWeight: 700, fontSize: 15, fontFamily: 'var(--mj-font)' }}>
-                      {a.client_nom || 'Client'}
+                      {a.client_nom || t('lbl_client')}
                     </span>
                     <StarRow note={a.note} />
                     <span style={{
@@ -194,7 +196,7 @@ export default function AvisPage() {
                     </span>
                   </div>
                   <div style={{ color: 'var(--mj-text-3)', fontSize: 12, marginTop: 2 }}>
-                    {a.commande_ref && `Commande ${a.commande_ref} · `}
+                    {a.commande_ref && `${t('av_order_prefix')} ${a.commande_ref} · `}
                     {a.date_creation?.slice(0, 10)}
                   </div>
                 </div>
@@ -203,7 +205,7 @@ export default function AvisPage() {
                     background: 'var(--mj-red-light)', color: 'var(--mj-red)',
                     border: '1px solid rgba(227,6,19,0.2)', flexShrink: 0,
                   }}>
-                    Sans réponse
+                    {t('av_no_reply_badge')}
                   </span>
                 )}
               </div>
@@ -245,7 +247,7 @@ export default function AvisPage() {
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
                     rows={3}
-                    placeholder="Votre réponse au client…"
+                    placeholder={t('av_reply_ph')}
                     className="mj-input"
                     style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', marginBottom: 10 }}
                   />
@@ -255,7 +257,7 @@ export default function AvisPage() {
                       disabled={saving || !replyText.trim()}
                       className="mj-btn mj-btn-primary"
                     >
-                      {saving ? 'Envoi…' : '📤 Envoyer la réponse'}
+                      {saving ? t('av_sending') : `📤 ${t('av_send_reply')}`}
                     </button>
                     <button
                       onClick={() => { setReplyId(null); setReplyText(''); setError(null); }}
@@ -270,7 +272,7 @@ export default function AvisPage() {
                   onClick={() => { setReplyId(a.id); setReplyText(a.reponse_fondateur || ''); setError(null); }}
                   className="mj-btn mj-btn-outline-red mj-btn-sm"
                 >
-                  {a.reponse_fondateur ? '✏️ Modifier la réponse' : '💬 Répondre'}
+                  {a.reponse_fondateur ? `✏️ ${t('av_edit_reply')}` : `💬 ${t('av_reply_btn')}`}
                 </button>
               )}
             </div>

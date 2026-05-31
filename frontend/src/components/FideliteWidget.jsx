@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * FideliteWidget — Points de fidélité client
@@ -10,6 +11,7 @@ import api from '../services/api';
  */
 
 const FideliteWidget = ({ compact = false }) => {
+  const { t } = useI18n();
   const [compte, setCompte] = useState(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
@@ -55,7 +57,7 @@ const FideliteWidget = ({ compact = false }) => {
         <span className="text-xl">⭐</span>
         <div>
           <p className="text-sm font-bold text-[var(--color-primary)]">{compte.points} pts</p>
-          {reduction > 0 && <p className="text-xs text-[var(--color-text-secondary)]">{reduction} DZD disponibles</p>}
+          {reduction > 0 && <p className="text-xs text-[var(--color-text-secondary)]">{reduction} {t('fw_dzd_dispo')}</p>}
         </div>
       </div>
     );
@@ -68,12 +70,12 @@ const FideliteWidget = ({ compact = false }) => {
         <div className="flex items-center gap-2">
           <span className="text-2xl">⭐</span>
           <div>
-            <p className="text-xs font-medium opacity-80 uppercase tracking-wide">Points fidélité</p>
-            <p className="text-2xl font-bold">{compte.points.toLocaleString('fr-FR')}</p>
+            <p className="text-xs font-medium opacity-80 uppercase tracking-wide">{t('fw_pts_label')}</p>
+            <p className="text-2xl font-bold">{compte.points.toLocaleString()}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs opacity-80">Réduction dispo</p>
+          <p className="text-xs opacity-80">{t('fw_reduction')}</p>
           <p className="text-lg font-bold">{reduction} DZD</p>
         </div>
       </div>
@@ -81,7 +83,7 @@ const FideliteWidget = ({ compact = false }) => {
       {/* Barre progression vers prochain palier */}
       <div className="mb-4">
         <div className="flex justify-between text-xs opacity-80 mb-1">
-          <span>{percent} / 100 pts vers palier suivant</span>
+          <span>{percent} / 100 {t('fw_progress_suffix')}</span>
           <span>+50 DZD</span>
         </div>
         <div className="h-2 bg-white/20 rounded-full overflow-hidden">
@@ -95,7 +97,7 @@ const FideliteWidget = ({ compact = false }) => {
       {/* Conversion */}
       {reduction > 0 && (
         <div className="bg-white/10 rounded-xl p-3 mb-3">
-          <p className="text-xs font-medium mb-2 opacity-90">Convertir en réduction</p>
+          <p className="text-xs font-medium mb-2 opacity-90">{t('fw_convert')}</p>
           <div className="flex items-center gap-2">
             <select
               value={toConvert}
@@ -111,7 +113,7 @@ const FideliteWidget = ({ compact = false }) => {
               disabled={converting}
               className="bg-white text-[var(--color-primary)] px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-white/90 disabled:opacity-60 transition-colors flex-shrink-0"
             >
-              {converting ? '⌛' : 'Utiliser'}
+              {converting ? '⌛' : t('fw_use')}
             </button>
           </div>
         </div>
@@ -122,7 +124,7 @@ const FideliteWidget = ({ compact = false }) => {
         onClick={() => setShowHistory(prev => !prev)}
         className="text-xs opacity-70 hover:opacity-100 transition-opacity underline"
       >
-        {showHistory ? 'Masquer l\'historique' : 'Voir l\'historique'}
+        {showHistory ? t('fw_hide_history') : t('fw_see_history')}
       </button>
 
       {showHistory && compte.transactions?.length > 0 && (

@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useI18n } from '../contexts/I18nContext';
 import { KanbanCommandes } from '../components/KanbanCommandes';
 import { LoadingState, EmptyState, ErrorState, EMPTY_PRESETS } from '../components/ui/StateDisplay';
+import ConfirmModal from '../components/ConfirmModal';
 
 // ─── Export CSV helper ────────────────────────────────────────────────────────
 const exportCSV = (rows) => {
@@ -43,11 +44,11 @@ const exportCSV = (rows) => {
 
 // ─── Config statuts ───────────────────────────────────────────────────────────
 const STATUT_CONFIG = {
-  EN_ATTENTE:     { label: 'En attente',     cls: 'badge-warning', dot: '#f59e0b', next: 'Valider', icon: Check },
+  EN_ATTENTE:     { cls: 'badge-warning', dot: '#f59e0b', icon: Check },
   VALIDEE:        { label: 'Validée',        cls: 'badge-info',    dot: '#3b82f6', next: 'Préparer', icon: Package },
   EN_PREPARATION: { label: 'En préparation', cls: 'badge-primary', dot: '#22c55e', next: 'En route', icon: Truck },
   EN_ROUTE:       { label: 'En route',       cls: 'badge-success', dot: '#06b6d4', next: 'Livrer', icon: Check },
-  LIVREE:         { label: 'Livrée',         cls: 'badge-success', dot: '#10b981', next: null, icon: Check },
+  LIVREE:         { cls: 'badge-success', dot: '#10b981', icon: Check },
   ANNULEE:        { label: 'Annulée',        cls: 'badge-danger',  dot: '#ef4444', next: null, icon: X },
 };
 
@@ -59,11 +60,12 @@ const NEXT_LABEL = {
 };
 
 const StatutBadge = ({ statut }) => {
-  const cfg = STATUT_CONFIG[statut] || { label: statut, cls: 'badge-secondary', dot: '#64748b' };
+  const cfg = STATUT_CONFIG[statut] || { cls: 'badge-secondary', dot: '#64748b' };
+  const { tStatus } = useI18n();
   return (
     <span className={`badge ${cfg.cls}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, display: 'inline-block' }} />
-      {cfg.label}
+      {tStatus(statut)}
     </span>
   );
 };
@@ -78,7 +80,7 @@ const DetailModal = ({ commande, onClose }) => {
         <div>
           <h3 className="card-title" style={{ margin: 0 }}>#{commande.reference}</h3>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-            {new Date(commande.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date(commande.created_at).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -89,10 +91,10 @@ const DetailModal = ({ commande, onClose }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Client', primary: `${commande.client_detail?.first_name || ''} ${commande.client_detail?.last_name || ''}`, secondary: commande.client_detail?.email },
-          { label: 'Boutique', primary: commande.fondateur_detail?.nom_boutique, secondary: commande.fondateur_detail?.ville },
-          { label: 'Livraison', primary: commande.adresse_livraison || '—', secondary: commande.instructions_livraison || '' },
-          { label: 'Paiement', primary: `${commande.mode_paiement}`, secondary: commande.est_paye ? '✅ Payé' : '⏳ Non encaissé' },
+          { label: t('lbl_client'), primary: `${commande.client_detail?.first_name || ''} ${commande.client_detail?.last_name || ''}`, secondary: commande.client_detail?.email },
+          { label: t('lbl_store'), primary: commande.fondateur_detail?.nom_boutique, secondary: commande.fondateur_detail?.ville },
+          { label: t('lbl_address'), primary: commande.adresse_livraison || '—', secondary: commande.instructions_livraison || '' },
+          { label: t('lbl_payment'), primary: `${commande.mode_paiement}`, secondary: commande.est_paye ? `✅ ${t('co_paid')}` : `⏳ ${t('co_not_paid')}` },
         ].map(({ label, primary, secondary }) => (
           <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '0.875rem' }}>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.04em' }}>{label.toUpperCase()}</div>
@@ -113,7 +115,7 @@ const DetailModal = ({ commande, onClose }) => {
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{commande.transporteur_detail.phone || ''}</span>
           </div>
         ) : (
-          <span style={{ fontSize: 13, color: '#f59e0b' }}>⏳ Non encore assigné</span>
+          <span style={{ fontSize: 13, color: '#f59e0b' }}>{t('cmd_not_assigned')}</span>
         )}
       </div>
 
@@ -151,6 +153,7 @@ const DetailModal = ({ commande, onClose }) => {
 const AssignerModal = ({ commande, onClose, onSuccess }) => {
   const { t } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(null);
   const [search, setSearch] = useState('');
@@ -162,11 +165,11 @@ const AssignerModal = ({ commande, onClose, onSuccess }) => {
       .finally(() => setLoading(false));
   }, [commande.id]);
 
-  const handleAssign = async (t) => {
-    setAssigning(t.id);
+  const handleAssign = async (tr) => {
+    setAssigning(tr.id);
     try {
-      await commandesApi.adminAssigner(commande.id, t.id);
-      onSuccess(`Transporteur ${t.nom_complet} assigné avec succès !`);
+      await commandesApi.adminAssigner(commande.id, tr.id);
+      onSuccess(`Transporteur ${tr.nom_complet} assigné avec succès !`);
       onClose();
     } catch (e) {
       alert(e.response?.data?.error || 'Erreur lors de l\'assignation');
@@ -175,8 +178,8 @@ const AssignerModal = ({ commande, onClose, onSuccess }) => {
     }
   };
 
-  const filtered = transporteurs.filter(t =>
-    !search || t.nom_complet?.toLowerCase().includes(search.toLowerCase()) || t.plaque?.toLowerCase().includes(search.toLowerCase())
+  const filtered = transporteurs.filter(tr =>
+    !search || tr.nom_complet?.toLowerCase().includes(search.toLowerCase()) || tr.plaque?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -205,57 +208,57 @@ const AssignerModal = ({ commande, onClose, onSuccess }) => {
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
             <Truck size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-            <div>Aucun transporteur disponible à proximité</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Élargissez la zone ou attendez qu'un chauffeur se connecte</div>
+            <div>{t("tr_no_available")}</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>{t('cmd_no_driver_zone')}</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
-            {filtered.map(t => (
-              <div key={t.id} style={{
+            {filtered.map(tr => (
+              <div key={tr.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '0.875rem',
-                border: `1px solid ${t.is_on_delivery ? 'rgba(245,158,11,0.2)' : t.is_available ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                border: `1px solid ${tr.is_on_delivery ? 'rgba(245,158,11,0.2)' : tr.is_available ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)'}`,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: t.is_on_delivery ? 'rgba(245,158,11,0.15)' : t.is_available ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                    background: tr.is_on_delivery ? 'rgba(245,158,11,0.15)' : tr.is_available ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
                     fontSize: 18,
                   }}>
-                    {t.is_on_delivery ? '🚚' : t.is_available ? '🚗' : '💤'}
+                    {tr.is_on_delivery ? '🚚' : tr.is_available ? '🚗' : '💤'}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{t.nom_complet}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{tr.nom_complet}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span>{t.vehicule_type}</span>
+                      <span>{tr.vehicule_type}</span>
                       <span style={{ opacity: 0.4 }}>·</span>
-                      <span>{t.plaque}</span>
-                      {t.note_moyenne > 0 && (
+                      <span>{tr.plaque}</span>
+                      {tr.note_moyenne > 0 && (
                         <>
                           <span style={{ opacity: 0.4 }}>·</span>
                           <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Star size={10} fill="#f59e0b" /> {t.note_moyenne?.toFixed(1)}
+                            <Star size={10} fill="#f59e0b" /> {tr.note_moyenne?.toFixed(1)}
                           </span>
                         </>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                      {t.nombre_livraisons || 0} livraisons · {Math.round(t.revenus_total || 0)} MAD
+                      {tr.nombre_livraisons || 0} livraisons · {Math.round(tr.revenus_total || 0)} MAD
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                   <span style={{
                     fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                    background: t.is_on_delivery ? 'rgba(245,158,11,0.15)' : t.is_available ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
-                    color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#64748b',
+                    background: tr.is_on_delivery ? 'rgba(245,158,11,0.15)' : tr.is_available ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: tr.is_on_delivery ? '#f59e0b' : tr.is_available ? '#10b981' : '#64748b',
                   }}>
-                    {t.is_on_delivery ? 'En livraison' : t.is_available ? 'Disponible' : 'Indisponible'}
+                    {tr.is_on_delivery ? 'En livraison' : tr.is_available ? 'Disponible' : 'Indisponible'}
                   </span>
                   <button className="btn btn-sm btn-primary"
-                    onClick={() => handleAssign(t)} disabled={assigning === t.id}
+                    onClick={() => handleAssign(tr)} disabled={assigning === tr.id}
                     style={{ fontSize: 12, padding: '4px 12px' }}>
-                    {assigning === t.id ? '...' : 'Assigner'}
+                    {assigning === tr.id ? '...' : 'Assigner'}
                   </button>
                 </div>
               </div>
@@ -263,6 +266,12 @@ const AssignerModal = ({ commande, onClose, onSuccess }) => {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 };
@@ -358,10 +367,10 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
         adresse_livraison: adresse,
         mode_paiement: modePaiement,
       });
-      onSuccess('Expédition créée avec succès !');
+      onSuccess(t('cmd_success_create'));
       onClose();
     } catch (e) {
-      setError(e.response?.data?.detail || JSON.stringify(e.response?.data) || 'Erreur lors de la création.');
+      setError(e.response?.data?.detail || JSON.stringify(e.response?.data) || t('cmd_error_create'));
     } finally {
       setSaving(false);
     }
@@ -380,7 +389,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
               <ShoppingCart size={18} color="#22c55e" /> Nouvelle expédition
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
-              Étape {step}/3 — {step === 1 ? 'Choisir la boutique' : step === 2 ? 'Sélectionner les produits' : 'Adresse & paiement'}
+              {t('common_step')} {step}/3 — {step === 1 ? t('cmd_step_choose_store') : step === 2 ? t('cmd_step_select_prod') : t('cmd_step_address')}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
@@ -408,7 +417,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Loader size={24} style={{ animation: 'spin 1s linear infinite', color: '#22c55e' }} /></div>
             ) : boutiques.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Aucune boutique vérifiée disponible.</div>
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>{t("co_no_verified_store")}</div>
             ) : (
               <div style={{ display: 'grid', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
                 {boutiques.map(b => (
@@ -430,7 +439,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
               </div>
             )}
             <button
-              onClick={() => { if (!selectedBoutique) { setError('Sélectionnez une boutique.'); return; } setError(null); setStep(2); }}
+              onClick={() => { if (!selectedBoutique) { setError(t('cmd_select_boutique')); return; } setError(null); setStep(2); }}
               className="btn btn-primary" style={{ width: '100%', marginTop: 20, padding: '12px 0', fontWeight: 700, fontSize: 15 }}>
               Continuer →
             </button>
@@ -451,7 +460,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Loader size={24} style={{ animation: 'spin 1s linear infinite', color: '#22c55e' }} /></div>
             ) : produits.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Aucun produit disponible dans cette boutique.</div>
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>{t("co_no_products")}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
                 {produits.map(p => {
@@ -490,7 +499,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
         {/* ── ÉTAPE 3 : Adresse & paiement ── */}
         {step === 3 && (
           <>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--text-secondary)' }}>Récapitulatif</div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--text-secondary)' }}>{t('cmd_recap')}</div>
             <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Boutique</span>
@@ -513,7 +522,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
               <input
                 value={adresse}
                 onChange={e => setAdresse(e.target.value)}
-                placeholder="Ex : 12 Rue Hassan II, Maarif, Casablanca"
+                placeholder={t("co_address_placeholder")}
                 className="glass-input"
                 style={{ width: '100%', padding: '10px 14px', boxSizing: 'border-box' }}
               />
@@ -522,7 +531,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Mode de paiement</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[{ id: 'CASH', label: '💵 Espèces' }, { id: 'CARTE', label: '💳 Carte' }].map(m => (
+                {[{ id: 'CASH', label: `💵 ${t('co_cash')}` }, { id: 'CARTE', label: `💳 ${t('co_card')}` }].map(m => (
                   <button key={m.id} onClick={() => setModePaiement(m.id)}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: `2px solid ${modePaiement === m.id ? '#22c55e' : 'rgba(255,255,255,0.06)'}`, background: modePaiement === m.id ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s' }}>
                     {m.label}
@@ -535,7 +544,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
               <button onClick={() => { setError(null); setStep(2); }} className="btn btn-secondary" style={{ flex: 1, padding: '12px 0', fontWeight: 600 }}>← Retour</button>
               <button onClick={passerCommande} disabled={saving} className="btn btn-primary"
                 style={{ flex: 2, padding: '12px 0', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {saving ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Création…</> : <><Check size={16} /> Créer l'expédition</>}
+                {saving ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('cmd_creating')}</> : <><Check size={16} /> Créer l'expédition</>}
               </button>
             </div>
           </>
@@ -548,6 +557,7 @@ const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
 
 // ─── Commandes principale ─────────────────────────────────────────────────────
 const Commandes = () => {
+  const { t, tStatus } = useI18n();
   const { user } = useAuth();
   const location = useLocation();
   const [commandes, setCommandes] = useState([]);
@@ -606,7 +616,7 @@ const Commandes = () => {
     setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: nextStatut } : c));
     try {
       await commandesApi.avancer(cmd.id);
-      showToast(`${NEXT_LABEL[cmd.statut] || 'Avancé'} avec succès !`);
+      showToast(`${tStatus(nextStatut)} ✓`);
     } catch (e) {
       // Rollback si erreur
       setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
@@ -616,14 +626,31 @@ const Commandes = () => {
     }
   }, [pendingIds, showToast]);
 
-  const handleAnnuler = useCallback(async (cmd) => {
-    if (!window.confirm(`Annuler la commande ${cmd.reference} ?`)) return;
+  
+  const doAnnuler = async (cmd) => {
     if (pendingIds.has(cmd.id)) return;
     setPendingIds(s => new Set(s).add(cmd.id));
     setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: 'ANNULEE' } : c));
     try {
       await commandesApi.adminAnnuler(cmd.id);
-      showToast('Commande annulée');
+      showToast(t('co_cancelled'));
+    } catch (e) {
+      setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
+      showToast(e.response?.data?.error || 'Erreur annulation', 'error');
+    } finally {
+      setPendingIds(s => { const n = new Set(s); n.delete(cmd.id); return n; });
+    }
+    };
+
+  const handleAnnuler = useCallback(async (cmd) => {
+    setConfirmState({ open: true, message: `${t('action_cancel')} #${cmd.reference} ?`, onConfirm: () => doAnnuler(cmd) });
+    return;
+    if (pendingIds.has(cmd.id)) return;
+    setPendingIds(s => new Set(s).add(cmd.id));
+    setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: 'ANNULEE' } : c));
+    try {
+      await commandesApi.adminAnnuler(cmd.id);
+      showToast(t('co_cancelled'));
     } catch (e) {
       setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
       showToast(e.response?.data?.error || 'Erreur annulation', 'error');
@@ -654,7 +681,7 @@ const Commandes = () => {
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button
               onClick={() => setViewMode('liste')}
-              title="Vue liste"
+              title={t("co_list_view")}
               style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: 'none', cursor: 'pointer',
                 background: viewMode === 'liste' ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
@@ -664,7 +691,7 @@ const Commandes = () => {
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              title="Vue Kanban"
+              title={t("co_kanban_view")}
               style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: 'none', cursor: 'pointer',
                 background: viewMode === 'kanban' ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
@@ -674,7 +701,7 @@ const Commandes = () => {
             </button>
           </div>
           <button className="btn btn-secondary" onClick={() => exportCSV(commandes)}
-            title="Exporter la page courante en CSV"
+            title={t("export")}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Download size={15} /> CSV
           </button>
@@ -697,7 +724,7 @@ const Commandes = () => {
               background: filterStatut === key ? `${cfg.dot}20` : 'rgba(255,255,255,0.04)',
               color: filterStatut === key ? cfg.dot : 'var(--text-secondary)', fontSize: 12, padding: '5px 12px',
             }}>
-            {cfg.label}
+            {tStatus(statut)}
           </button>
         ))}
         {filterStatut && (
@@ -787,30 +814,30 @@ const Commandes = () => {
                       </div>
                     </div>
                   ) : (
-                    <span style={{ fontSize: 11, color: '#f59e0b' }}>⏳ Non assigné</span>
+                    <span style={{ fontSize: 11, color: '#f59e0b' }}>{t('cmd_not_assigned_s')}</span>
                   )}
                 </td>
                 <td><StatutBadge statut={cmd.statut} /></td>
                 <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                  {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
+                  {new Date(cmd.created_at).toLocaleDateString(undefined)}
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     {/* Voir détail */}
                     <button
                       onClick={() => setSelected(cmd)}
-                      title="Voir détail"
+                      title={t("action_view")}
                       style={BTN_ICON}
                     >
                       <Eye size={13} />
                     </button>
 
                     {/* Avancer statut */}
-                    {NEXT_LABEL[cmd.statut] && (
+                    {NEXT_STATUT[cmd.statut] && (
                       <button
                         onClick={() => handleAvancer(cmd)}
                         disabled={pendingIds.has(cmd.id)}
-                        title={NEXT_LABEL[cmd.statut]}
+                        title={tStatus(NEXT_STATUT[cmd.statut])}
                         style={{ ...BTN_ICON, ...BTN_PRIMARY, opacity: pendingIds.has(cmd.id) ? 0.6 : 1 }}
                       >
                         {pendingIds.has(cmd.id)
@@ -823,15 +850,15 @@ const Commandes = () => {
                     {/* Assigner transporteur */}
                     {['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION'].includes(cmd.statut) && (
                       <button className="btn btn-sm" style={{ background: '#8b5cf620', color: '#a78bfa', border: '1px solid #8b5cf630', fontSize: 11 }}
-                        onClick={() => setAssigning(cmd)} title="Assigner transporteur">
-                        <UserCheck size={12} /> {cmd.transporteur_detail ? 'Réassigner' : 'Assigner'}
+                        onClick={() => setAssigning(cmd)} title={t('action_assign')}>
+                        <UserCheck size={12} /> {cmd.transporteur_detail ? t('co_reassign') : t('action_assign')}
                       </button>
                     )}
 
                     {/* Annuler */}
                     {!['LIVREE', 'ANNULEE'].includes(cmd.statut) && (
                       <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }}
-                        onClick={() => handleAnnuler(cmd)} title="Annuler">
+                        onClick={() => handleAnnuler(cmd)} title={t("action_cancel")}>
                         <X size={13} />
                       </button>
                     )}

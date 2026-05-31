@@ -13,6 +13,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { commandesApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 
 /* ── Thème "mode conduite" ── fond sombre, gros éléments ─────────────────── */
 const T = {
@@ -29,47 +30,12 @@ const T = {
 };
 
 /* ── Étapes de livraison ─────────────────────────────────────────────────── */
-const ETAPES = [
-  {
-    id: 'ACCEPTER',
-    label: 'Accepter la mission',
-    desc: 'Confirmer la prise en charge de la livraison',
-    icon: '📋',
-    action: 'Accepter la mission',
-    color: T.info,
-  },
-  {
-    id: 'EN_ROUTE_BOUTIQUE',
-    label: 'En route vers la boutique',
-    desc: 'Rendez-vous à la boutique pour récupérer la commande',
-    icon: '🏪',
-    action: "J'arrive à la boutique",
-    color: T.primary,
-  },
-  {
-    id: 'RECUPERER',
-    label: 'Récupération commande',
-    desc: 'Confirmez la prise en charge des articles',
-    icon: '📦',
-    action: 'Commande récupérée — Démarrer livraison',
-    color: T.primary,
-  },
-  {
-    id: 'EN_ROUTE_CLIENT',
-    label: 'En route vers le client',
-    desc: 'Livraison en cours vers le client',
-    icon: '🛵',
-    action: "Je suis arrivé chez le client",
-    color: T.primary,
-  },
-  {
-    id: 'CONFIRMER',
-    label: 'Confirmer la livraison',
-    desc: 'PIN, photo ou signature du client',
-    icon: '✅',
-    action: 'Livraison confirmée',
-    color: T.success,
-  },
+const ETAPES_DEFS = [
+  { id: 'ACCEPTER',        labelKey: 'ml_step_accept_lbl', descKey: 'ml_step_accept_desc', actionKey: 'ml_step_accept_action', icon: '📋', color: T.info },
+  { id: 'EN_ROUTE_BOUTIQUE', labelKey: 'ml_step_store_lbl',  descKey: 'ml_step_store_desc',  actionKey: 'ml_step_store_action',  icon: '🏪', color: T.primary },
+  { id: 'RECUPERER',       labelKey: 'ml_step_pickup_lbl', descKey: 'ml_step_pickup_desc', actionKey: 'ml_step_pickup_action', icon: '📦', color: T.primary },
+  { id: 'EN_ROUTE_CLIENT', labelKey: 'ml_step_client_lbl', descKey: 'ml_step_client_desc', actionKey: 'ml_step_client_action', icon: '🛵', color: T.primary },
+  { id: 'CONFIRMER',       labelKey: 'ml_step_done_lbl',   descKey: 'ml_step_done_desc',   actionKey: 'ml_step_done_action',   icon: '✅', color: T.success },
 ];
 
 /* ── Icônes carte ────────────────────────────────────────────────────────── */
@@ -81,15 +47,16 @@ const makeIcon = (color, emoji, size = 38) => L.divIcon({
 
 /* ── Barre de progression ───────────────────────────────────────────────── */
 const ProgressBar = ({ current }) => {
-  const idx = ETAPES.findIndex(e => e.id === current);
-  const pct = ((idx + 1) / ETAPES.length) * 100;
+  const { t } = useI18n();
+  const idx = ETAPES_DEFS.findIndex(e => e.id === current);
+  const pct = ((idx + 1) / ETAPES_DEFS.length) * 100;
   return (
     <div style={{ padding: '0 20px 0', marginBottom: 6 }}>
       <div style={{ height: 4, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: T.primary, borderRadius: 4, transition: 'width 0.5s ease' }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-        <span style={{ fontSize: 10, color: T.text2 }}>Étape {idx + 1}/{ETAPES.length}</span>
+        <span style={{ fontSize: 10, color: T.text2 }}>{t('ml_step_label')} {idx + 1}/{ETAPES_DEFS.length}</span>
         <span style={{ fontSize: 10, color: T.text2 }}>{Math.round(pct)}%</span>
       </div>
     </div>
@@ -126,6 +93,7 @@ const BigBtn = ({ label, onClick, color = T.primary, disabled, loading, icon: Ic
 
 /* ── Panneau confirmation PIN ───────────────────────────────────────────── */
 const PanelPIN = ({ onConfirm, onClose }) => {
+  const { t } = useI18n();
   const [pin, setPin] = useState('');
   const [method, setMethod] = useState('pin'); // pin | photo | signature
 
@@ -139,23 +107,23 @@ const PanelPIN = ({ onConfirm, onClose }) => {
         width: '100%', maxWidth: 500, border: `1px solid ${T.border}`,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontWeight: 800, fontSize: 18 }}>Confirmer la livraison</div>
+          <div style={{ fontWeight: 800, fontSize: 18 }}>{t('ml_pin_title')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: T.text2, cursor: 'pointer' }}><X size={20} /></button>
         </div>
 
         {/* Méthodes */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {[{ id:'pin', label:'📱 Code PIN' }, { id:'photo', label:'📷 Photo' }, { id:'sign', label:'✍️ Signature' }].map(m => (
+          {[{ id:'pin', labelKey:'ml_pin_method_pin' }, { id:'photo', labelKey:'ml_pin_method_photo' }, { id:'sign', labelKey:'ml_pin_method_sign' }].map(m => (
             <button key={m.id} onClick={() => setMethod(m.id)}
               style={{ flex:1, padding:'10px 8px', borderRadius:12, border:`2px solid ${method===m.id?T.primary:T.border}`, background: method===m.id?`${T.primary}20`:T.card, color:T.text, fontWeight:600, fontSize:12, cursor:'pointer' }}>
-              {m.label}
+              {t(m.labelKey)}
             </button>
           ))}
         </div>
 
         {method === 'pin' && (
           <>
-            <label style={{ display:'block', fontSize:13, color:T.text2, marginBottom:8 }}>Code PIN du client</label>
+            <label style={{ display:'block', fontSize:13, color:T.text2, marginBottom:8 }}>{t('ml_pin_label')}</label>
             <input
               value={pin}
               onChange={e => setPin(e.target.value.replace(/\D/g,'').slice(0,6))}
@@ -169,21 +137,21 @@ const PanelPIN = ({ onConfirm, onClose }) => {
         {method === 'photo' && (
           <div style={{ background:T.card, borderRadius:14, padding:'32px 20px', textAlign:'center', border:`2px dashed ${T.border}` }}>
             <Camera size={40} color={T.primary} style={{ marginBottom:12, opacity:0.7 }} />
-            <div style={{ fontSize:14, color:T.text2 }}>Prenez une photo de la livraison</div>
-            <div style={{ fontSize:12, color:T.text2, marginTop:4 }}>Fonctionnalité disponible sur mobile</div>
+            <div style={{ fontSize:14, color:T.text2 }}>{t('ml_photo_label')}</div>
+            <div style={{ fontSize:12, color:T.text2, marginTop:4 }}>{t('ml_photo_mobile')}</div>
           </div>
         )}
 
         {method === 'sign' && (
           <div style={{ background:T.card, borderRadius:14, padding:'32px 20px', textAlign:'center', border:`2px dashed ${T.border}` }}>
             <div style={{ fontSize:36, marginBottom:12 }}>✍️</div>
-            <div style={{ fontSize:14, color:T.text2 }}>Zone de signature client</div>
-            <div style={{ fontSize:12, color:T.text2, marginTop:4 }}>Demandez au client de signer</div>
+            <div style={{ fontSize:14, color:T.text2 }}>{t('ml_sign_label')}</div>
+            <div style={{ fontSize:12, color:T.text2, marginTop:4 }}>{t('ml_sign_desc')}</div>
           </div>
         )}
 
         <BigBtn
-          label="Confirmer la livraison"
+          label={t('ml_confirm_delivery')}
           color={T.success}
           icon={CheckCircle}
           onClick={() => onConfirm({ method, pin })}
@@ -199,6 +167,7 @@ const PanelPIN = ({ onConfirm, onClose }) => {
    Page principale
 ══════════════════════════════════════════════════════════════════════════ */
 export default function ModeLivraison({ commandeId: propCommandeId }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [commandeId, setCommandeId] = useState(propCommandeId || null);
   const [commande, setCommande]   = useState(null);
@@ -246,13 +215,13 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
         // Accepter la commande
         await commandesApi.transporteurAction(commandeId, 'accepter');
         setElapsed(0);
-      } else if (etape < ETAPES.length - 1) {
+      } else if (etape < ETAPES_DEFS.length - 1) {
         // Avancer le statut
         await commandesApi.avancer(commandeId);
       }
       setEtape(e => e + 1);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Une erreur est survenue.');
+      setError(err.response?.data?.detail || t('ml_err_generic'));
     } finally {
       setLoading(false);
     }
@@ -264,9 +233,9 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
       await commandesApi.avancer(commandeId); // → LIVREE
       setShowPIN(false);
       setLivree(true);
-      setEtape(ETAPES.length - 1);
+      setEtape(ETAPES_DEFS.length - 1);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erreur lors de la confirmation.');
+      setError(err.response?.data?.detail || t('ml_err_confirm'));
     } finally {
       setLoading(false);
     }
@@ -280,14 +249,14 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
           <button onClick={() => navigate('/chauffeur')} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: '8px 12px', color: T.text, cursor: 'pointer' }}>
             <ArrowLeft size={16} />
           </button>
-          <span style={{ fontWeight: 800, fontSize: 18 }}>Choisir une mission</span>
+          <span style={{ fontWeight: 800, fontSize: 18 }}>{t('ml_select_title')}</span>
         </div>
         <div style={{ padding: 20, maxWidth: 480, margin: '0 auto' }}>
           {proposees.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: 60, color: T.text2 }}>
               <Package size={56} style={{ opacity: 0.3, marginBottom: 16 }} />
-              <div style={{ fontWeight: 700, fontSize: 17 }}>Aucune mission disponible</div>
-              <div style={{ fontSize: 13, marginTop: 8 }}>Attendez qu'une nouvelle commande vous soit assignée.</div>
+              <div style={{ fontWeight: 700, fontSize: 17 }}>{t('ml_no_mission')}</div>
+              <div style={{ fontSize: 13, marginTop: 8 }}>{t('ml_no_mission_desc')}</div>
             </div>
           ) : (
             proposees.map(cmd => (
@@ -298,10 +267,10 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>#{cmd.reference}</span>
-                  <span style={{ fontSize: 12, background: `${T.primary}20`, color: T.primary, padding: '2px 10px', borderRadius: 20, fontWeight: 600 }}>Proposée</span>
+                  <span style={{ fontSize: 12, background: `${T.primary}20`, color: T.primary, padding: '2px 10px', borderRadius: 20, fontWeight: 600 }}>{t('ml_proposed')}</span>
                 </div>
                 <div style={{ fontSize: 13, color: T.text2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={12} /> {cmd.adresse_livraison || 'Adresse non définie'}
+                  <MapPin size={12} /> {cmd.adresse_livraison || t('ml_addr_undef')}
                 </div>
               </div>
             ))
@@ -318,13 +287,13 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
         <div style={{ width: 120, height: 120, borderRadius: '50%', background: `${T.success}20`, border: `3px solid ${T.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, boxShadow: `0 0 40px ${T.success}44` }}>
           <CheckCircle size={64} color={T.success} />
         </div>
-        <div style={{ fontWeight: 800, fontSize: 26, color: T.text, marginBottom: 8 }}>Livraison confirmée !</div>
-        <div style={{ fontSize: 15, color: T.text2, marginBottom: 6 }}>Commande #{commande?.reference || commandeId}</div>
-        <div style={{ fontSize: 13, color: T.primary, marginBottom: 32 }}>⏱️ Durée : {formatTime(elapsed)}</div>
+        <div style={{ fontWeight: 800, fontSize: 26, color: T.text, marginBottom: 8 }}>{t('ml_delivered')}</div>
+        <div style={{ fontSize: 15, color: T.text2, marginBottom: 6 }}>{t('ml_order_prefix')}{commande?.reference || commandeId}</div>
+        <div style={{ fontSize: 13, color: T.primary, marginBottom: 32 }}>⏱️ {t('ml_duration')} : {formatTime(elapsed)}</div>
         <div style={{ width: '100%', maxWidth: 360 }}>
-          <BigBtn label="Voir mes prochaines missions" color={T.primary} onClick={() => { setSelectMode(true); setLivree(false); setEtape(0); setCommandeId(null); }} />
+          <BigBtn label={t('ml_next_missions')} color={T.primary} onClick={() => { setSelectMode(true); setLivree(false); setEtape(0); setCommandeId(null); }} />
           <div style={{ marginTop: 12 }}>
-            <BigBtn label="Retour au dashboard" color={T.surface} onClick={() => navigate('/chauffeur')} />
+            <BigBtn label={t('ml_back_dash')} color={T.surface} onClick={() => navigate('/chauffeur')} />
           </div>
         </div>
       </div>
@@ -343,7 +312,7 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
         </button>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>
-            Mode livraison {commande?.reference ? `· #${commande.reference}` : ''}
+            {t('ml_header')} {commande?.reference ? `· #${commande.reference}` : ''}
           </div>
           {etape > 0 && (
             <div style={{ fontSize: 12, color: T.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -365,8 +334,8 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
           boxShadow: `0 0 32px ${etapeActuelle.color}20`,
         }}>
           <div style={{ fontSize: 64, marginBottom: 12 }}>{etapeActuelle.icon}</div>
-          <div style={{ fontWeight: 800, fontSize: 22, color: T.text, marginBottom: 6 }}>{etapeActuelle.label}</div>
-          <div style={{ fontSize: 14, color: T.text2, lineHeight: 1.5 }}>{etapeActuelle.desc}</div>
+          <div style={{ fontWeight: 800, fontSize: 22, color: T.text, marginBottom: 6 }}>{t(etapeActuelle.labelKey)}</div>
+          <div style={{ fontSize: 14, color: T.text2, lineHeight: 1.5 }}>{t(etapeActuelle.descKey)}</div>
         </div>
 
         {/* Infos commande */}
@@ -374,16 +343,16 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
           <div style={{ background: T.card, borderRadius: 16, padding: '16px 18px', border: `1px solid ${T.border}`, marginBottom: 20 }}>
             <div style={{ display: 'flex', gap: 16 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>Boutique</div>
+                <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>{t('ml_boutique_lbl')}</div>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{commande.fondateur_detail?.nom_boutique || '–'}</div>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>Articles</div>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{commande.lignes?.length || 0} article(s)</div>
+                <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>{t('ml_articles_lbl')}</div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{commande.lignes?.length || 0} {t('ml_article_unit')}</div>
               </div>
             </div>
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>Adresse de livraison</div>
+              <div style={{ fontSize: 11, color: T.text2, marginBottom: 2 }}>{t('ml_delivery_addr')}</div>
               <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                 <MapPin size={13} color={T.primary} style={{ marginTop: 1, flexShrink: 0 }} />
                 {commande.adresse_livraison || '–'}
@@ -398,7 +367,7 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(commande.adresse_livraison)}`}
             target="_blank" rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: T.info, color: '#fff', borderRadius: 14, padding: '12px 0', fontWeight: 700, fontSize: 14, textDecoration: 'none', marginBottom: 16 }}>
-            <Navigation size={16} /> Ouvrir dans Google Maps
+            <Navigation size={16} /> {t('ml_open_gmaps')}
           </a>
         )}
 
@@ -411,16 +380,16 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
 
         {/* Bouton principal */}
         <div style={{ marginTop: 'auto' }}>
-          {etape < ETAPES.length - 1 ? (
+          {etape < ETAPES_DEFS.length - 1 ? (
             <BigBtn
-              label={etapeActuelle.action}
+              label={t(etapeActuelle.actionKey)}
               color={etapeActuelle.color}
               loading={loading}
               onClick={avancerEtape}
             />
           ) : (
             <BigBtn
-              label="Confirmer la livraison"
+              label={t('ml_confirm_delivery')}
               color={T.success}
               icon={CheckCircle}
               onClick={() => setShowPIN(true)}
@@ -432,7 +401,7 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
           <button
             onClick={() => navigate('/chauffeur/signaler-incident')}
             style={{ width: '100%', marginTop: 12, padding: '14px 0', background: 'none', border: `1px solid ${T.border}`, borderRadius: 14, color: T.text2, fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <AlertTriangle size={15} /> Signaler un incident
+            <AlertTriangle size={15} /> {t('ml_report_incident')}
           </button>
         </div>
       </div>

@@ -38,3 +38,5 @@ export function AdminShell({ children, fullBleed = false }) {
     </div>
   );
 }
+
+export default AdminShell;

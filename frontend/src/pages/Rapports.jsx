@@ -58,7 +58,7 @@ const KPICard = ({ icon: Icon, title, value, sub, color }) => (
 );
 
 const Rapports = () => {
-  const { t, langue, formatPrice, formatDate, devise } = useI18n();
+  const { t, tStatus, langue, formatPrice, formatDate, devise } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [periode, setPeriode] = useState('all');
@@ -237,18 +237,18 @@ const Rapports = () => {
               border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 8, zIndex: 100, minWidth: 200,
             }}>
               {[
-                { type: 'kpis', label: '📊 Indicateurs clés' },
-                { type: 'evolution', label: '📈 Évolution CA & cmd' },
-                { type: 'statut', label: '🎯 Par statut' },
-                { type: 'boutiques', label: '🏪 Top boutiques' },
-                { type: 'transporteurs', label: '🚚 Top transporteurs' },
-                { type: 'all', label: '📦 Rapport complet' },
+                { type: 'kpis', labelKey: 'rp_export_kpis' },
+                { type: 'evolution', labelKey: 'rp_export_evol' },
+                { type: 'statut', labelKey: 'rp_export_statut' },
+                { type: 'boutiques', labelKey: 'rp_export_stores' },
+                { type: 'transporteurs', labelKey: 'rp_export_trans' },
+                { type: 'all', labelKey: 'rp_export_all' },
               ].map(opt => (
                 <button key={opt.type} onClick={() => exportCSV(opt.type)} style={{
                   display: 'block', width: '100%', padding: '8px 14px', border: 'none',
                   background: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
                   borderRadius: 8, textAlign: 'left',
-                }} className="hover-highlight">{opt.label}</button>
+                }} className="hover-highlight">{t(opt.labelKey)}</button>
               ))}
             </div>
           )}

@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useI18n } from '../../contexts/I18nContext';
 import { authApi } from '../../services/api';
+import ConfirmModal from '../../components/ConfirmModal';
 
 // ─── Section Card wrapper ────────────────────────────────────────────────────
 const SectionCard = ({ title, icon: Icon, color = 'var(--accent-primary)', children, action }) => (
@@ -80,6 +81,7 @@ const SettingsPage = () => {
   const { t } = i18n;
 
   const [activeSection, setActiveSection] = useState('profil');
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const [savedNotif, setSavedNotif] = useState('');
 
   // ── Brouillon Apparence (appliqué seulement à la sauvegarde) ─────────
@@ -111,7 +113,7 @@ const SettingsPage = () => {
       tz: draftApparence.tz,
       devise: draftApparence.devise,
     });
-    showSaved('✅ Apparence mise à jour');
+    showSaved('✅ ' + t('sp_appearance_saved'));
   };
 
   // Profile
@@ -151,9 +153,9 @@ const SettingsPage = () => {
         last_name: lastName,
         email, phone,
       });
-      showSaved('✅ Profil mis à jour');
+      showSaved('✅ ' + t('sp_profile_saved'));
     } catch (err) {
-      showSaved('❌ ' + (err.response?.data?.detail || 'Erreur lors de la sauvegarde'));
+      showSaved('❌ ' + (err.response?.data?.detail || t('sp_save_error')));
     } finally {
       setSaving(false);
     }
@@ -161,25 +163,29 @@ const SettingsPage = () => {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (newPwd.length < 8) { showSaved('❌ Mot de passe trop court (8 caractères min)'); return; }
+    if (newPwd.length < 8) { showSaved('❌ ' + t('sp_pwd_too_short')); return; }
     setSaving(true);
     try {
       await authApi.updateProfile({ password: newPwd, old_password: oldPwd });
       setOldPwd(''); setNewPwd('');
-      showSaved('🔒 Mot de passe changé');
+      showSaved('🔒 ' + t('sp_pwd_changed'));
     } catch (err) {
-      showSaved('❌ ' + (err.response?.data?.detail || 'Erreur'));
+      showSaved('❌ ' + (err.response?.data?.detail || t('common_error')));
     } finally {
       setSaving(false);
     }
   };
 
   const handleClearCache = () => {
-    if (!window.confirm('Vider tout le cache local (panier, préférences, conversation chatbot) ?')) return;
-    ['delivermap-cart-v2', 'delivermap-chat-history-v1', 'delivermap-prefs'].forEach(k => {
-      try { localStorage.removeItem(k); } catch { /* ignore */ }
+    setConfirmState({
+      open: true, message: t('sp_clear_cache_confirm'),
+      onConfirm: () => {
+        ['delivermap-cart-v2', 'delivermap-chat-history-v1', 'delivermap-prefs'].forEach(k => {
+          try { localStorage.removeItem(k); } catch { /* ignore */ }
+        });
+        showSaved('🧹 ' + t('sp_cache_cleared'));
+      },
     });
-    showSaved('🧹 Cache vidé');
   };
 
   const SECTIONS = [
@@ -259,37 +265,37 @@ const SettingsPage = () => {
           {/* SECURITE */}
           {activeSection === 'securite' && (
             <>
-              <SectionCard title="Mot de passe" icon={Lock} color="#a3e635"
+              <SectionCard title={t('sp_password')} icon={Lock} color="#a3e635"
                 action={<button className="btn btn-primary btn-sm" onClick={handleChangePassword} disabled={saving || !newPwd}>
-                  <Save size={13} /> Changer
+                  <Save size={13} /> {t('sp_change_pwd')}
                 </button>}>
                 <form onSubmit={handleChangePassword}>
                   <div className="input-group">
-                    <label className="input-label">Mot de passe actuel</label>
+                    <label className="input-label">{t('sp_current_pwd')}</label>
                     <div style={{ position: 'relative' }}>
                       <input className="glass-input" type={showPwd ? 'text' : 'password'} value={oldPwd}
-                        onChange={e => setOldPwd(e.target.value)} placeholder="Votre mot de passe actuel" />
+                        onChange={e => setOldPwd(e.target.value)} placeholder={t('sp_current_pwd_ph')} />
                       <button type="button" onClick={() => setShowPwd(p => !p)}
                         style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                         {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
                   </div>
-                  <Field label="Nouveau mot de passe" type={showPwd ? 'text' : 'password'} value={newPwd} onChange={setNewPwd}
-                    placeholder="Min. 8 caractères, mélange recommandé" icon={Lock} />
+                  <Field label={t('sp_new_pwd')} type={showPwd ? 'text' : 'password'} value={newPwd} onChange={setNewPwd}
+                    placeholder={t('sp_new_pwd_ph')} icon={Lock} />
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <AlertTriangle size={12} /> Force minimale : 8 caractères avec lettres + chiffres
+                    <AlertTriangle size={12} /> {t('sp_pwd_hint')}
                   </div>
                 </form>
               </SectionCard>
 
-              <SectionCard title="Sessions actives" icon={Activity} color="#facc15">
+              <SectionCard title={t('sp_active_sessions')} icon={Activity} color="#facc15">
                 <div style={{ padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>🖥️ Session actuelle</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Connecté · IP locale · {new Date().toLocaleDateString('fr-FR')}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>🖥️ {t('sp_current_session')}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{t('sp_connected_ip')} {new Date().toLocaleDateString(undefined)}</div>
                   </div>
-                  <span className="badge badge-success">Active</span>
+                  <span className="badge badge-success">{t('common_active')}</span>
                 </div>
               </SectionCard>
             </>
@@ -297,24 +303,24 @@ const SettingsPage = () => {
 
           {/* NOTIFICATIONS */}
           {activeSection === 'notifications' && (
-            <SectionCard title="Préférences de notification" icon={Bell} color="#facc15">
+            <SectionCard title={t('sp_notif_prefs')} icon={Bell} color="#facc15">
               <Toggle checked={prefs.notif_commandes !== false} onChange={v => setPref('notif_commandes', v)}
-                label="🛒 Nouvelles commandes" description="Recevoir une notification lors de chaque nouvelle commande" />
+                label={t('sp_notif_orders')} description={t('sp_notif_orders_desc')} />
               <Toggle checked={prefs.notif_incidents !== false} onChange={v => setPref('notif_incidents', v)}
-                label="⚠️ Signalements" description="Alertes pour les incidents et signalements clients" />
+                label={t('sp_notif_incidents')} description={t('sp_notif_incidents_desc')} />
               <Toggle checked={!!prefs.notif_marketing} onChange={v => setPref('notif_marketing', v)}
-                label="📢 Promotions & marketing" description="Recevoir les news produit et offres commerciales" />
+                label={t('sp_notif_marketing')} description={t('sp_notif_marketing_desc')} />
               <Toggle checked={prefs.notif_email !== false} onChange={v => setPref('notif_email', v)}
-                label="📧 Email digest" description="Récapitulatif quotidien par email à 8h" />
+                label={t('sp_notif_email')} description={t('sp_notif_email_desc')} />
               <Toggle checked={!!prefs.notif_son} onChange={v => setPref('notif_son', v)}
-                label="🔔 Son des notifications" description="Bip discret lors de chaque nouvelle alerte" />
+                label={t('sp_notif_sound')} description={t('sp_notif_sound_desc')} />
             </SectionCard>
           )}
 
           {/* APPARENCE */}
           {activeSection === 'apparence' && (
             <>
-              <SectionCard title="Thème de l'interface" icon={Palette} color="#4ade80">
+              <SectionCard title={t('sp_theme')} icon={Palette} color="#4ade80">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <button type="button" onClick={() => setDraftApparence(d => ({ ...d, mode: 'dark' }))}
                     style={{
@@ -325,9 +331,9 @@ const SettingsPage = () => {
                       transition: 'all 0.2s', boxShadow: draftApparence.mode === 'dark' ? '0 0 18px rgba(34,197,94,0.25)' : 'none',
                     }}>
                     <Moon size={20} style={{ marginBottom: 6 }} />
-                    <div>🌙 Mode sombre</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Idéal en faible luminosité</div>
-                    {draftApparence.mode === 'dark' && <div style={{ fontSize: 10, color: '#4ade80', marginTop: 6, fontWeight: 700 }}>✓ Sélectionné</div>}
+                    <div>🌙 {t('sp_dark_mode')}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{t('sp_dark_hint')}</div>
+                    {draftApparence.mode === 'dark' && <div style={{ fontSize: 10, color: '#4ade80', marginTop: 6, fontWeight: 700 }}>✓ {t('sp_selected')}</div>}
                   </button>
                   <button type="button" onClick={() => setDraftApparence(d => ({ ...d, mode: 'light' }))}
                     style={{
@@ -338,16 +344,16 @@ const SettingsPage = () => {
                       transition: 'all 0.2s', boxShadow: draftApparence.mode === 'light' ? '0 0 18px rgba(34,197,94,0.25)' : 'none',
                     }}>
                     <Sun size={20} style={{ marginBottom: 6 }} />
-                    <div>☀️ Mode clair</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Meilleure visibilité de jour</div>
-                    {draftApparence.mode === 'light' && <div style={{ fontSize: 10, color: '#4ade80', marginTop: 6, fontWeight: 700 }}>✓ Sélectionné</div>}
+                    <div>☀️ {t('sp_light_mode')}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{t('sp_light_hint')}</div>
+                    {draftApparence.mode === 'light' && <div style={{ fontSize: 10, color: '#4ade80', marginTop: 6, fontWeight: 700 }}>✓ {t('sp_selected')}</div>}
                   </button>
                 </div>
               </SectionCard>
 
-              <SectionCard title="Langue & région" icon={Globe} color="#22d3ee">
+              <SectionCard title={t('sp_lang_region')} icon={Globe} color="#22d3ee">
                 <div className="input-group">
-                  <label className="input-label">Langue d'affichage</label>
+                  <label className="input-label">{t('sp_display_lang')}</label>
                   <select className="glass-input" value={draftApparence.langue}
                     onChange={e => setDraftApparence(d => ({ ...d, langue: e.target.value }))}>
                     <option value="fr">🇫🇷 Français</option>
@@ -357,7 +363,7 @@ const SettingsPage = () => {
                   </select>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Fuseau horaire</label>
+                  <label className="input-label">{t('sp_timezone')}</label>
                   <select className="glass-input" value={draftApparence.tz}
                     onChange={e => setDraftApparence(d => ({ ...d, tz: e.target.value }))}>
                     <option value="Africa/Casablanca">🇲🇦 Casablanca (GMT+1)</option>
@@ -368,7 +374,7 @@ const SettingsPage = () => {
                   </select>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Devise par défaut</label>
+                  <label className="input-label">{t('sp_default_currency')}</label>
                   <select className="glass-input" value={draftApparence.devise}
                     onChange={e => setDraftApparence(d => ({ ...d, devise: e.target.value }))}>
                     <option value="MAD">💰 MAD (Dirham marocain)</option>
@@ -378,8 +384,8 @@ const SettingsPage = () => {
                   </select>
                 </div>
                 <div style={{ marginTop: 10, padding: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  📊 Aperçu : <strong>{new Intl.NumberFormat(draftApparence.langue === 'ar' ? 'ar-MA' : draftApparence.langue === 'en' ? 'en-US' : draftApparence.langue === 'es' ? 'es-ES' : 'fr-FR', { style: 'currency', currency: draftApparence.devise || 'MAD', maximumFractionDigits: 2 }).format(1234.56)}</strong>
-                  · langue : <strong>{ {fr: 'Français', ar: 'العربية', en: 'English', es: 'Español'}[draftApparence.langue] }</strong>
+                  {t('sp_preview_label')} <strong>{new Intl.NumberFormat(draftApparence.langue === 'ar' ? 'ar-MA' : draftApparence.langue === 'en' ? 'en-US' : draftApparence.langue === 'es' ? 'es-ES' : undefined, { style: 'currency', currency: draftApparence.devise || 'MAD', maximumFractionDigits: 2 }).format(1234.56)}</strong>
+                  {' · '}{t('sp_language')}{' : '}<strong>{ {fr: 'Français', ar: 'العربية', en: 'English', es: 'Español'}[draftApparence.langue] }</strong>
                 </div>
               </SectionCard>
 
@@ -388,13 +394,13 @@ const SettingsPage = () => {
                 {apparenceDirty && (
                   <button onClick={() => setDraftApparence({ mode, langue: i18n.langue, tz: i18n.tz, devise: i18n.devise })}
                     className="btn btn-secondary">
-                    Annuler les changements
+                    {t('sp_cancel_changes')}
                   </button>
                 )}
                 <button onClick={handleSaveApparence}
                   className="btn btn-primary" disabled={!apparenceDirty}
                   style={{ minWidth: 200 }}>
-                  <Save size={14} /> {apparenceDirty ? `Sauvegarder & Appliquer` : '✓ Tout est enregistré'}
+                  <Save size={14} /> {apparenceDirty ? t('sp_save_apply') : '✓ ' + t('sp_all_saved')}
                 </button>
               </div>
             </>
@@ -403,85 +409,91 @@ const SettingsPage = () => {
           {/* SYSTEME */}
           {activeSection === 'systeme' && (
             <>
-              <SectionCard title="Cache et stockage local" icon={Database} color="#fb7185"
+              <SectionCard title={t('sp_cache_storage')} icon={Database} color="#fb7185"
                 action={<button className="btn btn-danger btn-sm" onClick={handleClearCache}>
-                  <Trash2 size={13} /> Vider le cache
+                  <Trash2 size={13} /> {t('sp_clear_cache')}
                 </button>}>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                  Espace utilisé pour mémoriser votre panier, vos préférences et l'historique conversationnel.
+                  {t('sp_cache_desc')}
                   <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 12 }}>
-                    <li>Panier multi-boutiques</li>
-                    <li>Conversation chatbot</li>
-                    <li>Préférences notifications & thème</li>
+                    <li>{t('sp_cache_cart')}</li>
+                    <li>{t('sp_cache_chat')}</li>
+                    <li>{t('sp_cache_prefs')}</li>
                   </ul>
                 </div>
               </SectionCard>
 
-              <SectionCard title="Performance & monitoring" icon={Activity} color="#22c55e">
+              <SectionCard title={t('sp_performance')} icon={Activity} color="#22c55e">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {[
-                    { label: 'Latence API', value: '< 200ms', color: '#22c55e' },
-                    { label: 'Uptime',      value: '99.9%',   color: '#a3e635' },
-                    { label: 'Connexions',  value: 'Active',  color: '#4ade80' },
+                    { labelKey: 'sp_latency', value: '< 200ms', color: '#22c55e' },
+                    { labelKey: 'sp_uptime', value: '99.9%',   color: '#a3e635' },
+                    { labelKey: 'sp_connections', value: t('common_active'), color: '#4ade80' },
                   ].map(s => (
                     <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t(s.labelKey)}</div>
                       <div style={{ fontWeight: 800, color: s.color, fontSize: 18, marginTop: 4 }}>{s.value}</div>
                     </div>
                   ))}
                 </div>
               </SectionCard>
 
-              <SectionCard title="Maintenance" icon={RefreshCw} color="#facc15">
+              <SectionCard title={t('sp_maintenance')} icon={RefreshCw} color="#facc15">
                 <Toggle checked={!!prefs.maintenance_mode} onChange={v => setPref('maintenance_mode', v)}
-                  label="🔧 Mode maintenance" description="Affiche un bandeau d'information pour les clients" />
+                  label={t('sp_maintenance_mode')} description={t('sp_maintenance_mode_desc')} />
                 <Toggle checked={!!prefs.debug_mode} onChange={v => setPref('debug_mode', v)}
-                  label="🐛 Mode debug" description="Affiche des logs supplémentaires dans la console" />
+                  label={t('sp_debug_mode')} description={t('sp_debug_mode_desc')} />
                 <Toggle checked={prefs.auto_refresh !== false} onChange={v => setPref('auto_refresh', v)}
-                  label="🔄 Auto-actualisation" description="Met à jour les données toutes les 30 secondes" />
+                  label={t('sp_auto_refresh')} description={t('sp_auto_refresh_desc')} />
               </SectionCard>
             </>
           )}
 
           {/* A PROPOS */}
           {activeSection === 'apropos' && (
-            <SectionCard title="À propos de DeliverMap" icon={SettingsIcon} color="#22d3ee">
+            <SectionCard title={t('sp_about')} icon={SettingsIcon} color="#22d3ee">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Version</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_version')}</span>
                   <strong>v2.1.0 — Geoinfo 2025-2026</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Build</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_build')}</span>
                   <strong>{new Date().toISOString().split('T')[0]}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Frontend</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_frontend_lbl')}</span>
                   <strong>React 18 + Vite + Leaflet</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Backend</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_backend_lbl')}</span>
                   <strong>Django + DRF + PostGIS</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Routing</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_routing_lbl')}</span>
                   <strong>OSRM (Open Source)</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>IA conversationnelle</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('sp_ai_lbl')}</span>
                   <strong>Mistral AI + fallback local</strong>
                 </div>
                 <div style={{ marginTop: 12, padding: 12, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CheckCircle size={16} color="#22c55e" />
-                  Tous les systèmes opérationnels
+                  {t('sp_all_systems_ok')}
                 </div>
               </div>
             </SectionCard>
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 };
 
-export default SettingsPage;
+export default SettingsPage

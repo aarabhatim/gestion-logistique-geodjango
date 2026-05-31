@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { blacklistApi } from '../../services/api';
 import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const RAISON_COLORS = {
   fraude:        { bg: 'rgba(239,68,68,0.15)',  border: 'rgba(239,68,68,0.4)',  color: '#fca5a5' },
@@ -33,6 +34,7 @@ export default function BlacklistPage() {
   const [success, setSuccess]       = useState(null);
   const [search, setSearch]         = useState('');
   const [verifyAddr, setVerifyAddr] = useState('');
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const [verifyResult, setVerifyResult] = useState(null);
   const [verifying, setVerifying]   = useState(false);
 
@@ -61,8 +63,7 @@ export default function BlacklistPage() {
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm(t('bl_confirm_delete'))) return;
-    blacklistApi.delete(id).then(load).catch(() => {});
+    setConfirmState({ open: true, message: t('bl_confirm_delete'), onConfirm: () => blacklistApi.delete(id).then(load).catch(() => {}) });
   };
 
   const handleVerify = () => {
@@ -167,7 +168,7 @@ export default function BlacklistPage() {
             <input
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Contexte supplémentaire…"
+              placeholder={t('bl_context_ph')}
               style={{
                 width: '100%', padding: '9px 13px',
                 background: 'rgba(7,18,11,0.80)', border: '1px solid rgba(34,197,94,0.22)',
@@ -308,6 +309,12 @@ export default function BlacklistPage() {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@
 import { motion } from 'framer-motion';
 import { Package, Truck, CheckCircle, Clock, User, ArrowRight, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/contexts/I18nContext';
 
 const COLONNES = [
   {
@@ -50,6 +51,7 @@ const NEXT_STATUT = {
 };
 
 function CommandeCard({ commande, onAvancer, onDetail }) {
+  const { t, tStatus } = useI18n();
   const isRetard = commande.eta && new Date(commande.eta) < new Date() && commande.statut !== 'LIVREE';
   const montant = commande.montant_total ?? commande.total ?? 0;
   const client = commande.client_nom ?? commande.client ?? '—';
@@ -84,7 +86,7 @@ function CommandeCard({ commande, onAvancer, onDetail }) {
           )}
         </div>
         <span className="shrink-0 text-xs font-bold text-foreground">
-          {Number(montant).toLocaleString('fr-MA')} MAD
+          {Number(montant).toLocaleString()} MAD
         </span>
       </div>
 
@@ -100,7 +102,7 @@ function CommandeCard({ commande, onAvancer, onDetail }) {
           </div>
         )}
         <div className="text-[10px] text-muted-foreground/60">
-          {new Date(commande.created_at).toLocaleDateString('fr-FR')}
+          {new Date(commande.created_at).toLocaleDateString()}
         </div>
       </div>
 
@@ -110,14 +112,14 @@ function CommandeCard({ commande, onAvancer, onDetail }) {
           onClick={() => onDetail(commande)}
           className="flex items-center gap-1 rounded px-2 py-1 text-[10px] bg-secondary hover:bg-secondary/80 transition-colors"
         >
-          <Eye className="h-3 w-3" /> Détail
+          {t('order_detail')}
         </button>
         {NEXT_STATUT[commande.statut] && onAvancer && (
           <button
             onClick={() => onAvancer(commande)}
             className="flex items-center gap-1 rounded px-2 py-1 text-[10px] bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-semibold"
           >
-            Avancer <ArrowRight className="h-3 w-3" />
+            {t('adm_validate')} <ArrowRight className="h-3 w-3" />
           </button>
         )}
       </div>
@@ -134,6 +136,7 @@ function CommandeCard({ commande, onAvancer, onDetail }) {
 }
 
 export function KanbanCommandes({ commandes = [], onAvancer, onDetail, loading = false }) {
+  const { tStatus } = useI18n();
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {COLONNES.map((col) => {
@@ -150,7 +153,7 @@ export function KanbanCommandes({ commandes = [], onAvancer, onDetail, loading =
                 <span className={cn('inline-block h-2 w-2 rounded-full', col.dot)} />
                 <Icon className={cn('h-4 w-4', col.headerColor)} />
                 <span className={cn('text-sm font-semibold', col.headerColor)}>
-                  {col.label}
+                  {tStatus(col.statut)}
                 </span>
               </div>
               <span className="rounded-full bg-background/60 px-2 py-0.5 text-xs font-bold text-foreground">
@@ -166,7 +169,7 @@ export function KanbanCommandes({ commandes = [], onAvancer, onDetail, loading =
                 ))
               ) : cards.length === 0 ? (
                 <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border/30 text-xs text-muted-foreground/40">
-                  Aucune commande
+                  {t('co_no_orders')}
                 </div>
               ) : (
                 cards.map(c => (
@@ -185,3 +188,5 @@ export function KanbanCommandes({ commandes = [], onAvancer, onDetail, loading =
     </div>
   );
 }
+
+export default KanbanCommandes;

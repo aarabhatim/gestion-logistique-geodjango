@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * GroupOrderModal — Commande collective (Mode Groupe)
@@ -25,7 +26,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
       setStep('waiting');
       startPolling(res.data.code);
     } catch {
-      alert('Erreur lors de la création de la session');
+      alert(t('go_err_create'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
       onOrder && onOrder(session);
       onClose();
     } catch {
-      alert('Erreur lors de la validation');
+      alert(t('go_err_validate'));
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
             <span className="text-2xl">👥</span>
-            <h2 className="font-bold text-[var(--color-text)] font-heading">Commande Groupe</h2>
+            <h2 className="font-bold text-[var(--color-text)] font-heading">{t('go_title')}</h2>
           </div>
           <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-xl">✕</button>
         </div>
@@ -88,12 +89,12 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
           {step === 'menu' && (
             <div className="space-y-4">
               <div className="bg-[var(--color-primary-10)] rounded-xl p-4 text-sm text-[var(--color-text)]">
-                <p className="font-semibold text-[var(--color-primary)] mb-2">💡 Comment ça marche ?</p>
+                <p className="font-semibold text-[var(--color-primary)] mb-2">{t('go_how_title')}</p>
                 <ol className="space-y-1 text-[var(--color-text-secondary)] list-decimal list-inside">
-                  <li>Créez une session et partagez le lien</li>
-                  <li>Chaque ami choisit ses produits</li>
-                  <li>Validez quand tout le monde est prêt</li>
-                  <li>Une seule commande, une seule livraison !</li>
+                  <li>{t('go_step1')}</li>
+                  <li>{t('go_step2')}</li>
+                  <li>{t('go_step3')}</li>
+                  <li>{t('go_step4')}</li>
                 </ol>
               </div>
               <button
@@ -107,9 +108,9 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
-                    Création…
+                    {t('go_creating')}
                   </>
-                ) : '🚀 Créer une session groupe'}
+                ) : t('go_create_btn')}
               </button>
             </div>
           )}
@@ -118,7 +119,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
             <div className="space-y-4">
               {/* Lien invitation */}
               <div>
-                <p className="text-sm font-medium text-[var(--color-text)] mb-2">Partage ce lien avec tes amis :</p>
+                <p className="text-sm font-medium text-[var(--color-text)] mb-2">{t('go_share_link')}</p>
                 <div className="flex items-center gap-2 bg-[var(--color-surface-alt)] rounded-xl px-3 py-2">
                   <code className="flex-1 text-xs text-[var(--color-text-secondary)] truncate">
                     {window.location.origin}/rejoindre-groupe/{session.code}
@@ -127,7 +128,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
                     onClick={copyLink}
                     className="text-[var(--color-primary)] text-xs font-semibold flex-shrink-0"
                   >
-                    {copied ? '✅ Copié' : '📋 Copier'}
+                    {copied ? t('go_copied') : t('go_copy')}
                   </button>
                 </div>
               </div>
@@ -135,7 +136,7 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
               {/* Membres */}
               <div>
                 <p className="text-sm font-medium text-[var(--color-text)] mb-2">
-                  Membres ({membres.length}) — mise à jour auto…
+                  {t('go_members')} ({membres.length}) — {t('go_auto_update')}
                 </p>
                 <div className="space-y-2">
                   {membres.map(m => (
@@ -146,17 +147,17 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-[var(--color-text)]">{m.username}</p>
                         <p className="text-xs text-[var(--color-text-muted)]">
-                          {m.articles?.length || 0} article(s)
+                          {m.articles?.length || 0} {t('ml_article_unit')}
                         </p>
                       </div>
                       <span className={`text-sm ${m.est_pret ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
-                        {m.est_pret ? '✅ Prêt' : '⌛ En cours'}
+                        {m.est_pret ? t('go_ready_badge') : t('go_in_progress_badge')}
                       </span>
                     </div>
                   ))}
                   {membres.length === 0 && (
                     <p className="text-sm text-[var(--color-text-muted)] text-center py-3">
-                      En attente de participants…
+                      {t('go_waiting')}
                     </p>
                   )}
                 </div>
@@ -167,14 +168,14 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
                   onClick={onClose}
                   className="flex-1 py-2.5 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm hover:bg-[var(--color-surface-alt)] transition-colors"
                 >
-                  Annuler
+                  {t('common_cancel')}
                 </button>
                 <button
                   disabled={membres.length === 0 || !membres.every(m => m.est_pret)}
                   onClick={() => setStep('ready')}
                   className="flex-1 py-2.5 rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold disabled:opacity-40 hover:bg-[var(--color-primary-dark)] transition-colors"
                 >
-                  Forcer la validation
+                  {t('go_force_valid')}
                 </button>
               </div>
             </div>
@@ -183,16 +184,16 @@ const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
           {step === 'ready' && (
             <div className="text-center space-y-4">
               <div className="text-6xl py-4">🎉</div>
-              <h3 className="text-xl font-bold text-[var(--color-text)]">Tout le monde est prêt !</h3>
+              <h3 className="text-xl font-bold text-[var(--color-text)]">{t('go_all_ready')}</h3>
               <p className="text-sm text-[var(--color-text-secondary)]">
-                {membres.length} participant(s) — Les commandes vont être fusionnées en une seule livraison.
+                {membres.length} {t('go_participants_suffix')}
               </p>
               <button
                 onClick={validerCommande}
                 disabled={loading}
                 className="w-full bg-[var(--color-success)] text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
               >
-                {loading ? 'Validation…' : '✅ Valider la commande groupe'}
+                {loading ? t('go_validating') : t('go_validate_btn')}
               </button>
             </div>
           )}

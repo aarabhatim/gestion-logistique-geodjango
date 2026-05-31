@@ -9,6 +9,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { chauffeurApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 const T = {
@@ -35,7 +36,7 @@ const TOOLTIP_STYLE = {
   padding: '8px 12px',
 };
 
-const fmt = (v) => Number(v || 0).toLocaleString('fr-MA', { minimumFractionDigits: 0 });
+const fmt = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0 });
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, nets, bruts, commission, sub, color = T.primary, loading }) {
@@ -100,6 +101,7 @@ function StatCard({ label, nets, bruts, commission, sub, color = T.primary, load
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function DashboardFinancier() {
+  const { t, formatPrice } = useI18n();
   const [data, setData]                 = useState(null);
   const [historique, setHistorique]     = useState([]);
   const [pagePaiements, setPagePaiements] = useState(1);
@@ -168,7 +170,7 @@ export default function DashboardFinancier() {
             💰 Tableau de bord financier
           </h1>
           <p style={{ color: T.text2, fontSize: 13, margin: '5px 0 0' }}>
-            Revenus nets après commission plateforme
+            {t('df_net_revenue_desc')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -232,7 +234,7 @@ export default function DashboardFinancier() {
             <span style={{ fontSize: 20 }}>⛽</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, color: T.text2, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-            Carburant estimé (mois)
+            {t('df_fuel_month')}
           </div>
           {loading ? (
             <div style={{ height: 36, background: 'rgba(255,255,255,0.06)', borderRadius: 8 }} />
@@ -259,7 +261,7 @@ export default function DashboardFinancier() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${T.primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <TrendingUp size={18} color={T.primary} />
             </div>
-            <span style={{ fontWeight: 700, fontSize: 15, color: T.text }}>Évolution des revenus</span>
+            <span style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{t('fin_evolution')}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, background: '#1A1A1A', borderRadius: 10, padding: 4, border: `1px solid ${T.border}` }}>
             {['jours', 'semaines'].map(m => (
@@ -321,14 +323,14 @@ export default function DashboardFinancier() {
           </div>
         ) : historique.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: T.text2, fontSize: 13 }}>
-            Aucune livraison trouvée
+            {t('df_no_deliveries')}
           </div>
         ) : (
           <>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-                  {['Date', 'Référence', 'Distance', 'Bruts', 'Commission', 'Nets'].map(h => (
+                  {['Date', 'Référence', 'Distance', 'Bruts', t('fin_commission'), 'Nets'].map(h => (
                     <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: T.text2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       {h}
                     </th>
@@ -343,7 +345,7 @@ export default function DashboardFinancier() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '10px', color: T.text2, whiteSpace: 'nowrap' }}>
-                      {lv.date ? new Date(lv.date).toLocaleDateString('fr-FR') : '—'}
+                      {lv.date ? new Date(lv.date).toLocaleDateString() : '—'}
                     </td>
                     <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: 12 }}>
                       <span style={{ color: T.primary, background: `${T.primary}15`, padding: '2px 8px', borderRadius: 6 }}>

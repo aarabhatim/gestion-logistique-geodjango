@@ -2,11 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { galerieApi, mediaUrl } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
-const TYPE_LABELS = { logo: 'Logo', banniere: 'Bannière boutique', photo: 'Photo boutique' };
+const TYPE_LABEL_KEYS = { logo: 'gal_type_logo', banniere: 'gal_type_banniere', photo: 'gal_type_photo' };
 const TYPE_ICONS  = { logo: '🏷️', banniere: '🖼️', photo: '📷' };
 
 export default function GaleriePage() {
+  const { t } = useI18n();
   const { user } = useAuthStore();
   const fondateurId = user?.fondateur_id || user?.id;
 
@@ -18,6 +21,7 @@ export default function GaleriePage() {
   const [type, setType]               = useState('photo');
   const [preview, setPreview]         = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const fileRef = useRef(null);
 
   const load = () => {
@@ -41,28 +45,25 @@ export default function GaleriePage() {
   };
 
   const handleUpload = () => {
-    if (!selectedFile) { setError('Sélectionnez un fichier'); return; }
+    if (!selectedFile) { setError(t('gal_select_file')); return; }
     setUploading(true); setError(null); setSuccess(null);
     const fd = new FormData();
     fd.append('image', selectedFile);
     fd.append('type', type);
     galerieApi.upload(fondateurId, fd)
       .then(() => {
-        setSuccess('Image uploadée avec succès');
+        setSuccess(t('gal_success'));
         setSelectedFile(null); setPreview(null);
         if (fileRef.current) fileRef.current.value = '';
         load();
         setTimeout(() => setSuccess(null), 3000);
       })
-      .catch(e => setError(e.response?.data?.image?.[0] || 'Erreur upload'))
+      .catch(e => setError(e.response?.data?.image?.[0] || t('gal_error')))
       .finally(() => setUploading(false));
   };
 
   const handleDelete = (mediaId) => {
-    if (!window.confirm('Supprimer cette image ?')) return;
-    galerieApi.delete(fondateurId, mediaId)
-      .then(load)
-      .catch(() => setError('Erreur suppression'));
+    setConfirmState({ open: true, message: t('gal_delete_confirm'), onConfirm: () => galerieApi.delete(fondateurId, mediaId).then(load).catch(() => setError(t('state_error'))) });
   };
 
   const grouped = { logo: [], banniere: [], photo: [] };
@@ -116,14 +117,14 @@ export default function GaleriePage() {
 
         {/* Type selector */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-          {Object.entries(TYPE_LABELS).map(([t, label]) => (
+          {Object.entries(TYPE_LABEL_KEYS).map(([tp, labelKey]) => (
             <button
-              key={t}
-              onClick={() => setType(t)}
+              key={tp}
+              onClick={() => setType(tp)}
               style={{
-                background: type === t ? 'var(--mj-red)' : 'var(--mj-bg)',
-                border: `1px solid ${type === t ? 'var(--mj-red)' : 'var(--mj-border)'}`,
-                color: type === t ? 'white' : 'var(--mj-text-3)',
+                background: type === tp ? 'var(--mj-red)' : 'var(--mj-bg)',
+                border: `1px solid ${type === tp ? 'var(--mj-red)' : 'var(--mj-border)'}`,
+                color: type === tp ? 'white' : 'var(--mj-text-3)',
                 borderRadius: 10, padding: '8px 16px', cursor: 'pointer',
                 fontWeight: 600, fontSize: 13, transition: 'all 0.2s ease',
                 fontFamily: 'var(--mj-font)',
@@ -154,7 +155,7 @@ export default function GaleriePage() {
             ) : (
               <div style={{ textAlign: 'center', color: 'var(--mj-text-3)' }}>
                 <div style={{ fontSize: 30, marginBottom: 6 }}>📁</div>
-                <div style={{ fontSize: 12 }}>Cliquer pour<br />choisir</div>
+                <div style={{ fontSize: 12 }}>{t('gal_click_choose')}</div>
               </div>
             )}
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
@@ -182,7 +183,7 @@ export default function GaleriePage() {
               disabled={uploading || !selectedFile}
               className={`mj-btn ${uploading || !selectedFile ? 'mj-btn-secondary' : 'mj-btn-primary'}`}
             >
-              {uploading ? '⏳ Upload en cours…' : '⬆️ Uploader'}
+              {uploading ? `⏳ ${t('gal_uploading')}` : `⬆️ ${t('gal_upload_btn')}`}
             </button>
           </div>
         </div>
@@ -206,7 +207,7 @@ export default function GaleriePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <span style={{ fontSize: 18 }}>{TYPE_ICONS[gType]}</span>
               <h3 style={{ margin: 0, color: 'var(--mj-text)', fontSize: 16, fontWeight: 700, fontFamily: 'var(--mj-font)' }}>
-                {TYPE_LABELS[gType]}
+                {t(TYPE_LABEL_KEYS[gType])}
               </h3>
               <span className="mj-badge" style={{ background: 'var(--mj-red-light)', color: 'var(--mj-red)' }}>
                 {items.length}
@@ -269,6 +270,12 @@ export default function GaleriePage() {
           </div>
         ))
       )}
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 }

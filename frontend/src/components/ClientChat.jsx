@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * ClientChat — Chat client ↔ chauffeur (MANQUANT côté client)
@@ -15,6 +16,7 @@ import api from '../services/api';
  */
 
 const ClientChat = ({ commandeId, onClose }) => {
+  const { t } = useI18n();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [connected, setConnected] = useState(false);
@@ -106,10 +108,10 @@ const ClientChat = ({ commandeId, onClose }) => {
         <div className="flex-1 flex items-center gap-2">
           <span className="text-lg">💬</span>
           <div>
-            <p className="text-sm font-semibold leading-tight">Chat avec votre chauffeur</p>
+            <p className="text-sm font-semibold leading-tight">{t('cc_title')}</p>
             <p className="text-xs opacity-75 flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-300' : 'bg-gray-300'}`} />
-              {connected ? 'Connecté' : 'Reconnexion…'}
+              {connected ? t('cc_connected') : t('cc_reconnecting')}
             </p>
           </div>
         </div>
@@ -138,7 +140,7 @@ const ClientChat = ({ commandeId, onClose }) => {
             ) : messages.length === 0 ? (
               <div className="text-center py-8 text-sm text-[var(--color-text-muted)]">
                 <p className="text-2xl mb-2">🚗</p>
-                <p>Commencez à discuter avec votre chauffeur</p>
+                <p>{t('cc_no_messages')}</p>
               </div>
             ) : (
               messages.map((msg) => (
@@ -158,7 +160,7 @@ const ClientChat = ({ commandeId, onClose }) => {
                   >
                     {msg.contenu}
                     <p className={`text-xs mt-0.5 ${isMyMessage(msg) ? 'text-white/60' : 'text-[var(--color-text-muted)]'}`}>
-                      {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
@@ -173,7 +175,7 @@ const ClientChat = ({ commandeId, onClose }) => {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              placeholder="Votre message…"
+              placeholder={t('cc_msg_placeholder')}
               className="flex-1 text-sm px-3 py-1.5 rounded-full bg-[var(--color-surface-alt)] border border-[var(--color-border)] outline-none focus:border-[var(--color-primary)] text-[var(--color-text)]"
             />
             <button

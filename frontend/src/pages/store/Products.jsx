@@ -5,8 +5,10 @@ import {
 } from 'lucide-react';
 import { fondateursApi } from '../../services/api';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
-const StoreProducts = () => {
+const Products = () => {
+  const { t } = useI18n();
   const [products, setProducts]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [alertes, setAlertes]         = useState([]);
@@ -46,27 +48,27 @@ const StoreProducts = () => {
     try {
       await fondateursApi.toggleDisponibilite(id);
       setProducts(prev => prev.map(p => p.id === id ? { ...p, disponible: !p.disponible } : p));
-    } catch { alert('Erreur.'); }
+    } catch { alert(t('state_error')); }
     finally { setToggling(null); }
   };
 
   const handleMajStock = async (id, newStock) => {
     const val = parseInt(newStock);
-    if (isNaN(val) || val < 0) { alert('Stock invalide'); return; }
+    if (isNaN(val) || val < 0) { alert(t('state_error')); return; }
     try {
       await fondateursApi.majStock(id, { stock: val });
       setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: val } : p));
       setEditingStock(null);
       fetchAlertes();
-    } catch { alert('Erreur lors de la mise à jour du stock.'); }
+    } catch { alert(t('state_error')); }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Supprimer ce produit ?')) return;
+    if (!confirm(t('gal_delete_confirm'))) return;
     try {
       await fondateursApi.deleteProduit(id);
       setProducts(prev => prev.filter(p => p.id !== id));
-    } catch { alert('Erreur lors de la suppression.'); }
+    } catch { alert(t('state_error')); }
   };
 
   const stockAlerteIds = new Set(alertes.map(a => a.id || a.produit_id));
@@ -81,10 +83,10 @@ const StoreProducts = () => {
       }}>
         <div>
           <h2 style={{ fontWeight: 800, fontSize: 22, margin: 0, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Package size={22} color="var(--mj-red)" /> Catalogue Produits
+            <Package size={22} color="var(--mj-red)" /> {t('prd_title')}
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--mj-text-3)' }}>
-            Gérez vos produits, stocks et disponibilités.
+            {t('prd_subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -93,7 +95,7 @@ const StoreProducts = () => {
             className={`mj-btn mj-btn-sm ${alertes.length > 0 ? 'mj-btn-primary' : 'mj-btn-secondary'}`}
             style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}
           >
-            <Bell size={14} /> Alertes stock
+            <Bell size={14} /> {t('sd_stock_alerts')}
             {alertes.length > 0 && (
               <span style={{
                 background: 'white', color: 'var(--mj-red)', borderRadius: '50%',
@@ -123,7 +125,7 @@ const StoreProducts = () => {
         <div className="mj-card mj-fade-in" style={{ marginBottom: 20, borderLeft: '3px solid #E30613' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h4 style={{ margin: 0, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, color: '#E30613' }}>
-              <AlertTriangle size={14} /> {alertes.length} alerte{alertes.length > 1 ? 's' : ''} de stock
+              <AlertTriangle size={14} /> {alertes.length} {alertes.length > 1 ? t('al_active_alerts') : t('al_active_alert')}
             </h4>
             <button
               onClick={() => setShowAlertes(false)}
@@ -144,7 +146,7 @@ const StoreProducts = () => {
                   <strong>{a.nom || a.produit_nom}</strong> — Stock : <strong style={{ color: '#E30613' }}>{a.stock}</strong>
                 </span>
                 {a.stock === 0 && (
-                  <span className="mj-badge mj-badge-red" style={{ fontSize: 10, marginLeft: 'auto' }}>Rupture</span>
+                  <span className="mj-badge mj-badge-red" style={{ fontSize: 10, marginLeft: 'auto' }}>{t('sd_out_of_stock')}</span>
                 )}
               </div>
             ))}
@@ -165,7 +167,7 @@ const StoreProducts = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700, fontFamily: 'var(--mj-font)' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--mj-border)' }}>
-                {['Image', 'Produit', 'Catégorie', 'Prix', 'Stock', 'Disponible', 'Actions'].map(h => (
+                {[t('pr_col_image'), t('pr_col_product'), t('pr_col_category'), t('pr_col_price'), t('pr_col_stock'), t('pr_col_dispo'), t('pr_col_actions')].map(h => (
                   <th key={h} style={{
                     padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700,
                     color: 'var(--mj-text-3)', textTransform: 'uppercase', letterSpacing: '0.05em',
@@ -177,7 +179,7 @@ const StoreProducts = () => {
               {products.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--mj-text-3)', fontSize: 14 }}>
-                    Aucun produit. Créez votre premier produit !
+                    {t('prd_empty')}
                   </td>
                 </tr>
               ) : products.map((p) => {
@@ -328,6 +330,7 @@ const StoreProducts = () => {
 };
 
 const ProduitModal = ({ produit, onClose, onSaved }) => {
+  const { t } = useI18n();
   const [form, setForm] = useState({
     nom: produit?.nom || '',
     description: produit?.description || '',
@@ -364,7 +367,7 @@ const ProduitModal = ({ produit, onClose, onSaved }) => {
       <div className="mj-card mj-fade-in" style={{ width: 460, maxWidth: '95vw' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
-            {produit ? 'Modifier le produit' : 'Nouveau produit'}
+            {produit ? t('prd_edit_title') : t('prd_new_title')}
           </h3>
           <button
             onClick={onClose}
@@ -374,22 +377,22 @@ const ProduitModal = ({ produit, onClose, onSaved }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {[
-            { key: 'nom',          label: 'Nom *',               type: 'text',   placeholder: 'Nom du produit' },
-            { key: 'categorie',    label: 'Catégorie',           type: 'text',   placeholder: 'Alimentation, Électronique…' },
-            { key: 'prix',         label: 'Prix (MAD) *',        type: 'number', placeholder: '0.00' },
-            { key: 'stock',        label: 'Stock initial',       type: 'number', placeholder: '0' },
-            { key: 'seuil_alerte', label: 'Seuil alerte stock',  type: 'number', placeholder: '5' },
+            { key: 'nom',          labelKey: 'prd_field_name',     type: 'text',   phKey: 'prd_ph_name' },
+            { key: 'categorie',    labelKey: 'prd_field_category',  type: 'text',   phKey: 'prd_ph_category' },
+            { key: 'prix',         labelKey: 'prd_field_price',     type: 'number', phKey: null, placeholder: '0.00' },
+            { key: 'stock',        labelKey: 'prd_field_stock',     type: 'number', phKey: null, placeholder: '0' },
+            { key: 'seuil_alerte', labelKey: 'prd_field_alert',     type: 'number', phKey: null, placeholder: '5' },
           ].map(f => (
             <div key={f.key}>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--mj-text-3)', marginBottom: 6, fontWeight: 600 }}>
-                {f.label}
+                {t(f.labelKey)}
               </label>
               <input
                 type={f.type}
                 className="mj-input"
                 value={form[f.key]}
                 onChange={e => set(f.key, e.target.value)}
-                placeholder={f.placeholder}
+                placeholder={f.phKey ? t(f.phKey) : f.placeholder}
                 style={{ width: '100%', boxSizing: 'border-box' }}
               />
             </div>
@@ -397,13 +400,13 @@ const ProduitModal = ({ produit, onClose, onSaved }) => {
 
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--mj-text-3)', marginBottom: 6, fontWeight: 600 }}>
-              Description
+              {t('prd_field_description')}
             </label>
             <textarea
               className="mj-input"
               value={form.description}
               onChange={e => set('description', e.target.value)}
-              placeholder="Description du produit…"
+              placeholder={t('prd_ph_description')}
               style={{ width: '100%', minHeight: 80, resize: 'vertical', boxSizing: 'border-box' }}
             />
           </div>
@@ -418,9 +421,9 @@ const ProduitModal = ({ produit, onClose, onSaved }) => {
           )}
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} className="mj-btn mj-btn-secondary">Annuler</button>
+            <button onClick={onClose} className="mj-btn mj-btn-secondary">{t('common_cancel')}</button>
             <button onClick={handleSubmit} disabled={submitting} className="mj-btn mj-btn-primary">
-              {submitting ? 'Sauvegarde…' : produit ? 'Enregistrer' : 'Créer'}
+              {submitting ? t('prd_saving') : produit ? t('common_save') : t('common_create')}
             </button>
           </div>
         </div>
@@ -429,4 +432,4 @@ const ProduitModal = ({ produit, onClose, onSaved }) => {
   );
 };
 
-export default StoreProducts;
+export default Products;

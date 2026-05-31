@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { analyticsApi, incidentsApi, commandesApi } from '../../services/api';
 import { Truck, AlertTriangle, Package, RefreshCw, Radio, CheckCircle, Activity } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const T = {
@@ -72,6 +73,7 @@ function AnimatedCounter({ value, label, color, icon: Icon }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function LiveDashboard() {
+  const { t, formatTime } = useI18n();
   const [data, setData]           = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [commandes, setCommandes] = useState([]);
@@ -104,10 +106,10 @@ export default function LiveDashboard() {
   }, []);
 
   const kpis = data ? [
-    { label: 'Commandes actives',     value: commandes.length,             color: T.info,    icon: Package },
-    { label: 'Incidents ouverts',     value: incidents.length,             color: T.danger,  icon: AlertTriangle },
-    { label: 'Transporteurs en route',value: commandes.length,             color: T.primary, icon: Truck },
-    { label: 'Total commandes',       value: data.total_commandes || 0,    color: T.accent,  icon: CheckCircle },
+    { label: t('live_active_orders'),    value: commandes.length,          color: T.info,    icon: Package },
+    { label: t('live_open_incidents'),   value: incidents.length,          color: T.danger,  icon: AlertTriangle },
+    { label: t('live_drivers_en_route'), value: commandes.length,          color: T.primary, icon: Truck },
+    { label: t('col_total_orders'),      value: data.total_commandes || 0, color: T.accent,  icon: CheckCircle },
   ] : [];
 
   return (
@@ -124,10 +126,12 @@ export default function LiveDashboard() {
             }}>
               <Radio size={18} color={T.primary} />
             </div>
-            Tableau de bord live
+            {t('live_dashboard')}
           </h2>
           <p style={{ fontSize: 13, color: T.text2, marginTop: 6 }}>
-            {lastUpdate ? `Mis à jour : ${lastUpdate.toLocaleTimeString('fr-FR')}` : 'Chargement…'}
+            {lastUpdate
+              ? `${t('live_updated')} ${lastUpdate.toLocaleTimeString()}`
+              : t('live_loading')}
           </p>
         </div>
         <button
@@ -144,7 +148,7 @@ export default function LiveDashboard() {
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.07)'; e.currentTarget.style.borderColor = T.border; }}
         >
           <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          Actualiser
+          {t('live_refresh')}
         </button>
       </div>
 
@@ -168,18 +172,18 @@ export default function LiveDashboard() {
               display: 'inline-block', boxShadow: `0 0 6px ${T.primary}`,
               animation: 'pulse 2s infinite',
             }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Chauffeurs en mission</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{t('live_drivers_mission')}</span>
             <span style={{
               marginLeft: 'auto', padding: '2px 8px', borderRadius: 20,
               background: 'rgba(34,197,94,0.12)', color: T.primary, fontSize: 11, fontWeight: 700,
             }}>
-              {commandes.length} actif{commandes.length !== 1 ? 's' : ''}
+              {commandes.length} {commandes.length !== 1 ? t('live_actifs') : t('live_actif')}
             </span>
           </div>
           <MapContainer center={[33.589886, -7.603869]} zoom={12}
             style={{ height: 440 }}>
             <TileLayer
-              url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
             />
             {commandes.map(cmd =>
@@ -188,9 +192,9 @@ export default function LiveDashboard() {
                   position={[cmd.transporteur_position_lat, cmd.transporteur_position_lng]}
                   icon={ICON_LIVE}>
                   <Popup>
-                    <b>Commande #{cmd.reference}</b><br />
-                    Client : {cmd.client_nom || '–'}<br />
-                    Statut : {cmd.statut}
+                    <b>{t('lbl_reference')} #{cmd.reference}</b><br />
+                    {t('live_client_lbl')} : {cmd.client_nom || '–'}<br />
+                    {t('live_status_lbl')} : {cmd.statut}
                   </Popup>
                 </Marker>
               ) : null
@@ -208,7 +212,7 @@ export default function LiveDashboard() {
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
               <AlertTriangle size={14} color={T.danger} />
-              <span style={{ fontWeight: 600, fontSize: 13, color: T.text }}>Incidents ouverts</span>
+              <span style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{t('live_open_incidents')}</span>
               <span style={{
                 marginLeft: 'auto', padding: '2px 8px', borderRadius: 20,
                 background: 'rgba(239,68,68,0.12)', color: T.danger, fontSize: 10, fontWeight: 700,
@@ -218,7 +222,7 @@ export default function LiveDashboard() {
             </div>
             {incidents.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: T.text2 }}>
-                ✅ Aucun incident ouvert
+                ✅ {t('live_no_incident')}
               </div>
             ) : (
               incidents.slice(0, 5).map(inc => (
@@ -230,14 +234,14 @@ export default function LiveDashboard() {
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{inc.type_display || inc.type}</div>
                     <div style={{ fontSize: 10, color: T.text2, marginTop: 2 }}>
-                      {new Date(inc.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(inc.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                   <span style={{
                     padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 700,
                     background: 'rgba(239,68,68,0.12)', color: T.danger,
                   }}>
-                    Ouvert
+                    {t('incident_open')}
                   </span>
                 </div>
               ))
@@ -251,7 +255,7 @@ export default function LiveDashboard() {
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
               <Truck size={14} color={T.info} />
-              <span style={{ fontWeight: 600, fontSize: 13, color: T.text }}>Livraisons en cours</span>
+              <span style={{ fontWeight: 600, fontSize: 13, color: T.text }}>{t('live_deliveries_ongoing')}</span>
               <span style={{
                 marginLeft: 'auto', padding: '2px 8px', borderRadius: 20,
                 background: 'rgba(96,165,250,0.12)', color: T.info, fontSize: 10, fontWeight: 700,
@@ -261,7 +265,7 @@ export default function LiveDashboard() {
             </div>
             {commandes.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: T.text2 }}>
-                Aucune livraison en cours
+                {t('live_no_delivery')}
               </div>
             ) : (
               commandes.slice(0, 6).map(cmd => (
@@ -280,7 +284,7 @@ export default function LiveDashboard() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>#{cmd.reference}</div>
                     <div style={{ fontSize: 10, color: T.text2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {cmd.adresse_livraison || 'En route…'}
+                      {cmd.adresse_livraison || t('live_en_route')}
                     </div>
                   </div>
                 </div>

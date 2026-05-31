@@ -19,6 +19,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../styles/marjane.css';
+import ConfirmModal from '../../components/ConfirmModal';
 
 /* ── Leaflet icon fix ─────────────────────────────────────────────────────── */
 delete L.Icon.Default.prototype._getIconUrl;
@@ -158,6 +159,7 @@ const ProductImage = ({ produit, height = 140 }) => {
   const [g1, g2] = PRODUCT_GRADIENTS[cat] || PRODUCT_GRADIENTS.AUTRE;
   const emoji = getProductEmoji(cat, produit.id);
   const [imgError, setImgError] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const src = mediaUrl(produit.image_principale || produit.image);
 
   if (src && !imgError) {
@@ -185,6 +187,12 @@ const ProductImage = ({ produit, height = 140 }) => {
       <span style={{ fontSize: 52, filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.35))', position: 'relative', zIndex: 1 }}>
         {emoji}
       </span>
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 };
@@ -454,7 +462,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!adresse.trim()) { setError('Veuillez sélectionner ou saisir une adresse'); return; }
+    if (!adresse.trim()) { setError(t('cd_err_no_address')); return; }
     setLoading(true);
     try {
       const res = await commandesApi.create({ fondateur_id: fondateur.id, produits: items.map(i => ({ produit_id: i.produit.id, quantite: i.quantite })), adresse_livraison: adresse, latitude: targetPos?.[0] || null, longitude: targetPos?.[1] || null, mode_paiement: mode, instructions_livraison: instructions, livraison_immediate: true });
@@ -463,7 +471,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
       addPoints(total, ref);
       clearCart();
       onSuccess();
-    } catch (err) { setError(err.response?.data?.detail || 'Erreur lors de la commande'); }
+    } catch (err) { setError(err.response?.data?.detail || t('cd_err_order')); }
     finally { setLoading(false); }
   };
 
@@ -516,7 +524,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               </div>
             )}
             <input className="mj-input" value={adresse} onChange={e => setAdresse(e.target.value)}
-              placeholder={adresseMode === 'gps' ? 'Position GPS détectée' : adresseMode === 'quartier' ? 'Sélectionnez un quartier' : 'Ex: 12 Rue Hassan II, Maarif, Casablanca'}
+              placeholder={adresseMode === 'gps' ? t('cd_addr_gps_ph') : adresseMode === 'quartier' ? t('cd_addr_district_ph') : t('cd_addr_manual_ph')}
               required style={{ fontSize: 13 }} />
           </div>
 
@@ -524,10 +532,10 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
           {targetPos && boutiquePos && (
             <div style={{ background: 'var(--mj-green-light)', border: '1px solid #BBF7D0', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Zap size={13} /> CALCUL EN TEMPS RÉEL
+                <Zap size={13} /> {t('cd_realtime')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {[['Distance', `${distance.toFixed(1)} km`, '#3B82F6'], ['Temps', `${tempsEstime} min`, '#F59E0B'], ['Frais', `${fraisCalcules} MAD`, '#22C55E']].map(([l, v, c]) => (
+                {[[t('cl_distance'), `${distance.toFixed(1)} km`, '#3B82F6'], [t('cd_time'), `${tempsEstime} min`, '#F59E0B'], [t('cd_fees_short'), `${fraisCalcules} MAD`, '#22C55E']].map(([l, v, c]) => (
                   <div key={l}><div style={{ fontSize: 10, color: 'var(--mj-text-4)' }}>{l}</div><div style={{ fontWeight: 700, fontSize: 16, color: c }}>{v}</div></div>
                 ))}
               </div>
@@ -537,10 +545,10 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
           {/* Paiement */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--mj-text)' }}>
-              <CreditCard size={13} style={{ display: 'inline', marginRight: 4, color: 'var(--mj-red)' }} /> Mode de paiement
+              <CreditCard size={13} style={{ display: 'inline', marginRight: 4, color: 'var(--mj-red)' }} /> {t('cl_checkout_payment')}
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
-              {[['CASH', '💵 Cash', '#22C55E'], ['CARTE', '💳 Carte', '#3B82F6']].map(([k, l, c]) => (
+              {[['CASH', t('cd_cash'), '#22C55E'], ['CARTE', t('cd_card'), '#3B82F6']].map(([k, l, c]) => (
                 <button key={k} type="button" onClick={() => setMode(k)}
                   style={{ flex: 1, padding: 12, borderRadius: 10, border: `2px solid ${mode === k ? c : 'var(--mj-border)'}`, background: mode === k ? `${c}12` : 'var(--mj-white)', cursor: 'pointer', color: mode === k ? c : 'var(--mj-text-3)', fontWeight: mode === k ? 700 : 500, fontSize: 13, transition: 'var(--mj-ease-fast)', fontFamily: 'var(--mj-font)' }}>
                   {l}
@@ -551,8 +559,8 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
 
           {/* Instructions */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--mj-text-3)', marginBottom: 6 }}>Instructions de livraison (optionnel)</label>
-            <textarea className="mj-input" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Étage, digicode, point de repère..." rows={2} style={{ resize: 'none', fontSize: 13 }} />
+            <label style={{ display: 'block', fontSize: 13, color: 'var(--mj-text-3)', marginBottom: 6 }}>{t('cd_instructions_label')}</label>
+            <textarea className="mj-input" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder={t('cd_instructions_ph')} rows={2} style={{ resize: 'none', fontSize: 13 }} />
           </div>
 
           {/* Points fidélité */}
@@ -561,8 +569,8 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 18 }}>⭐</span>
                 <div>
-                  <div style={{ fontWeight: 700, color: '#92400e' }}>Utiliser mes points</div>
-                  <div style={{ fontSize: 10, color: 'var(--mj-text-3)' }}>Solde : {points} pts · Réduction max : {Math.min(Math.floor(points / 100) * 10, Math.floor(totalSansReduction))} MAD</div>
+                  <div style={{ fontWeight: 700, color: '#92400e' }}>{t('cd_use_points')}</div>
+                  <div style={{ fontSize: 10, color: 'var(--mj-text-3)' }}>{t('cd_points_balance')} : {points} {t('cd_pts')} · {t('cd_max_reduction')} : {Math.min(Math.floor(points / 100) * 10, Math.floor(totalSansReduction))} MAD</div>
                 </div>
               </div>
               <input type="checkbox" checked={usePoints} onChange={e => setUsePoints(e.target.checked)} style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--mj-red)' }} />
@@ -572,7 +580,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
           {/* Récap */}
           <div style={{ background: 'var(--mj-bg)', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 13 }}>
             <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--mj-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ShoppingCart size={13} color="var(--mj-red)" /> Récapitulatif
+              <ShoppingCart size={13} color="var(--mj-red)" /> {t('cd_recap')}
             </div>
             {items.map(i => (
               <div key={i.produit.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', marginBottom: 4, fontSize: 12 }}>
@@ -582,21 +590,21 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
             ))}
             <hr className="mj-divider" style={{ margin: '8px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', fontSize: 12 }}>
-              <span>Sous-total</span><span>{sousTotal.toFixed(2)} MAD</span>
+              <span>{t('cl_cart_subtotal')}</span><span>{sousTotal.toFixed(2)} MAD</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-text-3)', fontSize: 12 }}>
-              <span>Frais de livraison</span><span>{fraisCalcules.toFixed(2)} MAD</span>
+              <span>{t('cd_delivery_fees')}</span><span>{fraisCalcules.toFixed(2)} MAD</span>
             </div>
-            {discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-green)', fontSize: 12 }}><span>Réduction</span><span>-{discount.toFixed(2)} MAD</span></div>}
+            {discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--mj-green)', fontSize: 12 }}><span>{t('cl_cart_discount')}</span><span>-{discount.toFixed(2)} MAD</span></div>}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, paddingTop: 8, borderTop: '1px solid var(--mj-border)', marginTop: 6 }}>
-              <span>Total</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
+              <span>{t('cl_order_total')}</span><span style={{ color: 'var(--mj-red)' }}>{total.toFixed(2)} MAD</span>
             </div>
           </div>
 
           {error && <div style={{ color: 'var(--mj-danger)', fontSize: 13, marginBottom: 14, padding: '10px 14px', background: 'var(--mj-danger-light)', borderRadius: 8, border: '1px solid #FECACA' }}>{error}</div>}
 
           <button type="submit" className="mj-btn mj-btn-primary mj-btn-full" disabled={loading}>
-            {loading ? '⏳ Envoi...' : `✓ Confirmer · ${total.toFixed(2)} MAD`}
+            {loading ? t('cd_sending') : `${t('cd_confirm_btn')} · ${total.toFixed(2)} MAD`}
           </button>
         </form>
       </div>
@@ -606,6 +614,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
 
 /* ── BoutiqueCard ─────────────────────────────────────────────────────────── */
 const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
+  const { t } = useI18n();
   const [logoErr, setLogoErr] = useState(false);
   const catIcon = CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪';
   const logoSrc = mediaUrl(b.logo);
@@ -648,7 +657,7 @@ const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
           backdropFilter: 'blur(6px)',
           color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
         }}>
-          {b.is_open ? '● Ouvert' : '● Fermé'}
+          {b.is_open ? t('cd_open') : t('cd_closed')}
         </div>
 
         {/* Fav button */}
@@ -962,13 +971,13 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {showFilters && (
         <div className="mj-card mj-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, padding: 18, marginBottom: 20 }}>
           {[
-            { label: 'Note minimale', value: `${noteMin} ★`, min: 0, max: 5, step: 0.5, v: noteMin, sv: setNoteMin, color: '#F59E0B' },
-            { label: 'Frais max', value: `${fraisMax} MAD`, min: 0, max: 50, step: 1, v: fraisMax, sv: setFraisMax, color: '#22C55E' },
-            { label: 'Délai max', value: `${delaiMax} min`, min: 15, max: 90, step: 5, v: delaiMax, sv: setDelaiMax, color: '#F59E0B' },
+            { labelKey: 'cd_min_note', value: `${noteMin} ★`, min: 0, max: 5, step: 0.5, v: noteMin, sv: setNoteMin, color: '#F59E0B' },
+            { labelKey: 'cd_max_fees', value: `${fraisMax} MAD`, min: 0, max: 50, step: 1, v: fraisMax, sv: setFraisMax, color: '#22C55E' },
+            { labelKey: 'cd_max_delay', value: `${delaiMax} min`, min: 15, max: 90, step: 5, v: delaiMax, sv: setDelaiMax, color: '#F59E0B' },
           ].map(f => (
-            <div key={f.label}>
+            <div key={f.labelKey}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: 'var(--mj-text-3)' }}>
-                <span>{f.label}</span>
+                <span>{t(f.labelKey)}</span>
                 <strong style={{ color: f.color }}>{f.value}</strong>
               </div>
               <input type="range" min={f.min} max={f.max} step={f.step} value={f.v} onChange={e => f.sv(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--mj-red)' }} />
@@ -980,9 +989,9 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {/* Section title */}
       <div className="mj-section-bar" style={{ marginBottom: 16 }}>
         <div className="mj-section-title">
-          {categorie ? (CATEGORIES.find(c => c.key === categorie)?.label || t('boutiques')) : t('cl_all_stores')}
+          {categorie ? (t(CATEGORIES.find(c => c.key === categorie)?.i18nKey) || t('boutiques')) : t('cl_all_stores')}
         </div>
-        <span style={{ fontSize: 12, color: '#64748B' }}>{boutiquesFiltrees.length} résultats</span>
+        <span style={{ fontSize: 12, color: '#64748B' }}>{boutiquesFiltrees.length} {t('cl_results')}</span>
       </div>
 
       {/* Boutiques grid — Marjane Mall cards */}
@@ -1040,11 +1049,20 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   useEffect(() => { fetchCommandes(); }, []);
   useEffect(() => { const id = setInterval(fetchCommandes, 20000); return () => clearInterval(id); }, []);
 
-  const handleCancel = async (cmd) => {
-    if (!window.confirm(`Annuler la commande ${cmd.reference} ?`)) return;
+  
+  const doCancel = async (cmd) => {
     setCancelling(cmd.id);
-    try { await commandesApi.annuler(cmd.id); showToast('Commande annulée'); fetchCommandes(); }
-    catch (e) { showToast(e.response?.data?.error || 'Impossible d\'annuler', 'error'); }
+    try { await commandesApi.annuler(cmd.id); showToast(t('cd_order_cancelled')); fetchCommandes(); }
+    catch (e) { showToast(e.response?.data?.error || t('cd_cancel_error'), 'error'); }
+    finally { setCancelling(null); }
+  };
+
+  const handleCancel = async (cmd) => {
+    setConfirmState({ open: true, message: `${t('cd_confirm_cancel')} ${cmd.reference} ?`, onConfirm: () => doCancel(cmd) });
+    return;
+    setCancelling(cmd.id);
+    try { await commandesApi.annuler(cmd.id); showToast(t('cd_order_cancelled')); fetchCommandes(); }
+    catch (e) { showToast(e.response?.data?.error || t('cd_cancel_error'), 'error'); }
     finally { setCancelling(null); }
   };
 
@@ -1128,7 +1146,7 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
                     <MessageSquare size={11} /> Chat
                   </button>
                   <button onClick={onNavigateSuivi} className="mj-btn mj-btn-sm mj-btn-primary" style={{ gap: 4 }}>
-                    <MapIcon size={11} /> Suivre
+                    <MapIcon size={11} /> {t('cd_track')}
                   </button>
                 </div>
               </div>
@@ -1136,24 +1154,24 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
 
             {cmd.statut === 'LIVREE' && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--mj-green-light)', borderRadius: 10, fontSize: 12, color: '#15803d', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                <CheckCircle size={13} /> Livré avec succès le {cmd.livree_at ? new Date(cmd.livree_at).toLocaleString('fr-FR') : ''}
+                <CheckCircle size={13} /> {t('cd_delivered_on')} {cmd.livree_at ? new Date(cmd.livree_at).toLocaleString() : ''}
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button onClick={() => setExpanded(isExpanded ? null : cmd.id)} className="mj-btn mj-btn-secondary mj-btn-sm" style={{ flex: 1, justifyContent: 'center' }}>
-                {isExpanded ? '▲ Masquer' : `▼ Voir détails (${cmd.lignes?.length || 0} produits)`}
+                {isExpanded ? t('cd_hide') : `${t('cd_see_details')} (${cmd.lignes?.length || 0})`}
               </button>
               {canCancel && (
                 <button onClick={() => handleCancel(cmd)} disabled={cancelling === cmd.id} className="mj-btn mj-btn-sm" style={{ background: 'var(--mj-danger-light)', border: '1px solid #FECACA', color: 'var(--mj-danger)' }}>
-                  {cancelling === cmd.id ? '...' : <><X size={12} /> Annuler</>}
+                  {cancelling === cmd.id ? '...' : <><X size={12} /> {t('common_cancel')}</>}
                 </button>
               )}
             </div>
 
             {isExpanded && cmd.lignes?.length > 0 && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--mj-border)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mj-text-4)', letterSpacing: '0.05em', marginBottom: 8 }}>PRODUITS COMMANDÉS</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mj-text-4)', letterSpacing: '0.05em', marginBottom: 8 }}>{t('cd_products_ordered')}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 8 }}>
                   {cmd.lignes.map((l, i) => {
                     const prod = { id: l.produit, categorie: l.produit_detail?.categorie || 'AUTRE' };
@@ -1263,7 +1281,7 @@ const SuiviTab = ({ user, onOpenChat }) => {
         ) : (
           <MapContainer center={userPos || [33.5731, -7.5898]} zoom={userPos ? 13 : 6} style={{ height: '100%', width: '100%', borderRadius: 12 }}>
             <TileLayer
-              url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              url={`https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
             />
             {layers.maPosition.active && userPos && (
@@ -1317,7 +1335,7 @@ const SuiviTab = ({ user, onOpenChat }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <strong style={{ fontSize: 14, color: 'var(--mj-red)', fontFamily: 'monospace' }}>{cmd.reference}</strong>
                       <span className="mj-badge" style={{ background: isEnRoute ? 'var(--mj-red-light)' : '#F3E8FF', color: isEnRoute ? 'var(--mj-red)' : '#7C3AED' }}>
-                        {isEnRoute ? '🚚 EN ROUTE' : '👨‍🍳 PRÉPARATION'}
+                        {isEnRoute ? t('cd_en_route') : t('cd_preparing')}
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🏪 {cmd.fondateur_detail?.nom_boutique}</div>
@@ -1337,8 +1355,8 @@ const SuiviTab = ({ user, onOpenChat }) => {
                 </div>
                 {route && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--mj-border)', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--mj-text-3)' }}>
-                    <span>📏 Restant : <strong style={{ color: 'var(--mj-blue)' }}>{route.distance_km} km</strong></span>
-                    <span>🚚 Arrivée : <strong style={{ color: 'var(--mj-green)' }}>{new Date(Date.now() + route.duration_min * 60000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                    <span>{t('cd_remaining')} : <strong style={{ color: 'var(--mj-blue)' }}>{route.distance_km} km</strong></span>
+                    <span>{t('cd_arrival')} : <strong style={{ color: 'var(--mj-green)' }}>{new Date(Date.now() + route.duration_min * 60000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</strong></span>
                   </div>
                 )}
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--mj-border)' }}>
@@ -1386,12 +1404,12 @@ const ProfilTab = ({ user }) => {
 
 /* ── TicketsTab ───────────────────────────────────────────────────────────── */
 const TICKET_CATEGORIES = [
-  { value: 'livraison', label: 'Problème de livraison' },
-  { value: 'paiement', label: 'Problème de paiement' },
-  { value: 'produit', label: 'Produit endommagé / manquant' },
-  { value: 'retard', label: 'Retard de livraison' },
-  { value: 'annulation', label: 'Annulation de commande' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'livraison', labelKey: 'cd_tc_livraison' },
+  { value: 'paiement', labelKey: 'cd_tc_paiement' },
+  { value: 'produit', labelKey: 'cd_tc_produit' },
+  { value: 'retard', labelKey: 'cd_tc_retard' },
+  { value: 'annulation', labelKey: 'cd_tc_annulation' },
+  { value: 'autre', labelKey: 'cd_tc_autre' },
 ];
 
 const TicketsTab = ({ userId }) => {
@@ -1424,7 +1442,7 @@ const TicketsTab = ({ userId }) => {
         <div className="mj-section-title" style={{ marginBottom: 16 }}>{t('cl_tickets_new')}</div>
         <input value={sujet} onChange={e => setSujet(e.target.value)} placeholder={t('cl_tickets_subject')} className="mj-input" style={{ marginBottom: 10 }} />
         <select value={categorie} onChange={e => setCategorie(e.target.value)} className="mj-select" style={{ marginBottom: 10 }}>
-          {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          {TICKET_CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
         </select>
         <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder={t('cl_tickets_description')} rows={3} className="mj-input" style={{ marginBottom: 14, resize: 'vertical' }} />
         <button onClick={handleSubmit} disabled={submitting || !sujet.trim()} className="mj-btn mj-btn-primary">

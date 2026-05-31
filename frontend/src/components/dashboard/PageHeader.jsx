@@ -21,3 +21,5 @@ export function PageHeader({ title, description, badge, actions }) {
     </motion.header>
   );
 }
+
+export default PageHeader;

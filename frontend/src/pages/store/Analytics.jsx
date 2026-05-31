@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { analyticsApi } from '../../services/api';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
 // ─── KPI Card ──────────────────────────────────────────────────────────────
 const KpiCard = ({ icon: Icon, label, value, sub, color = '#E30613' }) => (
@@ -41,7 +42,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       <div style={{ color: 'var(--mj-text-3)', marginBottom: 4 }}>{label}</div>
       {payload.map(p => (
         <div key={p.dataKey} style={{ color: p.color, fontWeight: 700 }}>
-          {p.name}: {typeof p.value === 'number' ? p.value.toLocaleString('fr-FR') : p.value}
+          {p.name}: {typeof p.value === 'number' ? p.value.toLocaleString(undefined) : p.value}
           {p.dataKey === 'ca' ? ' MAD' : ''}
         </div>
       ))}
@@ -53,6 +54,7 @@ const PRODUCT_COLORS = ['#E30613', '#B8000C', '#ef4444', '#f87171', '#fca5a5', '
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function StoreAnalytics() {
+  const { t } = useI18n();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
@@ -64,7 +66,7 @@ export default function StoreAnalytics() {
       const res = await analyticsApi.fondateurAnalytics();
       setData(res.data);
     } catch (err) {
-      setError('Impossible de charger les analytics. Vérifiez votre connexion.');
+      setError(t('an_error'));
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export default function StoreAnalytics() {
         width: 28, height: 28,
         border: '3px solid var(--mj-border)', borderTopColor: 'var(--mj-red)', borderRadius: '50%',
       }} />
-      <span style={{ color: 'var(--mj-text-3)' }}>Chargement des analytics…</span>
+      <span style={{ color: 'var(--mj-text-3)' }}>{t('an_loading')}</span>
     </div>
   );
 
@@ -98,7 +100,7 @@ export default function StoreAnalytics() {
   const { kpis = {}, top_produits = [], evolution_30j = [], avis_distribution = [] } = data || {};
 
   const evolutionData = evolution_30j.map(d => ({
-    jour: new Date(d.jour).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+    jour: new Date(d.jour).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }),
     ca: Math.round(parseFloat(d.ca) || 0),
     nb: d.nb || 0,
   }));
@@ -133,15 +135,15 @@ export default function StoreAnalytics() {
 
       {/* ── KPI Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
-        <KpiCard icon={DollarSign} label="CA ce mois" value={`${Math.round(kpis.ca_mois || 0).toLocaleString('fr-FR')} MAD`} color="#22C55E" />
-        <KpiCard icon={TrendingUp} label="CA total" value={`${Math.round(kpis.ca_total || 0).toLocaleString('fr-FR')} MAD`} color="#3b82f6" />
-        <KpiCard icon={Package} label="Commandes totales" value={kpis.commandes_total || 0}
-          sub={`${kpis.commandes_aujourd_hui || 0} aujourd'hui`} color="#6366f1" />
-        <KpiCard icon={ShoppingBag} label="En attente" value={kpis.commandes_en_attente || 0}
-          sub={`${kpis.commandes_en_preparation || 0} en préparation`} color="#F59E0B" />
-        <KpiCard icon={Star} label="Note boutique" value={(kpis.note_boutique || 0).toFixed(1)}
-          sub={`${kpis.nombre_avis || 0} avis`} color="#F59E0B" />
-        <KpiCard icon={AlertCircle} label="Taux annulation" value={`${kpis.taux_annulation || 0}%`} color="#E30613" />
+        <KpiCard icon={DollarSign} label={t('sd_ca_month')} value={`${Math.round(kpis.ca_mois || 0).toLocaleString(undefined)} MAD`} color="#22C55E" />
+        <KpiCard icon={TrendingUp} label={t('sd_ca_total')} value={`${Math.round(kpis.ca_total || 0).toLocaleString(undefined)} MAD`} color="#3b82f6" />
+        <KpiCard icon={Package} label={t('sd_orders_total')} value={kpis.commandes_total || 0}
+          sub={`${kpis.commandes_aujourd_hui || 0} ${t('sd_today')}`} color="#6366f1" />
+        <KpiCard icon={ShoppingBag} label={t('status_EN_ATTENTE')} value={kpis.commandes_en_attente || 0}
+          sub={`${kpis.commandes_en_preparation || 0} ${t('an_in_prep_sub')}`} color="#F59E0B" />
+        <KpiCard icon={Star} label={t('sd_shop_rating')} value={(kpis.note_boutique || 0).toFixed(1)}
+          sub={`${kpis.nombre_avis || 0} ${t('sd_reviews_lbl')}`} color="#F59E0B" />
+        <KpiCard icon={AlertCircle} label={t('sd_cancel_rate')} value={`${kpis.taux_annulation || 0}%`} color="#E30613" />
       </div>
 
       {/* ── Évolution CA 30j ── */}

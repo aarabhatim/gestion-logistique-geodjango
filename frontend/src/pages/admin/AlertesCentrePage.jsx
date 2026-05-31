@@ -11,18 +11,19 @@ import {
 } from 'lucide-react';
 import { notificationsApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../../contexts/I18nContext';
 
 /* ── Types d'alerte ──────────────────────────────────────────────────────── */
 const TYPE_CONFIG = {
-  RETARD:            { icon: '⏱️', label: 'Retard livraison',    color: '#f59e0b', bg: 'rgba(245,158,11,0.12)'  },
-  INCIDENT:          { icon: '🚨', label: 'Incident signalé',     color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   },
-  TICKET:            { icon: '🎫', label: 'Ticket support',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)'  },
-  COMMANDE:          { icon: '📦', label: 'Commande',             color: '#22c55e', bg: 'rgba(34,197,94,0.12)'   },
-  DOCUMENT_EXPIRE:   { icon: '📄', label: 'Document expiré',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   },
-  ZONE_SATUREE:      { icon: '🗺️', label: 'Zone saturée',         color: '#f97316', bg: 'rgba(249,115,22,0.12)'  },
-  CONTRAT:           { icon: '📋', label: 'Contrat',              color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)'  },
-  SCORING:           { icon: '⭐', label: 'Scoring',              color: '#eab308', bg: 'rgba(234,179,8,0.12)'   },
-  DEFAULT:           { icon: '🔔', label: 'Notification',         color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
+  RETARD:            { icon: '⏱️', labelKey: 'ac_type_retard',      color: '#f59e0b', bg: 'rgba(245,158,11,0.12)'  },
+  INCIDENT:          { icon: '🚨', labelKey: 'ac_type_incident',    color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   },
+  TICKET:            { icon: '🎫', labelKey: 'ac_type_ticket',      color: '#3b82f6', bg: 'rgba(59,130,246,0.12)'  },
+  COMMANDE:          { icon: '📦', labelKey: 'ac_type_commande',    color: '#22c55e', bg: 'rgba(34,197,94,0.12)'   },
+  DOCUMENT_EXPIRE:   { icon: '📄', labelKey: 'ac_type_doc_expire',  color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   },
+  ZONE_SATUREE:      { icon: '🗺️', labelKey: 'ac_type_zone_saturee',color: '#f97316', bg: 'rgba(249,115,22,0.12)'  },
+  CONTRAT:           { icon: '📋', labelKey: 'ac_type_contrat',     color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)'  },
+  SCORING:           { icon: '⭐', labelKey: 'ac_type_scoring',     color: '#eab308', bg: 'rgba(234,179,8,0.12)'   },
+  DEFAULT:           { icon: '🔔', labelKey: 'ac_type_default',     color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
 };
 
 const getTypeConfig = (type = '') => {
@@ -32,18 +33,28 @@ const getTypeConfig = (type = '') => {
 
 /* ── Filtre tabs ─────────────────────────────────────────────────────────── */
 const FILTRES = [
-  { id: 'all',    label: 'Toutes' },
-  { id: 'unread', label: 'Non lues' },
-  { id: 'RETARD', label: 'Retards' },
-  { id: 'INCIDENT', label: 'Incidents' },
-  { id: 'TICKET', label: 'Tickets' },
+  { id: 'all',      labelKey: 'ac_filter_all'       },
+  { id: 'unread',   labelKey: 'ac_filter_unread'    },
+  { id: 'RETARD',   labelKey: 'ac_filter_retards'   },
+  { id: 'INCIDENT', labelKey: 'ac_filter_incidents' },
+  { id: 'TICKET',   labelKey: 'ac_filter_tickets'   },
 ];
+
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+function formatTimeAgo(date, t) {
+  const s = Math.round((Date.now() - date.getTime()) / 1000);
+  if (s < 60)    return t('ac_time_now');
+  if (s < 3600)  return `${t('ac_time_ago_pre')}${Math.round(s / 60)}${t('ac_time_ago_min_suf')}`.trim();
+  if (s < 86400) return `${t('ac_time_ago_pre')}${Math.round(s / 3600)}${t('ac_time_ago_h_suf')}`.trim();
+  return date.toLocaleDateString();
+}
 
 /* ── Carte notification ──────────────────────────────────────────────────── */
 const NotifCard = ({ notif, onRead, onDelete, onClick }) => {
-  const cfg  = getTypeConfig(notif.type || notif.titre || '');
-  const date = notif.created_at ? new Date(notif.created_at) : null;
-  const timeAgo = date ? formatTimeAgo(date) : '';
+  const { t } = useI18n();
+  const cfg     = getTypeConfig(notif.type || notif.titre || '');
+  const date    = notif.created_at ? new Date(notif.created_at) : null;
+  const timeAgo = date ? formatTimeAgo(date, t) : '';
 
   return (
     <div
@@ -73,7 +84,7 @@ const NotifCard = ({ notif, onRead, onDelete, onClick }) => {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={{ fontWeight: notif.lue ? 500 : 700, fontSize: 14, color: 'var(--text-primary, #f1f5f9)', flex: 1 }}>
-            {notif.titre || cfg.label}
+            {notif.titre || t(cfg.labelKey)}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-secondary, #94a3b8)', whiteSpace: 'nowrap', flexShrink: 0 }}>
             {timeAgo}
@@ -88,7 +99,7 @@ const NotifCard = ({ notif, onRead, onDelete, onClick }) => {
           background: cfg.color + '22', color: cfg.color,
           padding: '2px 8px', borderRadius: 20, fontWeight: 600,
         }}>
-          {cfg.label}
+          {t(cfg.labelKey)}
         </span>
       </div>
 
@@ -97,14 +108,14 @@ const NotifCard = ({ notif, onRead, onDelete, onClick }) => {
         {!notif.lue && (
           <button
             onClick={e => { e.stopPropagation(); onRead(notif.id); }}
-            title="Marquer comme lue"
+            title={t('ac_mark_read')}
             style={{ background: 'none', border: 'none', color: cfg.color, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
             <Check size={14} />
           </button>
         )}
         <button
           onClick={e => { e.stopPropagation(); onDelete(notif.id); }}
-          title="Supprimer"
+          title={t('ac_delete')}
           style={{ background: 'none', border: 'none', color: 'var(--text-secondary, #94a3b8)', cursor: 'pointer', padding: 4, borderRadius: 6 }}>
           <Trash2 size={13} />
         </button>
@@ -123,26 +134,18 @@ const NotifCard = ({ notif, onRead, onDelete, onClick }) => {
   );
 };
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-function formatTimeAgo(date) {
-  const s = Math.round((Date.now() - date.getTime()) / 1000);
-  if (s < 60)  return 'À l\'instant';
-  if (s < 3600) return `Il y a ${Math.round(s / 60)} min`;
-  if (s < 86400) return `Il y a ${Math.round(s / 3600)} h`;
-  return date.toLocaleDateString('fr-FR');
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
    Page principale
 ══════════════════════════════════════════════════════════════════════════ */
 export default function AlertesCentrePage() {
   const navigate = useNavigate();
-  const [notifs, setNotifs]       = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const { t } = useI18n();
+  const [notifs, setNotifs]         = useState([]);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filtre, setFiltre]       = useState('all');
-  const [search, setSearch]       = useState('');
-  const [selected, setSelected]   = useState(null);
+  const [filtre, setFiltre]         = useState('all');
+  const [search, setSearch]         = useState('');
+  const [selected, setSelected]     = useState(null);
 
   const fetchNotifs = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -186,7 +189,6 @@ export default function AlertesCentrePage() {
   const filtered = notifs.filter(n => {
     if (filtre === 'unread' && n.lue) return false;
     if (filtre !== 'all' && filtre !== 'unread') {
-      const cfg = getTypeConfig(n.type || n.titre || '');
       if (!((n.type || n.titre || '').toUpperCase().includes(filtre))) return false;
     }
     if (search) {
@@ -200,10 +202,10 @@ export default function AlertesCentrePage() {
 
   /* KPIs par type */
   const kpis = [
-    { label: 'Non lues', val: nonLues, icon: Bell, color: '#ef4444' },
-    { label: 'Retards',  val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('RETARD')).length, icon: Clock, color: '#f59e0b' },
-    { label: 'Incidents', val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('INCIDENT')).length, icon: AlertTriangle, color: '#ef4444' },
-    { label: 'Tickets',  val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('TICKET')).length, icon: FileWarning, color: '#3b82f6' },
+    { labelKey: 'ac_kpi_unread',    val: nonLues, icon: Bell, color: '#ef4444' },
+    { labelKey: 'ac_kpi_retards',   val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('RETARD')).length,   icon: Clock,         color: '#f59e0b' },
+    { labelKey: 'ac_kpi_incidents', val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('INCIDENT')).length, icon: AlertTriangle, color: '#ef4444' },
+    { labelKey: 'ac_kpi_tickets',   val: notifs.filter(n => (n.type || n.titre || '').toUpperCase().includes('TICKET')).length,   icon: FileWarning,   color: '#3b82f6' },
   ];
 
   return (
@@ -212,21 +214,21 @@ export default function AlertesCentrePage() {
       <div className="dashboard-header animate-fade-in">
         <div>
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Bell size={24} /> Centre d'alertes
+            <Bell size={24} /> {t('ac_title')}
             {nonLues > 0 && (
               <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, lineHeight: 1.4 }}>
                 {nonLues}
               </span>
             )}
           </h2>
-          <p className="page-subtitle">Retards, incidents critiques, tickets, documents expirés.</p>
+          <p className="page-subtitle">{t('ac_subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={toutLire} disabled={nonLues === 0} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CheckCheck size={15} /> Tout lire
+            <CheckCheck size={15} /> {t('ac_read_all')}
           </button>
           <button className="btn btn-secondary" onClick={supprimerLues} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Trash2 size={15} /> Supprimer lues
+            <Trash2 size={15} /> {t('ac_delete_read')}
           </button>
           <button className="btn btn-secondary" onClick={() => fetchNotifs(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
@@ -239,13 +241,13 @@ export default function AlertesCentrePage() {
         {kpis.map(k => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="glass-card animate-fade-in" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={k.labelKey} className="glass-card animate-fade-in" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: k.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon size={18} color={k.color} />
               </div>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{k.val}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{k.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t(k.labelKey)}</div>
               </div>
             </div>
           );
@@ -259,7 +261,7 @@ export default function AlertesCentrePage() {
             <button key={f.id} onClick={() => setFiltre(f.id)}
               className={filtre === f.id ? 'btn btn-primary' : 'btn btn-secondary'}
               style={{ fontSize: 12, padding: '4px 12px' }}>
-              {f.label}
+              {t(f.labelKey)}
               {f.id === 'unread' && nonLues > 0 && ` (${nonLues})`}
             </button>
           ))}
@@ -267,7 +269,7 @@ export default function AlertesCentrePage() {
         <div style={{ flex: 1, minWidth: 200 }}>
           <input
             className="glass-input"
-            placeholder="Rechercher…"
+            placeholder={t('ac_search_ph')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ width: '100%', padding: '6px 12px', fontSize: 13 }}
@@ -278,19 +280,19 @@ export default function AlertesCentrePage() {
       {/* Liste */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--text-secondary)' }}>
-          <Loader size={24} className="spin" /> Chargement des alertes…
+          <Loader size={24} className="spin" /> {t('ac_loading')}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
           <BellOff size={56} style={{ opacity: 0.25, marginBottom: 16 }} />
-          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Aucune alerte</div>
-          <div style={{ fontSize: 14 }}>Tout est sous contrôle ! Aucune alerte ne correspond aux filtres sélectionnés.</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>{t('ac_empty_title')}</div>
+          <div style={{ fontSize: 14 }}>{t('ac_empty_desc')}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 340px' : '1fr', gap: 20, alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-              {filtered.length} alerte(s) affichée(s)
+              {filtered.length} {t('ac_count_displayed')}
             </div>
             {filtered.map(n => (
               <NotifCard
@@ -307,7 +309,7 @@ export default function AlertesCentrePage() {
           {selected && (
             <div className="glass-card" style={{ padding: '20px 18px', position: 'sticky', top: 80, borderRadius: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Détail</span>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>{t('ac_detail')}</span>
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                   <X size={16} />
                 </button>
@@ -318,40 +320,40 @@ export default function AlertesCentrePage() {
                   <>
                     <div style={{ textAlign: 'center', marginBottom: 16 }}>
                       <div style={{ fontSize: 40, marginBottom: 8 }}>{cfg.icon}</div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.titre || cfg.label}</div>
-                      <span style={{ fontSize: 11, background: cfg.color + '22', color: cfg.color, padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{cfg.label}</span>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{selected.titre || t(cfg.labelKey)}</div>
+                      <span style={{ fontSize: 11, background: cfg.color + '22', color: cfg.color, padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{t(cfg.labelKey)}</span>
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
-                      {selected.message || selected.corps || 'Aucun détail.'}
+                      {selected.message || selected.corps || t('ac_no_detail')}
                     </div>
                     {selected.created_at && (
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={12} /> {new Date(selected.created_at).toLocaleString('fr-FR')}
+                        <Clock size={12} /> {new Date(selected.created_at).toLocaleString()}
                       </div>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {!selected.lue && (
                         <button onClick={() => marquerLue(selected.id)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
-                          <Check size={14} /> Marquer comme lue
+                          <Check size={14} /> {t('ac_mark_read')}
                         </button>
                       )}
                       {selected.commande_id && (
                         <button onClick={() => navigate(`/commandes?id=${selected.commande_id}`)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
-                          <Package size={14} /> Voir la commande
+                          <Package size={14} /> {t('ac_view_order')}
                         </button>
                       )}
                       {selected.incident_id && (
                         <button onClick={() => navigate('/incidents')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
-                          <AlertTriangle size={14} /> Voir l'incident
+                          <AlertTriangle size={14} /> {t('ac_view_incident')}
                         </button>
                       )}
                       {selected.ticket_id && (
                         <button onClick={() => navigate('/tickets')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
-                          Voir le ticket
+                          {t('ac_view_ticket')}
                         </button>
                       )}
                       <button onClick={() => supprimer(selected.id)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', color: 'var(--danger)' }}>
-                        <Trash2 size={14} /> Supprimer
+                        <Trash2 size={14} /> {t('ac_delete')}
                       </button>
                     </div>
                   </>

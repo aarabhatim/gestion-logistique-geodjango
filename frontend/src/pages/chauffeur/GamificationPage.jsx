@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Star, Award, Users, RefreshCw, Zap } from 'lucide-react';
 import { chauffeurApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 import { motion } from 'framer-motion';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ function BadgeCard({ badge, obtenu, estNouveau }) {
       <div style={{ fontSize: 10, color: T.text2, lineHeight: 1.4 }}>{badge.description}</div>
       {obtenu && badge.obtenu_le && (
         <div style={{ fontSize: 9, color: T.primary, marginTop: 7, fontWeight: 600 }}>
-          {new Date(badge.obtenu_le).toLocaleDateString('fr-FR')}
+          {new Date(badge.obtenu_le).toLocaleDateString(undefined)}
         </div>
       )}
     </motion.div>
@@ -127,6 +128,7 @@ function BadgeCard({ badge, obtenu, estNouveau }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function GamificationPage() {
+  const { t } = useI18n();
   const [badges, setBadges]         = useState(null);
   const [niveau, setNiveau]         = useState(null);
   const [classement, setClassement] = useState([]);
@@ -182,7 +184,7 @@ export default function GamificationPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: T.text }}>🏆 Gamification & Badges</h1>
-          <p style={{ color: T.text2, fontSize: 13, margin: '5px 0 0' }}>Progression, badges et classement</p>
+          <p style={{ color: T.text2, fontSize: 13, margin: '5px 0 0' }}>{t('gam_subtitle')}</p>
         </div>
         <button
           onClick={verifierBadges}
@@ -199,7 +201,7 @@ export default function GamificationPage() {
           {verifying
             ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
             : <Zap size={15} />}
-          Vérifier mes badges
+          {t('gam_check_badges')}
         </button>
       </div>
 
@@ -250,19 +252,19 @@ export default function GamificationPage() {
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: 4, background: '#1A1A1A', borderRadius: 14, padding: 5, border: `1px solid ${T.border}` }}>
         {[
-          { key: 'badges',      label: `🏅 Mes badges (${badges?.total_obtenus || 0})` },
-          { key: 'tous',        label: `📋 Tous (${badges?.total_disponibles || 0})` },
-          { key: 'classement',  label: `🏆 Classement` },
-        ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+          { key: 'badges',      label: `🏅 ${t('gam_tab_mine')} (${badges?.total_obtenus || 0})` },
+          { key: 'tous',        label: `📋 ${t('gam_tab_all')} (${badges?.total_disponibles || 0})` },
+          { key: 'classement',  label: `🏆 ${t('gam_ranking')}` },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: activeTab === t.key ? gradient : 'transparent',
-            color: activeTab === t.key ? 'white' : T.text2,
-            fontSize: 13, fontWeight: activeTab === t.key ? 700 : 500,
+            background: activeTab === tab.key ? gradient : 'transparent',
+            color: activeTab === tab.key ? 'white' : T.text2,
+            fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 500,
             transition: 'all 0.2s',
-            boxShadow: activeTab === t.key ? glowOrange : 'none',
+            boxShadow: activeTab === tab.key ? glowOrange : 'none',
           }}>
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -272,8 +274,8 @@ export default function GamificationPage() {
         (badges?.obtenus || []).length === 0 ? (
           <div style={{ background: T.surface, borderRadius: 20, padding: '3rem', textAlign: 'center', color: T.text2, border: `1px solid ${T.border}` }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🏅</div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Aucun badge obtenu pour l'instant</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>Continuez vos livraisons pour débloquer vos premiers badges !</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{t('gam_no_badges')}</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>{t('gam_encourage')}</div>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
@@ -300,16 +302,16 @@ export default function GamificationPage() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${T.primary}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Users size={18} color={T.primary} />
             </div>
-            Top 20 ce mois
+            {t('gam_top20')}
           </div>
 
           {classement.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: T.text2 }}>Aucune donnée</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: T.text2 }}>{t('gam_no_data')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {classement.map((t, i) => {
+              {classement.map((entry, i) => {
                 const medals  = ['🥇', '🥈', '🥉'];
-                const niveauC = NIVEAU_COLORS[t.niveau] || '#64748b';
+                const niveauC = NIVEAU_COLORS[entry.niveau] || '#64748b';
                 const isTop3  = i < 3;
                 return (
                   <motion.div

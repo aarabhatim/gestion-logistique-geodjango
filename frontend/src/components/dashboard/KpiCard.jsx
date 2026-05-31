@@ -74,3 +74,5 @@ export function KpiCard({ title, value, sub, icon: Icon, accent = 'green', loadi
     </motion.div>
   );
 }
+
+export default KpiCard;

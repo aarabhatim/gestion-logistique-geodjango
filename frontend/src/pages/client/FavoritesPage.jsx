@@ -3,6 +3,7 @@ import api, { mediaUrl } from '../../services/api';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * FavoritesPage — Page favoris client (boutiques + produits)
@@ -28,7 +29,7 @@ const HeartIcon = ({ filled, onClick }) => (
     }}
     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-    title="Retirer des favoris"
+    title={t('fav_remove')}
   >
     <svg viewBox="0 0 24 24" width="16" height="16"
       fill={filled ? '#E30613' : 'none'}
@@ -42,6 +43,7 @@ const HeartIcon = ({ filled, onClick }) => (
 );
 
 const FavoritesPage = () => {
+  const { t } = useI18n();
   const [tab, setTab] = useState('boutiques');
   const [favoriBoutiques, setFavoriBoutiques] = useState([]);
   const [favorisProduits, setFavorisProduits] = useState([]);

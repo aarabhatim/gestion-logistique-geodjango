@@ -7,26 +7,27 @@ import {
 import { chatbotApi } from '../services/api';
 import useCartStore from '../stores/cartStore';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
 
 // ─── Suggestions selon rôle ──────────────────────────────────────────────────
 const SUGGESTIONS_CLIENT = [
-  { icon: '🔍', text: 'Un casque bluetooth à moins de 300 DH' },
-  { icon: '🍕', text: 'Pizza margherita pas trop chère' },
-  { icon: '📦', text: 'Où en est ma dernière commande ?' },
-  { icon: '🛒', text: 'Combien d\'articles dans mon panier ?' },
+  { icon: '🔍', textKey: 'cb_sug_c1' },
+  { icon: '🍕', textKey: 'cb_sug_c2' },
+  { icon: '📦', textKey: 'cb_sug_c3' },
+  { icon: '🛒', textKey: 'cb_sug_c4' },
 ];
 
 const SUGGESTIONS_ADMIN = [
-  { icon: '📊', text: 'Combien de commandes aujourd\'hui ?' },
-  { icon: '💰', text: 'Quel est le CA du mois ?' },
-  { icon: '🚚', text: 'Combien de transporteurs actifs ?' },
-  { icon: '⚠️', text: 'Y a-t-il des incidents non traités ?' },
+  { icon: '📊', textKey: 'cb_sug_a1' },
+  { icon: '💰', textKey: 'cb_sug_a2' },
+  { icon: '🚚', textKey: 'cb_sug_a3' },
+  { icon: '⚠️', textKey: 'cb_sug_a4' },
 ];
 
 const SUGGESTIONS_FONDATEUR = [
-  { icon: '📦', text: 'Mes commandes en attente' },
-  { icon: '💰', text: 'Mon CA cette semaine' },
-  { icon: '⭐', text: 'Mes derniers avis clients' },
+  { icon: '📦', textKey: 'cb_sug_f1' },
+  { icon: '💰', textKey: 'cb_sug_f2' },
+  { icon: '⭐', textKey: 'cb_sug_f3' },
 ];
 
 const STATUT_COLOR = {
@@ -82,6 +83,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
   const role = user?.role || 'CLIENT';
   const isAdmin = role === 'ADMIN';
   const isFondateur = role === 'FONDATEUR';
+  const { t } = useI18n();
   const isClient = !isAdmin && !isFondateur;
 
   // Thème : orange pour client (couleur DeliverMap), vert pour admin / fondateur.
@@ -108,10 +110,10 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
   const WELCOME = {
     role: 'assistant',
     content: isAdmin
-      ? '👋 Bonjour Admin ! Demandez-moi des statistiques (CA, commandes, incidents) ou utilisez les raccourcis.'
+      ? t('cb_welcome_admin')
       : isFondateur
-        ? '👋 Bonjour ! Je peux vous aider avec vos commandes, votre CA et vos avis clients.'
-        : '👋 Bonjour ! Je suis votre assistant DeliverMap. Décrivez ce que vous cherchez ou demandez le suivi d\'une commande.',
+        ? t('cb_welcome_fondateur')
+        : t('cb_welcome_client'),
   };
 
   const [open, setOpen] = useState(false);
@@ -170,7 +172,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
 
   const toggleVoice = () => {
     if (!recognitionRef.current) {
-      showToast('🎤 Reconnaissance vocale non supportée');
+      showToast(t('cb_no_voice'));
       return;
     }
     if (listening) {
@@ -189,7 +191,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
   const handleCopy = useCallback((text) => {
     try {
       navigator.clipboard.writeText(text);
-      showToast('📋 Copié !');
+      showToast(t('cb_copied'));
     } catch {
       showToast('❌ Impossible de copier');
     }
@@ -206,7 +208,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
 
   const handleAddToCart = (product) => {
     addItem({ ...product, fondateurId: product.fondateur_id || product.fondateur });
-    showToast(`✅ ${product.nom} ajouté au panier`);
+    showToast(`✅ ${product.nom} ${t('cb_added_cart')}`);
     if (onOpenCart) onOpenCart();
   };
 
@@ -253,7 +255,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
     } catch (err) {
       const errMsg = {
         role: 'assistant',
-        content: '❌ Je rencontre un problème technique. Réessayez dans un instant.',
+        content: t('cb_error'),
         products: [],
         order: null,
       };
@@ -319,7 +321,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, color: 'white', fontSize: 14 }}>Assistant DeliverMap</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-                {loading ? '⏳ En train de répondre…' : '● En ligne'}
+                {loading ? `⏳ ${t('cb_answering')}` : `● ${t('cb_online')}`}
               </div>
             </div>
             <button onClick={clearHistory} title="Nouvelle conversation"
@@ -354,7 +356,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
                     ))}
                     {msg.products.length > 4 && (
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 4 }}>
-                        + {msg.products.length - 4} autres résultats
+                        + {msg.products.length - 4} {t('cb_more_results')}
                       </div>
                     )}
                   </div>
@@ -393,13 +395,13 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
           {messages.length === 1 && !loading && (
             <div style={{ padding: '0 12px 8px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {suggestions.map((s, i) => (
-                <button key={i} onClick={() => sendMessage(s.text)}
+                <button key={i} onClick={() => sendMessage(t(s.textKey))}
                   style={{
                     background: THEME.chipBg, border: `1px solid ${THEME.chipBorder}`,
                     color: 'rgba(255,255,255,0.85)', borderRadius: 20, padding: '5px 10px',
                     fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                   }}>
-                  <span>{s.icon}</span> {s.text}
+                  <span>{s.icon}</span> {t(s.textKey)}
                 </button>
               ))}
             </div>
@@ -407,7 +409,7 @@ const ChatbotWidget = ({ onOpenCart, onNavigate }) => {
 
           {/* Input */}
           <div style={{ padding: '10px 12px 12px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 7, alignItems: 'center' }}>
-            <button onClick={toggleVoice} title={listening ? 'Arrêter' : 'Parler'}
+            <button onClick={toggleVoice} title={listening ? t('cb_voice_stop') : t('cb_voice_start')}
               style={{
                 background: listening ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
                 border: `1px solid ${listening ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,

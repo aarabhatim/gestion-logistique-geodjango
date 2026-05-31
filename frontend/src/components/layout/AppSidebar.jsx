@@ -172,7 +172,7 @@ export function AppSidebar() {
   const initials = user
     ? ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase() || 'A'
     : 'A';
-  const roleLabel = { ADMIN: 'Administrateur', FONDATEUR: 'Fondateur', TRANSPORTEUR: 'Transporteur', CLIENT: 'Client' };
+  const roleLabel = { ADMIN: t('sb_role_admin'), FONDATEUR: t('sb_role_fondateur'), TRANSPORTEUR: t('sb_role_transporteur'), CLIENT: t('sb_role_client') };
   const isAdmin    = user?.role === 'ADMIN';
   const isFondateur = user?.role === 'FONDATEUR';
 
@@ -228,64 +228,64 @@ export function AppSidebar() {
       >
         {isAdmin && (
           <>
-            <SectionHeader title="Tableau de bord" collapsed={collapsed} />
+            <SectionHeader title={t('dashboard')} collapsed={collapsed} />
             <NavItem to="/"           icon={LayoutDashboard} label={t('dashboard')}    collapsed={collapsed} />
-            <NavItem to="/live"       icon={Radio}           label="Live temps réel"   collapsed={collapsed} />
+            <NavItem to="/live"       icon={Radio}           label={t('sb_live')}   collapsed={collapsed} />
             <NavItem to="/map"        icon={MapIcon}         label={t('map_tracking')} collapsed={collapsed} />
-            <NavItem to="/calendrier" icon={CalendarDays}    label="Calendrier"        collapsed={collapsed} />
+            <NavItem to="/calendrier" icon={CalendarDays}    label={t('sb_calendrier')}        collapsed={collapsed} />
 
-            <SectionHeader title="Opérations" collapsed={collapsed} />
+            <SectionHeader title={t('sb_operations')} collapsed={collapsed} />
             <NavItem to="/commandes"  icon={Package}       label={t('commandes')}    collapsed={collapsed} />
             <NavItem to="/boutiques"  icon={Store}         label={t('boutiques')}    collapsed={collapsed} />
             <NavItem to="/incidents"  icon={AlertTriangle} label={t('incidents')}    collapsed={collapsed} />
-            <NavItem to="/zones"      icon={MapPinned}     label="Zones livraison"   collapsed={collapsed} />
-            <NavItem to="/promotions" icon={Tag}           label="Promotions"        collapsed={collapsed} />
+            <NavItem to="/zones"      icon={MapPinned}     label={t('sb_zones')}   collapsed={collapsed} />
+            <NavItem to="/promotions" icon={Tag}           label={t('sb_promotions')}        collapsed={collapsed} />
 
-            <SectionHeader title="Gestion" collapsed={collapsed} />
+            <SectionHeader title={t('sb_gestion')} collapsed={collapsed} />
             <NavItem to="/clients"       icon={Users}         label={t('clients')}       collapsed={collapsed} />
             <NavItem to="/transporteurs" icon={Truck}         label={t('transporteurs')} collapsed={collapsed} />
-            <NavItem to="/scoring"       icon={Award}         label="Scoring"            collapsed={collapsed} />
-            <NavItem to="/tickets"       icon={MessageSquare} label="Tickets"            collapsed={collapsed} />
-            <NavItem to="/contrats"      icon={FileText}      label="Contrats"           collapsed={collapsed} />
+            <NavItem to="/scoring"       icon={Award}         label={t('scoring')}            collapsed={collapsed} />
+            <NavItem to="/tickets"       icon={MessageSquare} label={t('sb_tickets')}            collapsed={collapsed} />
+            <NavItem to="/contrats"      icon={FileText}      label={t('sb_contrats')}           collapsed={collapsed} />
 
-            <SectionHeader title="Intelligence" collapsed={collapsed} />
+            <SectionHeader title={t('sb_intelligence')} collapsed={collapsed} />
             <NavItem to="/rapports"   icon={BarChart2}  label={t('reports')}  collapsed={collapsed} />
             <NavItem to="/heatmap"    icon={Activity}   label={t('heatmap')}  collapsed={collapsed} />
-            <NavItem to="/previsions" icon={TrendingUp} label="Prévisions"    collapsed={collapsed} />
+            <NavItem to="/previsions" icon={TrendingUp} label={t('sb_previsions')}    collapsed={collapsed} />
 
-            <SectionHeader title="Outils Admin" collapsed={collapsed} />
-            <NavItem to="/impersonation" icon={UserCog}   label="Impersonation" collapsed={collapsed} />
-            <NavItem to="/bannieres"     icon={Megaphone} label="Bannières"     collapsed={collapsed} />
-            <NavItem to="/blacklist"     icon={Ban}       label="Blacklist"     collapsed={collapsed} />
+            <SectionHeader title={t('sb_outils_admin')} collapsed={collapsed} />
+            <NavItem to="/impersonation" icon={UserCog}   label={t('sb_impersonation')} collapsed={collapsed} />
+            <NavItem to="/bannieres"     icon={Megaphone} label={t('sb_bannieres')}     collapsed={collapsed} />
+            <NavItem to="/blacklist"     icon={Ban}       label={t('sb_blacklist')}     collapsed={collapsed} />
             <NavItem to="/settings"      icon={Settings}  label={t('settings')} collapsed={collapsed} />
           </>
         )}
 
         {isFondateur && (
           <>
-            <SectionHeader title="Ma Boutique" collapsed={collapsed} />
-            <NavItem to="/boutique"           icon={LayoutDashboard} label="Tableau de bord"  collapsed={collapsed} />
-            <NavItem to="/boutique/commandes" icon={Package}         label="Commandes"         collapsed={collapsed} />
-            <NavItem to="/boutique/produits"  icon={Store}           label="Produits & Stock"  collapsed={collapsed} />
-            <NavItem to="/boutique/galerie"   icon={Image}           label="Galerie"           collapsed={collapsed} />
+            <SectionHeader title={t('sb_ma_boutique')} collapsed={collapsed} />
+            <NavItem to="/boutique"           icon={LayoutDashboard} label={t('dashboard')}  collapsed={collapsed} />
+            <NavItem to="/boutique/commandes" icon={Package}         label={t('sb_commandes')}         collapsed={collapsed} />
+            <NavItem to="/boutique/produits"  icon={Store}           label={t('sb_produits')}  collapsed={collapsed} />
+            <NavItem to="/boutique/galerie"   icon={Image}           label={t('sb_galerie')}           collapsed={collapsed} />
 
-            <SectionHeader title="Clients" collapsed={collapsed} />
-            <NavItem to="/boutique/avis" icon={Star}          label="Avis clients"    collapsed={collapsed} />
-            <NavItem to="/tickets"       icon={MessageSquare} label="Tickets support" collapsed={collapsed} />
+            <SectionHeader title={t('sb_clients_section')} collapsed={collapsed} />
+            <NavItem to="/boutique/avis" icon={Star}          label={t('sb_avis')}    collapsed={collapsed} />
+            <NavItem to="/tickets"       icon={MessageSquare} label={t('sb_tickets_support')} collapsed={collapsed} />
 
-            <SectionHeader title="Analytics" collapsed={collapsed} />
-            <NavItem to="/boutique/analytics" icon={BarChart2} label="Analytiques" collapsed={collapsed} />
+            <SectionHeader title={t('sb_analytics')} collapsed={collapsed} />
+            <NavItem to="/boutique/analytics" icon={BarChart2} label={t('sb_analytiques')} collapsed={collapsed} />
 
-            <SectionHeader title="Paramètres" collapsed={collapsed} />
+            <SectionHeader title={t('sb_parametres')} collapsed={collapsed} />
             <NavItem to="/settings" icon={Settings} label={t('settings')} collapsed={collapsed} />
           </>
         )}
 
         {!isAdmin && !isFondateur && (
           <>
-            <SectionHeader title="Navigation" collapsed={collapsed} />
+            <SectionHeader title={t('dashboard')} collapsed={collapsed} />
             <NavItem to="/"         icon={LayoutDashboard} label={t('dashboard')} collapsed={collapsed} />
-            <NavItem to="/tickets"  icon={MessageSquare}   label="Tickets"        collapsed={collapsed} />
+            <NavItem to="/tickets"  icon={MessageSquare}   label={t('sb_tickets')}        collapsed={collapsed} />
             <NavItem to="/settings" icon={Settings}        label={t('settings')}  collapsed={collapsed} />
           </>
         )}
@@ -329,7 +329,7 @@ export function AppSidebar() {
               </div>
               <button
                 onClick={logout}
-                title="Se déconnecter"
+                title={t('logout')}
                 style={{
                   width: 30, height: 30, borderRadius: 8, flexShrink: 0,
                   border: `1px solid rgba(239,68,68,0.2)`,
@@ -363,9 +363,11 @@ export function AppSidebar() {
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.07)'; e.currentTarget.style.color = T.primary; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.2)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = T.text2; e.currentTarget.style.borderColor = T.border; }}
         >
-          {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={15} /><span style={{ fontSize: 11 }}>Réduire</span></>}
+          {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={15} /><span style={{ fontSize: 11 }}>{t('sidebar_collapse')}</span></>}
         </button>
       </div>
     </aside>
   );
 }
+
+export default AppSidebar;

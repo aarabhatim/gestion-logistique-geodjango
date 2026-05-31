@@ -7,26 +7,28 @@ import {
   MapPin, Clock, User, Package, Camera, Download,
 } from 'lucide-react';
 import { incidentsApi } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const TYPE_CONFIG = {
-  accident:        { label: 'Accident',          color: '#ef4444', emoji: '🚨' },
-  panne:           { label: 'Panne vehicule',     color: '#f59e0b', emoji: '🔧' },
-  vol:             { label: 'Vol / Tentative',    color: '#22c55e', emoji: '🔓' },
-  colis_endommage: { label: 'Colis endommagé',   color: '#f97316', emoji: '📦' },
-  retard:          { label: 'Retard majeur',      color: '#06b6d4', emoji: '⏱' },
-  client_absent:   { label: 'Client absent',     color: '#64748b', emoji: '🚪' },
-  adresse_introuvable: { label: 'Adresse introuvable', color: '#84cc16', emoji: '🗺' },
-  autre:           { label: 'Autre',              color: '#94a3b8', emoji: '❓' },
+  accident:        { labelKey: 'inc_type_ACCIDENT',         color: '#ef4444', emoji: '🚨' },
+  panne:           { labelKey: 'inc_type_PANNE',             color: '#f59e0b', emoji: '🔧' },
+  vol:             { labelKey: 'inc_type_VOL',               color: '#22c55e', emoji: '🔓' },
+  colis_endommage: { labelKey: 'inc_type_COLIS_ENDOMMAGE',   color: '#f97316', emoji: '📦' },
+  retard:          { labelKey: 'inc_type_RETARD_MAJEUR',     color: '#06b6d4', emoji: '⏱' },
+  client_absent:   { labelKey: 'inc_type_CLIENT_ABSENT',    color: '#64748b', emoji: '🚪' },
+  adresse_introuvable: { labelKey: 'inc_type_ADRESSE_INTRO', color: '#84cc16', emoji: '🗺' },
+  autre:           { labelKey: 'inc_type_AUTRE',             color: '#94a3b8', emoji: '❓' },
 };
 
 const STATUT_CONFIG = {
-  ouvert:      { label: 'Ouvert',       class: 'badge-danger'  },
-  en_cours:    { label: 'En cours',     class: 'badge-warning' },
-  resolu:      { label: 'Résolu',       class: 'badge-success' },
+  ouvert:      { labelKey: 'incident_open',        class: 'badge-danger'  },
+  en_cours:    { labelKey: 'incident_in_progress', class: 'badge-warning' },
+  resolu:      { labelKey: 'incident_resolved',    class: 'badge-success' },
 };
 
 const Incidents = () => {
+  const { t, tStatus } = useI18n();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -105,7 +107,7 @@ const Incidents = () => {
           <h2 className="page-title text-gradient" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <AlertTriangle size={24} /> Gestion des Incidents
           </h2>
-          <p className="page-subtitle">Suivez et résolvez les incidents de livraison en temps réel.</p>
+          <p className="page-subtitle">{t('inc_subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => exportCsv({ data: incidents, columns: CSV_COLUMNS.incidents, filename: 'incidents' })} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -121,10 +123,10 @@ const Incidents = () => {
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
           {[
-            { label: 'Total', value: stats.total || 0, color: '#3b82f6' },
-            { label: 'Ouverts', value: stats.ouverts || 0, color: '#ef4444' },
-            { label: 'En cours', value: stats.en_cours || 0, color: '#f59e0b' },
-            { label: 'Résolus', value: stats.resolus || 0, color: '#10b981' },
+            { label: t('adm_total'), value: stats.total || 0, color: '#3b82f6' },
+            { label: t('incident_open'), value: stats.ouverts || 0, color: '#ef4444' },
+            { label: t('incident_in_progress'), value: stats.en_cours || 0, color: '#f59e0b' },
+            { label: t('incident_resolved'), value: stats.resolus || 0, color: '#10b981' },
           ].map(k => (
             <div key={k.label} className="glass-card" style={{ padding: '0.85rem 1rem', borderLeft: `3px solid ${k.color}` }}>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{k.label}</div>
@@ -166,7 +168,7 @@ const Incidents = () => {
           </div>
           <MapContainer center={[33.5731, -7.5898]} zoom={6} style={{ height: 'calc(100% - 38px)', width: '100%' }}>
             <TileLayer
-              url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+              url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
             />
             {incidentsGeo.map((inc) => {
@@ -184,7 +186,7 @@ const Incidents = () => {
                   eventHandlers={{ click: () => { setSelected(inc); setShowDetail(true); } }}>
                   <Popup>
                     <div style={{ minWidth: 180 }}>
-                      <strong>{cfg.emoji} {cfg.label}</strong><br />
+                      <strong>{cfg.emoji} {t(cfg.labelKey)}</strong><br />
                       <span style={{ fontSize: 11 }}>Commande : {props.commande_reference || props.commande}</span><br />
                       <span style={{ fontSize: 11 }}>Statut : <b>{STATUT_CONFIG[props.statut]?.label || props.statut}</b></span><br />
                       <span style={{ fontSize: 11 }}>{props.description?.slice(0, 80)}</span>
@@ -235,7 +237,7 @@ const Incidents = () => {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{cfg.emoji} {cfg.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{cfg.emoji} {t(cfg.labelKey)}</span>
                         <span className={`badge ${statCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
                           {statCfg.label || props.statut}
                         </span>
@@ -249,7 +251,7 @@ const Incidents = () => {
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
                         <Clock size={9} style={{ marginRight: 3 }} />
-                        {props.date_signalement ? new Date(props.date_signalement).toLocaleString('fr-FR') : ''}
+                        {props.date_signalement ? new Date(props.date_signalement).toLocaleString(undefined) : ''}
                       </div>
                     </div>
                   );
@@ -281,7 +283,7 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
     <div className="glass-card animate-fade-in" style={{ borderLeft: `3px solid ${cfg.color}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h4 style={{ margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Eye size={14} /> Détail de l&apos;incident
+          <Eye size={14} /> {t('inc_detail_btn')}
         </h4>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
           <X size={16} />
@@ -291,7 +293,7 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Type</span>
-          <strong>{cfg.emoji} {cfg.label}</strong>
+          <strong>{cfg.emoji} {t(cfg.labelKey)}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Statut</span>
@@ -315,7 +317,7 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
         </div>
         {props.notes_resolution && (
           <div>
-            <div style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: 11 }}>Notes de résolution</div>
+            <div style={{ color: 'var(--text-secondary)', marginBottom: 4, fontSize: 11 }}>{t('inc_notes_resolution')}</div>
             <div style={{ background: 'rgba(16,185,129,0.08)', padding: '8px 10px', borderRadius: 6, fontSize: 12, lineHeight: 1.5, borderLeft: '2px solid #10b981' }}>
               {props.notes_resolution}
             </div>
@@ -347,14 +349,14 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
           <textarea
             value={resolveNotes}
             onChange={e => setResolveNotes(e.target.value)}
-            placeholder="Notes de résolution..."
+            placeholder={t("inc_resolution_notes")}
             className="glass-input"
             style={{ width: '100%', minHeight: 70, marginBottom: 8, fontSize: 12, resize: 'vertical' }}
           />
           <button onClick={onResoudre} className="btn btn-success"
             disabled={resolving}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12 }}>
-            <Check size={14} /> {resolving ? 'En cours...' : 'Marquer comme résolu'}
+            <Check size={14} /> {resolving ? t('common_loading') : t('incident_resolve')}
           </button>
         </div>
       )}

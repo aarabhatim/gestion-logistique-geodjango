@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * GlobalSearch — Recherche globale Cmd+K / Ctrl+K
@@ -11,13 +12,15 @@ import api from '../services/api';
  * S'ouvre avec Cmd+K ou Ctrl+K, se ferme avec Escape.
  */
 
-const CATEGORIES = [
-  { key: 'commandes', label: 'Commandes', icon: '📦', endpoint: '/commandes/?search=' },
-  { key: 'clients',   label: 'Clients',   icon: '👤', endpoint: '/auth/admin/users/?role=CLIENT&search=' },
-  { key: 'transporteurs', label: 'Transporteurs', icon: '🚗', endpoint: '/auth/admin/users/?role=TRANSPORTEUR&search=' },
+const getCategories = (t) => [
+  { key: 'commandes',    label: t('gs_cat_commandes'),    icon: '📦', endpoint: '/commandes/?search=' },
+  { key: 'clients',      label: t('gs_cat_clients'),      icon: '👤', endpoint: '/auth/admin/users/?role=CLIENT&search=' },
+  { key: 'transporteurs',label: t('gs_cat_transporteurs'),icon: '🚗', endpoint: '/auth/admin/users/?role=TRANSPORTEUR&search=' },
 ];
 
 const GlobalSearch = () => {
+  const { t } = useI18n();
+  const CATEGORIES = getCategories(t);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({});
@@ -94,7 +97,7 @@ const GlobalSearch = () => {
             ref={inputRef}
             value={query}
             onChange={handleInput}
-            placeholder="Rechercher une commande, client, transporteur..."
+            placeholder={t('gs_placeholder')}
             className="flex-1 bg-transparent text-[var(--color-text)] placeholder-[var(--color-text-muted)] text-base outline-none"
           />
           {loading && (
@@ -134,11 +137,11 @@ const GlobalSearch = () => {
         <div className="max-h-80 overflow-y-auto">
           {!query || query.length < 2 ? (
             <div className="py-10 text-center text-sm text-[var(--color-text-muted)]">
-              Tapez au moins 2 caractères pour rechercher…
+              {t('gs_type_2chars')}
             </div>
           ) : activeResults.length === 0 && !loading ? (
             <div className="py-10 text-center text-sm text-[var(--color-text-muted)]">
-              Aucun résultat pour "{query}"
+              {t('gs_no_result')} "{query}"
             </div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
@@ -157,7 +160,7 @@ const GlobalSearch = () => {
                       <p className="text-xs text-[var(--color-text-muted)] truncate">{item.email}</p>
                     )}
                     {item.statut && (
-                      <p className="text-xs text-[var(--color-text-secondary)]">Statut : {item.statut}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)]">{t('gs_status')} : {item.statut}</p>
                     )}
                   </div>
                   <svg className="w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -171,9 +174,9 @@ const GlobalSearch = () => {
 
         {/* Footer hint */}
         <div className="px-4 py-2 border-t border-[var(--color-border)] flex gap-4 text-xs text-[var(--color-text-muted)]">
-          <span>↑↓ Naviguer</span>
-          <span>↵ Sélectionner</span>
-          <span>Esc Fermer</span>
+          <span>↑↓ {t('gs_navigate')}</span>
+          <span>↵ {t('gs_select')}</span>
+          <span>Esc {t('gs_close')}</span>
         </div>
       </div>
     </div>

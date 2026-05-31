@@ -6,6 +6,7 @@ import { transporteursApi, commandesApi, fondateursApi } from '../services/api';
 
 // ─── Inline SVG icons — no external CDN ──────────────────────────────────────
 import '../../utils/leafletIcons'; // applies the L.Icon.Default patch
+import { useI18n } from '../contexts/I18nContext';
 
 const makePin = (color, emoji) => L.divIcon({
   className: '',
@@ -31,6 +32,7 @@ const ICONS = {
 
 // ─── MapComponent (shared, used by admin layout) ──────────────────────────────
 const MapComponent = () => {
+  const { t } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
   const [boutiques,     setBoutiques]     = useState([]);
   const [livraisons,    setLivraisons]    = useState([]);
@@ -64,7 +66,7 @@ const MapComponent = () => {
       zoomControl={true}
     >
       <TileLayer
-        url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+        url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
         attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
       />
 
@@ -79,9 +81,9 @@ const MapComponent = () => {
                 <strong>{t.nom_complet || t.user_email}</strong><br />
                 <span style={{ fontSize: 12, color: '#64748b' }}>{t.vehicule_type} · {t.plaque}</span><br />
                 <span style={{ fontSize: 12, color: t.is_on_delivery ? '#f59e0b' : t.is_available ? '#10b981' : '#64748b' }}>
-                  {t.is_on_delivery ? '🚚 En livraison' : t.is_available ? '✅ Disponible' : '⭕ Hors ligne'}
+                  {t.is_on_delivery ? `🚚 ${t('mc_delivering')}` : t.is_available ? `✅ ${t('lbl_available')}` : `⭕ ${t('tr_offline')}`}
                 </span><br />
-                <span style={{ fontSize: 12, color: '#64748b' }}>⭐ {t.note_moyenne?.toFixed(1) || '–'} · {t.nombre_livraisons || 0} livraisons</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>⭐ {t.note_moyenne?.toFixed(1) || '–'} · {t.nombre_livraisons || 0} {t('mc_deliveries')}</span>
               </div>
             </Popup>
           </Marker>
@@ -98,7 +100,7 @@ const MapComponent = () => {
                 <strong>{b.nom_boutique}</strong><br />
                 <span style={{ fontSize: 12, color: '#64748b' }}>{b.categorie} · {b.ville}</span><br />
                 <span style={{ fontSize: 12, color: b.is_open ? '#10b981' : '#ef4444' }}>
-                  {b.is_open ? '🟢 Ouvert' : '🔴 Fermé'}
+                  {b.is_open ? `🟢 ${t('map_open')}` : `🔴 ${t('map_closed')}`}
                 </span>
               </div>
             </Popup>

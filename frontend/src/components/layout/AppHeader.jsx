@@ -275,11 +275,11 @@ export function AppHeader() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   {unreadCount > 0 && (
-                    <button onClick={toutLire} title="Tout marquer lu" style={{ ...iconBtnStyle }}>
+                    <button onClick={toutLire} title={t('ah_mark_all_read')} style={{ ...iconBtnStyle }}>
                       <CheckCheck size={14} color={T.primary} />
                     </button>
                   )}
-                  <button onClick={supprimerLues} title="Supprimer les lues" style={{ ...iconBtnStyle }}>
+                  <button onClick={supprimerLues} title={t('ac_delete_read')} style={{ ...iconBtnStyle }}>
                     <Trash2 size={14} color={T.danger} />
                   </button>
                   <button onClick={() => setOpenNotif(false)} style={{ ...iconBtnStyle }}>
@@ -358,7 +358,7 @@ export function AppHeader() {
                           <button
                             onClick={e => { e.stopPropagation(); supprimer(n.id); }}
                             style={{ ...iconBtnSmallStyle, flexShrink: 0, alignSelf: 'flex-start', marginTop: 2 }}
-                            title="Supprimer"
+                            title={t('ac_delete')}
                           >
                             <X size={11} color={T.text2} />
                           </button>
@@ -416,3 +416,5 @@ const iconBtnSmallStyle = {
   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
   transition: 'background 0.2s', opacity: 0,
 };
+
+export default AppHeader;

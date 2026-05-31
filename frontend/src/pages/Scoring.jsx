@@ -80,7 +80,7 @@ const Scoring = () => {
     try {
       await scoringApi.recalculerTous();
       await fetchClassement();
-    } catch { alert('Erreur lors du recalcul.'); }
+    } catch { alert(t('sc_err_recalc')); }
     finally { setRecalcLoading(false); }
   };
 
@@ -89,7 +89,7 @@ const Scoring = () => {
       const res = await scoringApi.recalculer(id);
       setClassement(prev => prev.map(s => s.id === id ? { ...s, ...res.data } : s));
       if (selected?.id === id) setSelected(res.data);
-    } catch { alert('Erreur.'); }
+    } catch { alert(t('state_error')); }
   };
 
   const sorted = useMemo(() => {
@@ -208,7 +208,7 @@ const Scoring = () => {
           <div className="glass-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h4 style={{ margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <BarChart2 size={14} /> Profil de performance
+                <BarChart2 size={14} /> {t('sc_perf_profile')}
               </h4>
               <button onClick={() => setSelected(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 18 }}>
@@ -225,7 +225,7 @@ const Scoring = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {DIMENSIONS.map(d => (
                 <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', width: 90 }}>{d.label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', width: 90 }}>{t(d.i18n)}</span>
                   <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
                     <div style={{ width: `${selected[d.key] || 0}%`, height: '100%', background: d.color, borderRadius: 6,
                       transition: 'width 0.5s' }} />

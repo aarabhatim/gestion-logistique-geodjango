@@ -6,8 +6,6 @@ import {
 import { previsionsApi } from '../../services/api';
 import { useI18n } from '../../contexts/I18nContext';
 
-const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -55,14 +53,14 @@ export default function PrevisionsPage() {
   useEffect(() => {
     previsionsApi.get()
       .then(r => setData(r.data))
-      .catch(() => setError('Erreur chargement prévisions'))
+      .catch(() => setError(t('prev_load_error')))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return (
     <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
       <div style={{ fontSize: 32, marginBottom: 12 }}>📈</div>
-      Chargement des prévisions…
+      {t('prev_loading')}
     </div>
   );
 
@@ -192,13 +190,13 @@ export default function PrevisionsPage() {
           borderRadius: 16, padding: '18px 22px'
         }}>
           <h3 style={{ margin: '0 0 14px', color: '#fca5a5', fontSize: 15 }}>
-            ⚠️ Pics de demande prévus
+            ⚠️ {t('prev_peak_title')}
           </h3>
           {alertes.map((a, i) => (
             <AlertBadge key={i} date={a.date} predicted={a.prevision} />
           ))}
           <div style={{ color: '#64748b', fontSize: 12, marginTop: 8 }}>
-            Un pic est détecté si la prévision dépasse 150% de la moyenne ou tombe un week-end.
+            {t('prev_peak_desc')}
           </div>
         </div>
       )}

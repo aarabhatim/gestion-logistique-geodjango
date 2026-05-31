@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 export function useGeolocation() {
+  const { t } = useI18n();
   const [position, setPosition] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError('Géolocalisation non supportée.');
+      setError(t('geo_not_supported'));
       setLoading(false);
       return;
     }

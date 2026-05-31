@@ -6,6 +6,7 @@ import {
 import { analyticsApi, fondateursApi, commandesApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
 // ── Son de notification via Web Audio API ───────────────────────────────────
 function playNotifSound() {
@@ -76,12 +77,12 @@ const StatCard = ({ title, value, icon: Icon, sub, color = '#E30613' }) => (
 );
 
 const STATUT_LABEL = {
-  EN_ATTENTE:      { label: 'En attente',    color: '#64748b' },
-  VALIDEE:         { label: 'Validée',        color: '#3b82f6' },
-  EN_PREPARATION:  { label: 'En préparation', color: '#F59E0B' },
-  EN_ROUTE:        { label: 'En route',       color: '#E30613' },
-  LIVREE:          { label: 'Livrée',         color: '#22C55E' },
-  ANNULEE:         { label: 'Annulée',        color: '#ef4444' },
+  EN_ATTENTE:      { color: '#64748b' },
+  VALIDEE:         { color: '#3b82f6' },
+  EN_PREPARATION:  { color: '#F59E0B' },
+  EN_ROUTE:        { color: '#E30613' },
+  LIVREE:          { color: '#22C55E' },
+  ANNULEE:         { color: '#ef4444' },
 };
 
 const LiveBadge = ({ connected }) => (
@@ -92,13 +93,14 @@ const LiveBadge = ({ connected }) => (
       boxShadow: connected ? '0 0 6px #22C55E' : 'none',
     }} />
     <span style={{ fontSize: 12, color: connected ? '#22C55E' : '#ef4444', fontWeight: 600 }}>
-      {connected ? 'Live' : 'Hors ligne'}
+      {connected ? 'Live' : t('tr_offline')}
     </span>
   </div>
 );
 
 export default function StoreDash() {
   const navigate = useNavigate();
+  const { t, tStatus } = useI18n();
   const [kpis, setKpis]               = useState(null);
   const [topProduits, setTopProduits] = useState([]);
   const [alertes, setAlertes]         = useState([]);
@@ -174,7 +176,7 @@ export default function StoreDash() {
   if (loading) return (
     <div className="mj-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
       <div className="mj-spin" style={{ width: 28, height: 28, border: '3px solid var(--mj-border)', borderTopColor: 'var(--mj-red)', borderRadius: '50%' }} />
-      <span style={{ color: 'var(--mj-text-3)' }}>Chargement…</span>
+      <span style={{ color: 'var(--mj-text-3)' }}>{t('common_loading')}</span>
     </div>
   );
 
@@ -189,11 +191,11 @@ export default function StoreDash() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ fontWeight: 800, fontSize: 22, margin: 0, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
-            Tableau de bord Boutique
+            {t('sd_title')}
           </h2>
           {lastUpdate && (
             <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 4 }}>
-              Mis à jour à {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {t('sd_updated_at')} {lastUpdate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
           )}
         </div>
@@ -208,7 +210,7 @@ export default function StoreDash() {
                 fontSize: 12, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              🔔 +{newCount} nouvelle{newCount > 1 ? 's' : ''} commande{newCount > 1 ? 's' : ''}
+              🔔 +{newCount} {newCount > 1 ? t('sd_new_orders') : t('sd_new_order')}
             </div>
           )}
           <button
@@ -217,14 +219,14 @@ export default function StoreDash() {
             style={{ display: 'flex', alignItems: 'center', gap: 5 }}
           >
             {soundOn ? <Bell size={14} /> : <BellOff size={14} />}
-            {soundOn ? 'Son on' : 'Son off'}
+            {soundOn ? t('sd_sound_on') : t('sd_sound_off')}
           </button>
           <button
             className="mj-btn mj-btn-outline-red mj-btn-sm"
             onClick={() => fetchAll()}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <RefreshCw size={14} /> Actualiser
+            <RefreshCw size={14} /> {t('action_refresh')}
           </button>
         </div>
       </div>
@@ -236,15 +238,15 @@ export default function StoreDash() {
           borderRadius: 14, padding: '14px 20px',
           display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center',
         }}>
-          <span style={{ fontSize: 13, color: '#D97706', fontWeight: 700 }}>⚡ Statut en direct</span>
+          <span style={{ fontSize: 13, color: '#D97706', fontWeight: 700 }}>{t('sd_live_status')}</span>
           {enAttente.length > 0 && (
             <span style={{ color: 'var(--mj-text-3)', fontSize: 13 }}>
-              🟡 <strong style={{ color: 'var(--mj-text)' }}>{enAttente.length}</strong> en attente de validation
+              🟡 <strong style={{ color: 'var(--mj-text)' }}>{enAttente.length}</strong> {t('sd_waiting_val')}
             </span>
           )}
           {enPreparation.length > 0 && (
             <span style={{ color: 'var(--mj-text-3)', fontSize: 13 }}>
-              🟠 <strong style={{ color: 'var(--mj-text)' }}>{enPreparation.length}</strong> en cours de préparation
+              🟠 <strong style={{ color: 'var(--mj-text)' }}>{enPreparation.length}</strong> {t('sd_in_prep_lbl')}
             </span>
           )}
           <button
@@ -259,15 +261,15 @@ export default function StoreDash() {
 
       {/* ── KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
-        <StatCard title="CA ce mois" value={`${Math.round(k.ca_mois || 0).toLocaleString('fr-FR')} MAD`} icon={DollarSign} color="#22C55E" />
-        <StatCard title="CA total" value={`${Math.round(k.ca_total || 0).toLocaleString('fr-FR')} MAD`} icon={TrendingUp} color="#3b82f6" />
-        <StatCard title="Commandes totales" value={k.commandes_total || 0}
-          sub={`${k.commandes_aujourd_hui || 0} aujourd'hui`} icon={Package} color="#6366f1" />
-        <StatCard title="En attente" value={k.commandes_en_attente || 0}
-          sub={`${k.commandes_en_preparation || 0} en préparation`} icon={Clock} color="#F59E0B" />
-        <StatCard title="Note boutique" value={(k.note_boutique || 0).toFixed(1)}
-          sub={`${k.nombre_avis || 0} avis`} icon={Star} color="#F59E0B" />
-        <StatCard title="Taux annulation" value={`${k.taux_annulation || 0}%`} icon={AlertCircle} color="#E30613" />
+        <StatCard title={t('sd_ca_month')} value={`${Math.round(k.ca_mois || 0).toLocaleString(undefined)} MAD`} icon={DollarSign} color="#22C55E" />
+        <StatCard title={t('sd_ca_total')} value={`${Math.round(k.ca_total || 0).toLocaleString(undefined)} MAD`} icon={TrendingUp} color="#3b82f6" />
+        <StatCard title={t('sd_orders_total')} value={k.commandes_total || 0}
+          sub={`${k.commandes_aujourd_hui || 0} ${t('sd_today')}`} icon={Package} color="#6366f1" />
+        <StatCard title={t('status_EN_ATTENTE')} value={k.commandes_en_attente || 0}
+          sub={`${k.commandes_en_preparation || 0} ${t('an_in_prep_sub')}`} icon={Clock} color="#F59E0B" />
+        <StatCard title={t('sd_shop_rating')} value={(k.note_boutique || 0).toFixed(1)}
+          sub={`${k.nombre_avis || 0} ${t('sd_reviews_lbl')}`} icon={Star} color="#F59E0B" />
+        <StatCard title={t('sd_cancel_rate')} value={`${k.taux_annulation || 0}%`} icon={AlertCircle} color="#E30613" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
@@ -303,7 +305,7 @@ export default function StoreDash() {
                     <PrepTimer cmd={cmd} />
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--mj-text-3)' }}>
-                    {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
+                    {new Date(cmd.created_at).toLocaleDateString(undefined)}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -314,7 +316,7 @@ export default function StoreDash() {
                     fontSize: 10, background: s.color + '15', color: s.color,
                     padding: '2px 8px', borderRadius: 20, fontWeight: 600,
                   }}>
-                    {s.label}
+                    {tStatus(cmd.statut)}
                   </span>
                 </div>
               </div>
@@ -347,7 +349,7 @@ export default function StoreDash() {
             }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--mj-text)' }}>{p.nom}</div>
-                <div style={{ fontSize: 11, color: 'var(--mj-text-3)' }}>Seuil: {p.stock_alerte} unités</div>
+                <div style={{ fontSize: 11, color: 'var(--mj-text-3)' }}>{t('sd_threshold')}: {p.stock_alerte} {t('sd_units')}</div>
               </div>
               <span style={{
                 background: p.stock === 0 ? 'rgba(227,6,19,0.08)' : 'rgba(245,158,11,0.08)',
@@ -355,7 +357,7 @@ export default function StoreDash() {
                 border: `1px solid ${p.stock === 0 ? 'rgba(227,6,19,0.2)' : 'rgba(245,158,11,0.2)'}`,
                 fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
               }}>
-                {p.stock === 0 ? 'Rupture' : `${p.stock} restants`}
+                {p.stock === 0 ? t('sd_out_of_stock') : `${p.stock} ${t('sd_remaining')}`}
               </span>
             </div>
           ))}
@@ -387,7 +389,7 @@ export default function StoreDash() {
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--mj-text)', marginBottom: 4 }}>{p.nom}</div>
                 <div style={{ fontSize: 12, color: 'var(--mj-text-3)' }}>
-                  {p.stock} en stock · {p.prix} MAD
+                  {p.stock} {t('sd_in_stock')} · {p.prix} MAD
                 </div>
               </div>
             ))}

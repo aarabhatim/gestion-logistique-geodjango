@@ -7,6 +7,7 @@ import { AlertTriangle, Ticket, FileText, X, ChevronRight } from 'lucide-react';
 import { incidentsApi, ticketsApi, contratsApi } from '@/services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/contexts/I18nContext';
 
 const URGENCE_COLORS = {
   incident: { bg: 'bg-rose-500/15 border-rose-500/30', icon: 'text-rose-500', dot: 'bg-rose-500' },
@@ -15,6 +16,7 @@ const URGENCE_COLORS = {
 };
 
 export function AlertesActives() {
+  const { t } = useI18n();
   const [alertes, setAlertes] = useState([]);
   const [dismissed, setDismissed] = useState(new Set());
 
@@ -28,7 +30,7 @@ export function AlertesActives() {
         items.slice(0, 3).forEach(inc => nouvelles.push({
           id: `inc-${inc.id}`,
           type: 'incident',
-          label: `Incident #${inc.id} — ${inc.type_incident || 'non classifié'}`,
+          label: `${t('al_incident')} #${inc.id} — ${inc.type_incident || t('al_not_classified')}`,
           sub: inc.transporteur_nom || '',
           icon: AlertTriangle,
         }));
@@ -37,11 +39,11 @@ export function AlertesActives() {
       try {
         const r = await ticketsApi.liste({ priorite: 'urgent', statut: 'ouvert', page_size: 5 });
         const items = r.data?.results || r.data || [];
-        items.slice(0, 3).forEach(t => nouvelles.push({
-          id: `tkt-${t.id}`,
+        items.slice(0, 3).forEach(tk => nouvelles.push({
+          id: `tkt-${tk.id}`,
           type: 'ticket',
-          label: `Ticket urgent — ${t.sujet || t.objet || '#' + t.id}`,
-          sub: t.auteur_nom || '',
+          label: `${t('al_ticket_urgent')} — ${tk.sujet || tk.objet || '#' + tk.id}`,
+          sub: tk.auteur_nom || '',
           icon: Ticket,
         }));
       } catch (_) {}
@@ -52,8 +54,8 @@ export function AlertesActives() {
         items.slice(0, 2).forEach(c => nouvelles.push({
           id: `cnt-${c.id}`,
           type: 'contrat',
-          label: `Contrat expirant — ${c.transporteur_nom || '#' + c.id}`,
-          sub: c.date_fin ? `Expire le ${new Date(c.date_fin).toLocaleDateString('fr-FR')}` : '',
+          label: `${t('al_contract_exp')} — ${c.transporteur_nom || '#' + c.id}`,
+          sub: c.date_fin ? `${t('al_expires_on')} ${new Date(c.date_fin).toLocaleDateString()}` : '',
           icon: FileText,
         }));
       } catch (_) {}
@@ -97,7 +99,7 @@ export function AlertesActives() {
               <button
                 onClick={() => setDismissed(prev => new Set([...prev, alerte.id]))}
                 className="ml-1 rounded p-0.5 opacity-50 hover:opacity-100 transition-opacity"
-                aria-label="Fermer"
+                aria-label={t('action_close_lbl')}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -108,10 +110,12 @@ export function AlertesActives() {
 
       {visibles.length > 0 && (
         <div className="flex items-center gap-1 rounded-lg border border-dashed border-border/50 px-3 py-2 text-xs text-muted-foreground">
-          <span>{visibles.length} alerte{visibles.length > 1 ? 's' : ''} active{visibles.length > 1 ? 's' : ''}</span>
+          <span>{visibles.length} {visibles.length > 1 ? t('al_active_alerts') : t('al_active_alert')}</span>
           <ChevronRight className="h-3 w-3" />
         </div>
       )}
     </div>
   );
 }
+
+export default AlertesActives;

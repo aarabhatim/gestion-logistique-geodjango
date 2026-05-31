@@ -115,3 +115,5 @@ export function KpiCardSparkline({
     </motion.div>
   );
 }
+
+export default KpiCardSparkline;

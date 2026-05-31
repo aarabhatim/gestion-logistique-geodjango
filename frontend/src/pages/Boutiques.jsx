@@ -81,7 +81,7 @@ const BoutiqueCard = ({ b, onValider }) => {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-secondary)' }}>
-        <span>Rayon: {b.rayon_livraison_km} km · Frais: {b.frais_livraison_base} MAD · Min: {b.commande_minimum} MAD</span>
+        <span>{t('bt_radius')}: {b.rayon_livraison_km} km · {t('bt_fees')}: {b.frais_livraison_base} MAD · {t('bt_min')}: {b.commande_minimum} MAD</span>
         <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
           onClick={() => setExpanded(!expanded)}>
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -140,7 +140,7 @@ const Boutiques = () => {
       await fondateursApi.adminValider(id, action);
       fetch();
     } catch (e) {
-      alert(e.response?.data?.detail || 'Erreur');
+      alert(e.response?.data?.detail || t('state_error'));
     }
   };
 

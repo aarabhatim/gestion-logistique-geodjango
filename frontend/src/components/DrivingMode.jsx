@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * DrivingMode — Interface conduite haute visibilité pour chauffeurs
@@ -14,7 +15,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet
  *   onSOS       — callback bouton SOS
  */
 
-const DARK_TILE = 'https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL';
+const DARK_TILE = `https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`;
 
 const RecenterMap = ({ position }) => {
   const map = useMap();
@@ -25,6 +26,7 @@ const RecenterMap = ({ position }) => {
 };
 
 const DrivingMode = ({ mission, onComplete, onSOS }) => {
+  const { t } = useI18n();
   const [position, setPosition] = useState(null);
   const [progress, setProgress] = useState(0); // 0-100%
   const [elapsed, setElapsed] = useState(0);
@@ -97,7 +99,7 @@ const DrivingMode = ({ mission, onComplete, onSOS }) => {
         {/* ETA flottant en haut */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur text-white rounded-2xl px-6 py-3 text-center shadow-xl">
           <p className="text-3xl font-black text-[#FF6B35]">{etaMin} min</p>
-          <p className="text-xs text-gray-400 mt-0.5">temps restant estimé</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t('drv_eta_remaining')}</p>
         </div>
 
         {/* SOS bouton flottant */}
@@ -143,7 +145,7 @@ const DrivingMode = ({ mission, onComplete, onSOS }) => {
           onClick={onComplete}
           className="w-full bg-[#2ED573] hover:bg-[#57E891] active:scale-98 text-white font-black text-lg py-4 rounded-2xl transition-all shadow-lg"
         >
-          ✅ Livraison confirmée
+          {t('drv_delivery_confirmed')}
         </button>
       </div>
     </div>

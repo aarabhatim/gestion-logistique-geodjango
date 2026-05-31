@@ -98,6 +98,7 @@ const Toast = ({ msg, type, onHide }) => {
 
 // ─── Score Tab ─────────────────────────────────────────────────────────────────
 const ScoreTab = ({ transporteurId }) => {
+  const { t: tr } = useI18n();
   const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -118,19 +119,19 @@ const ScoreTab = ({ transporteurId }) => {
   if (!score) return (
     <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
       <BarChart2 size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 10px' }} />
-      Aucun score calculé pour ce transporteur
+      {tr('tr_no_score_msg')}
     </div>
   );
 
   const dims = [
-    { key: 'score_ponctualite', label: 'Ponctualité', color: '#3b82f6', fullMark: 100 },
-    { key: 'score_fiabilite',   label: 'Fiabilité',   color: '#10b981', fullMark: 100 },
-    { key: 'score_satisfaction',label: 'Satisfaction', color: '#f59e0b', fullMark: 100 },
-    { key: 'score_rapidite',    label: 'Rapidité',    color: '#22c55e', fullMark: 100 },
+    { key: 'score_ponctualite', labelKey: 'tr_punctuality', color: '#3b82f6', fullMark: 100 },
+    { key: 'score_fiabilite',   labelKey: 'tr_reliability', color: '#10b981', fullMark: 100 },
+    { key: 'score_satisfaction', labelKey: 'tr_satisfaction', color: '#f59e0b', fullMark: 100 },
+    { key: 'score_rapidite',    labelKey: 'tr_speed',    color: '#22c55e', fullMark: 100 },
   ];
 
   const radarData = dims.map(d => ({
-    dimension: d.label,
+    dimension: tr(d.labelKey) || d.key,
     score: Math.round((score[d.key] || 0) * 100) / 100,
     fullMark: 100,
   }));
@@ -189,7 +190,7 @@ const ScoreTab = ({ transporteurId }) => {
       {/* Dernière mise à jour */}
       {score.updated_at && (
         <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', marginTop: 12 }}>
-          Dernière mise à jour : {new Date(score.updated_at).toLocaleDateString()}
+          {tr('tr_last_updated')} : {new Date(score.updated_at).toLocaleDateString(undefined)}
         </div>
       )}
     </div>
@@ -265,12 +266,13 @@ const TransporteurCard = ({ t, onSelect }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DETAIL_TABS = [
-  { key: 'info',  label: 'Infos',  icon: Eye },
-  { key: 'score', label: 'Score',  icon: BarChart2 },
+  { key: 'info',  labelKey: 'tr_tab_info',   icon: Eye },
+  { key: 'score', labelKey: 'tr_tab_score',  icon: BarChart2 },
 ];
 
 // TransporteurDetail: contenu sans overlay (l'appelant fournit déjà le backdrop)
 const TransporteurDetail = ({ t, onClose, onAction }) => {
+  const { t: tr } = useI18n();
   const [activeTab, setActiveTab] = useState('info');
 
   return (
@@ -291,7 +293,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
         {/* Statut badges */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0.75rem 1.25rem', flexShrink: 0 }}>
           <span style={{ background: t.is_verified ? '#10b98120' : '#f59e0b20', color: t.is_verified ? '#10b981' : '#f59e0b', fontSize: 12, padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
-            {t.is_verified ? '✔ Vérifié' : '⏳ En attente vérification'}
+            {t.is_verified ? tr('tr_verified_badge') : tr('tr_pending_verif')}
           </span>
           <span style={{
             background: t.is_on_delivery ? '#f59e0b20' : t.is_available ? '#10b98120' : '#47556920',
@@ -315,7 +317,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
                   cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s',
                   marginBottom: '-1px',
                 }}>
-                <Icon size={14} /> {tab.label}
+                <Icon size={14} /> {tr(tab.labelKey)}
               </button>
             );
           })}
@@ -331,17 +333,17 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                   <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type</div><div style={{ fontWeight: 600 }}>{t.vehicule_type}</div></div>
                   <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Plaque</div><div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{t.plaque}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Capacité</div><div style={{ fontWeight: 600 }}>{t.capacite_kg} kg</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{tr('tr_capacity')}</div><div style={{ fontWeight: 600 }}>{t.capacite_kg} kg</div></div>
                 </div>
               </div>
 
               {/* Stats grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: '1rem' }}>
                 {[
-                  { label: 'Livraisons', value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
-                  { label: 'Note', value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
-                  { label: 'Avis', value: t.nombre_avis || 0, color: '#22c55e', icon: Award },
-                  { label: 'Revenus', value: `${Math.round((t.revenus_total || 0) / 1000)}k`, color: '#10b981', icon: DollarSign },
+                  { label: tr('drv_card_deliveries'), value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
+                  { label: tr('drv_card_rating'), value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
+                  { label: tr('drv_card_reviews'), value: t.nombre_avis || 0, color: '#22c55e', icon: Award },
+                  { label: tr('drv_card_revenue'), value: `${Math.round((t.revenus_total || 0) / 1000)}k`, color: '#10b981', icon: DollarSign },
                 ].map(({ label, value, color, icon: Icon }) => (
                   <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
                     <Icon size={14} color={color} style={{ margin: '0 auto 4px', display: 'block' }} />
@@ -385,12 +387,12 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
                 {!t.is_verified ? (
                   <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
                     onClick={() => onAction(t, 'approuver')}>
-                    <Shield size={15} /> Vérifier ce chauffeur
+                    <Shield size={15} /> {tr('tr_verify_btn')}
                   </button>
                 ) : (
                   <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center', color: '#ef4444', border: '1px solid #ef444430' }}
                     onClick={() => onAction(t, 'rejeter')}>
-                    <UserX size={15} /> Retirer la vérification
+                    <UserX size={15} /> {tr('tr_unverify_btn')}
                   </button>
                 )}
               </div>
@@ -581,7 +583,7 @@ const Transporteurs = () => {
       ) : transporteurs.length === 0 ? (
         <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
           <Truck size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <div>Aucun transporteur trouve.</div>
+          <div>{t("tr_empty")}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>

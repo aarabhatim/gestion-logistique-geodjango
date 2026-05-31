@@ -3,6 +3,7 @@ import { X, MapPin } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import api, { getClients } from '../services/api';
+import { useI18n } from '../contexts/I18nContext';
 import './CommandeForm.css';
 
 // Fix Leaflet icons in modal
@@ -51,7 +52,7 @@ const CommandeFormModal = ({ onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!pointDestination) {
-      alert("Veuillez cliquer sur la carte pour sélectionner la destination !");
+      alert(t('cmdf_err_dest'));
       return;
     }
 
@@ -73,7 +74,7 @@ const CommandeFormModal = ({ onClose, onSuccess }) => {
       await api.post('commandes/', payload);
       onSuccess();
     } catch (error) {
-      alert("Erreur: " + JSON.stringify(error.response?.data || error.message));
+      alert(t('cfm_err_create') + ': ' + JSON.stringify(error.response?.data || error.message));
     } finally {
       setLoading(false);
     }
@@ -83,19 +84,19 @@ const CommandeFormModal = ({ onClose, onSuccess }) => {
     <div className="modal-overlay">
       <div className="modal-content animate-fade-in">
         <div className="modal-header">
-          <h3>Nouvelle Commande</h3>
+          <h3>{t('cmdf_title')}</h3>
           <button onClick={onClose} className="btn-close"><X size={20} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="form-grid">
           <div className="form-group">
-            <label>Client</label>
+            <label>{t('cmdf_client')}</label>
             <select 
               required 
               value={formData.client} 
               onChange={e => setFormData({...formData, client: e.target.value})}
             >
-              <option value="">Sélectionnez un client...</option>
+              <option value="">{t('cmdf_select_client')}</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.properties.prenom} {c.properties.nom}</option>
               ))}
@@ -103,43 +104,43 @@ const CommandeFormModal = ({ onClose, onSuccess }) => {
           </div>
 
           <div className="form-group">
-            <label>Marchandise</label>
+            <label>{t('cmdf_marchandise')}</label>
             <input type="text" required value={formData.type_marchandise} onChange={e => setFormData({...formData, type_marchandise: e.target.value})} />
           </div>
 
           <div className="form-group">
-            <label>Poids (kg)</label>
+            <label>{t('cmdf_poids')}</label>
             <input type="number" required min="1" value={formData.poids_kg} onChange={e => setFormData({...formData, poids_kg: e.target.value})} />
           </div>
 
           <div className="form-group">
-            <label>Date souhaitée</label>
+            <label>{t('cmdf_date')}</label>
             <input type="date" required value={formData.date_souhaitee} onChange={e => setFormData({...formData, date_souhaitee: e.target.value})} />
           </div>
 
           <div className="form-group full-width">
-            <label>Adresse de Destination (Description)</label>
-            <input type="text" required placeholder="Ex: 12 Rue de la Liberté" value={formData.adresse_destination} onChange={e => setFormData({...formData, adresse_destination: e.target.value})} />
+            <label>{t('cmdf_dest_addr')}</label>
+            <input type="text" required placeholder={t('cmdf_dest_ph')} value={formData.adresse_destination} onChange={e => setFormData({...formData, adresse_destination: e.target.value})} />
           </div>
 
           <div className="form-group full-width map-group">
-            <label><MapPin size={16}/> Cliquez sur la carte pour définir la géolocalisation de destination</label>
+            <label><MapPin size={16}/> {t('cmdf_map_label')}</label>
             <div className="form-map-container">
               <MapContainer center={[35.7595, -5.8340]} zoom={11} style={{ height: '250px', width: '100%', borderRadius: '8px' }}>
                 <TileLayer
-                  url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  url={`https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
                   attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
                 />
                 <LocationPicker position={pointDestination} setPosition={setPointDestination} />
               </MapContainer>
             </div>
-            {!pointDestination && <small style={{color:'var(--warning-color)'}}>Position requise !</small>}
+            {!pointDestination && <small style={{color:'var(--warning-color)'}}>{t('cmdf_pos_required')}</small>}
           </div>
 
           <div className="form-actions full-width">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Annuler</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>{t('common_cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={loading || !pointDestination}>
-              {loading ? 'Création...' : 'Créer la commande'}
+              {loading ? t('cmdf_creating') : t('cmdf_create')}
             </button>
           </div>
         </form>

@@ -73,14 +73,16 @@ export const useTheme = () => {
 
 // Petit composant utilitaire : bouton bascule
 import { Sun, Moon } from 'lucide-react';
+import { useI18n } from './I18nContext';
 
 export const ThemeToggle = ({ size = 18, style }) => {
   const { mode, toggleMode } = useTheme();
+  const { t } = useI18n();
   return (
     <button
       onClick={toggleMode}
-      title={mode === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-      aria-label="Basculer le thème"
+      title={mode === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
+      aria-label={t('theme_aria_toggle')}
       style={{
         background: 'rgba(255,255,255,0.06)',
         border: '1px solid rgba(255,255,255,0.1)',

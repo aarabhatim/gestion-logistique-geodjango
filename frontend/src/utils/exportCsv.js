@@ -49,7 +49,7 @@ export const CSV_COLUMNS = {
     { label: 'Boutique',        key: 'fondateur_detail.nom_boutique' },
     { label: 'Adresse',         key: 'adresse_livraison' },
     { label: 'Montant (MAD)',   key: 'montant_total', format: v => parseFloat(v || 0).toFixed(2) },
-    { label: 'Date création',   key: 'created_at', format: v => v ? new Date(v).toLocaleString('fr-FR') : '' },
+    { label: 'Date création',   key: 'created_at', format: v => v ? new Date(v).toLocaleString(undefined) : '' },
     { label: 'Livreur',         key: 'transporteur_detail.prenom', format: (v, r) => `${r.transporteur_detail?.prenom || ''} ${r.transporteur_detail?.nom || ''}`.trim() },
   ],
   clients: [
@@ -60,7 +60,7 @@ export const CSV_COLUMNS = {
     { label: 'Ville',           key: 'ville' },
     { label: 'Commandes',       key: 'nb_commandes' },
     { label: 'Total dépensé',   key: 'total_depense', format: v => parseFloat(v || 0).toFixed(2) },
-    { label: 'Inscription',     key: 'date_joined', format: v => v ? new Date(v).toLocaleDateString('fr-FR') : '' },
+    { label: 'Inscription',     key: 'date_joined', format: v => v ? new Date(v).toLocaleDateString(undefined) : '' },
   ],
   transporteurs: [
     { label: 'Prénom',          key: 'prenom' },
@@ -80,7 +80,7 @@ export const CSV_COLUMNS = {
     { label: 'Description',     key: 'description' },
     { label: 'Commande',        key: 'commande_reference' },
     { label: 'Signalé par',     key: 'signale_par_detail.prenom', format: (v, r) => `${r.signale_par_detail?.prenom || ''} ${r.signale_par_detail?.nom || ''}`.trim() },
-    { label: 'Date',            key: 'created_at', format: v => v ? new Date(v).toLocaleString('fr-FR') : '' },
+    { label: 'Date',            key: 'created_at', format: v => v ? new Date(v).toLocaleString(undefined) : '' },
   ],
   tickets: [
     { label: 'ID',              key: 'id' },
@@ -89,7 +89,7 @@ export const CSV_COLUMNS = {
     { label: 'Priorité',        key: 'priorite' },
     { label: 'Catégorie',       key: 'categorie' },
     { label: 'Auteur',          key: 'auteur_detail.prenom', format: (v, r) => `${r.auteur_detail?.prenom || ''} ${r.auteur_detail?.nom || ''}`.trim() },
-    { label: 'Date création',   key: 'created_at', format: v => v ? new Date(v).toLocaleString('fr-FR') : '' },
-    { label: 'Résolu le',       key: 'resolved_at', format: v => v ? new Date(v).toLocaleString('fr-FR') : '–' },
+    { label: 'Date création',   key: 'created_at', format: v => v ? new Date(v).toLocaleString(undefined) : '' },
+    { label: 'Résolu le',       key: 'resolved_at', format: v => v ? new Date(v).toLocaleString(undefined) : '–' },
   ],
 };

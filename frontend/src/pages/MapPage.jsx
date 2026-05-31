@@ -94,16 +94,16 @@ const Legend = () => (
     padding: '14px 16px', minWidth: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
   }}>
     <div style={{ fontWeight: 800, fontSize: 11, color: '#94a3b8', marginBottom: 12, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
-      <Layers size={11} /> LÉGENDE
+      <Layers size={11} /> {t('map_legend')}
     </div>
 
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 10, color: '#64748b', marginBottom: 6, fontWeight: 700, letterSpacing: '0.05em' }}>TRANSPORTEURS</div>
       {[
-        { color: '#10b981', emoji: '🚗', label: 'Disponible' },
-        { color: '#f59e0b', emoji: '🚚', label: 'En livraison' },
-        { color: '#475569', emoji: '🚙', label: 'Hors ligne' },
-        { color: '#ef4444', emoji: '⚠️', label: 'Non vérifié' },
+        { color: '#10b981', emoji: '🚗', labelKey: 'lbl_available' },
+        { color: '#f59e0b', emoji: '🚚', labelKey: 'map_delivering' },
+        { color: '#475569', emoji: '🚙', labelKey: 'tr_offline' },
+        { color: '#ef4444', emoji: '⚠️', labelKey: 'tr_pending' },
       ].map(({ color, emoji, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
           <span style={{ fontSize: 13 }}>{emoji}</span>
@@ -116,9 +116,9 @@ const Legend = () => (
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 10, color: '#64748b', marginBottom: 6, fontWeight: 700, letterSpacing: '0.05em' }}>BOUTIQUES</div>
       {[
-        { color: '#3b82f6', emoji: '🏪', label: 'Ouverte' },
-        { color: '#64748b', emoji: '🏪', label: 'Fermée' },
-        { color: '#f59e0b', emoji: '🏪', label: 'Non vérifiée' },
+        { color: '#3b82f6', emoji: '🏪', labelKey: 'map_open' },
+        { color: '#64748b', emoji: '🏪', labelKey: 'map_closed' },
+        { color: '#f59e0b', emoji: '🏪', labelKey: 'tr_pending' },
       ].map(({ color, emoji, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
           <span style={{ fontSize: 13 }}>{emoji}</span>
@@ -264,6 +264,7 @@ const BoutiqueSupervisionPanel = ({ boutiques, onValider, loading }) => {
 
 // ─── Side panel: Activité temps réel ──────────────────────────────────────────
 const ActivityPanel = ({ transporteurs, livraisons }) => {
+  const { t } = useI18n();
   const formatDuration = (m) => {
     if (!m) return '0h';
     const h = Math.floor(m / 60);
@@ -282,7 +283,7 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
   return (
     <div className="glass-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
       <h4 style={{ fontWeight: 700, fontSize: 14, marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Activity size={15} color="#10b981" /> Activité temps réel
+        <Activity size={15} color="#10b981" /> {t('map_realtime')}
       </h4>
 
       {/* Livraisons EN_ROUTE */}
@@ -337,18 +338,73 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+const MapSelectionDetails = ({ item, onClose, onValidateBoutique }) => {
+  const { type, data } = item;
+  const title =
+    type === 'transporteur' ? (data.nom_complet || data.user_email) :
+    type === 'boutique' ? data.nom_boutique :
+    data.reference;
+
+  const rows = type === 'transporteur'
+    ? [
+        ['Type', data.vehicule_type || '-'],
+        ['Plaque', data.plaque || '-'],
+        ['Statut', data.is_on_delivery ? 'En livraison' : data.is_available ? 'Disponible' : 'Hors ligne'],
+        ['Livraisons', data.nombre_livraisons || 0],
+      ]
+    : type === 'boutique'
+      ? [
+          ['Categorie', data.categorie || '-'],
+          ['Ville', data.ville || '-'],
+          ['Adresse', data.adresse || '-'],
+          ['Statut', data.is_verified ? (data.is_open ? 'Ouverte' : 'Fermee') : 'En attente'],
+        ]
+      : [
+          ['Boutique', data.fondateur_detail?.nom_boutique || '-'],
+          ['Adresse', data.adresse_livraison || '-'],
+          ['Montant', `${Math.round(data.total_price || 0)} MAD`],
+          ['Statut', data.statut || '-'],
+        ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 800 }}>{type}</div>
+          <h3 style={{ margin: '4px 0 0', fontSize: 18 }}>{title}</h3>
+        </div>
+        <button className="btn btn-secondary" style={{ padding: '4px 8px' }} onClick={onClose}>Fermer</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map(([label, value]) => (
+          <div key={label} style={{ paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+      {type === 'boutique' && !data.is_verified && (
+        <button className="btn btn-primary" onClick={() => onValidateBoutique(data.id, 'valider')}>
+          Valider la boutique
+        </button>
+      )}
+    </div>
+  );
+};
+
 const MapPage = () => {
-  const { t } = useI18n();
+  const { t, tStatus } = useI18n();
   const [transporteurs, setTransporteurs] = useState([]);
   const [boutiques, setBoutiques] = useState([]);
   const [livraisons, setLivraisons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
   const [layers, setLayers] = useState({
-    transporteurs: { label: 'Transporteurs', color: '#10b981', active: true, count: 0 },
-    boutiques:     { label: 'Boutiques',     color: '#3b82f6', active: true, count: 0 },
-    livraisons:    { label: 'Livraisons',    color: '#ec4899', active: true, count: 0 },
+    transporteurs: { labelKey: 'transporteurs', color: '#10b981', active: true, count: 0 },
+    boutiques:     { labelKey: 'boutiques',     color: '#3b82f6', active: true, count: 0 },
+    livraisons:    { labelKey: 'map_deliveries', color: '#ec4899', active: true, count: 0 },
   });
   const intervalRef = useRef(null);
 
@@ -427,11 +483,11 @@ const MapPage = () => {
   const heuresFlotte = Math.floor(totalTempsActif / 60);
 
   const kpiStats = [
-    { icon: CheckCircle, label: 'Disponibles',  value: disponibles,    color: '#10b981' },
-    { icon: Truck,       label: 'En livraison', value: enLivraison,    color: '#f59e0b' },
-    { icon: Package,     label: 'Actives',      value: livraisons.length, color: '#ec4899' },
-    { icon: Store,       label: 'Ouvertes',     value: boutiquesOpen,  color: '#3b82f6', sub: `${boutiquesAttente} en attente` },
-    { icon: Clock,       label: 'Heures flotte', value: `${heuresFlotte}h`, color: '#a78bfa', sub: 'aujourd\'hui' },
+    { icon: CheckCircle, label: t('lbl_available'),    value: disponibles,    color: '#10b981' },
+    { icon: Truck,       label: t('map_delivering'),   value: enLivraison,    color: '#f59e0b' },
+    { icon: Package,     label: t('dash_actives'),      value: livraisons.length, color: '#ec4899' },
+    { icon: Store,       label: t('map_open'),          value: boutiquesOpen,  color: '#3b82f6', sub: `${boutiquesAttente} ${t('map_waiting')}` },
+    { icon: Clock,       label: t('map_fleet_hours'),   value: `${heuresFlotte}h`, color: '#a78bfa', sub: t('fin_today') },
   ];
 
   const getTransporteurIcon = (t) => {
@@ -464,16 +520,16 @@ const MapPage = () => {
           <p className="page-subtitle">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-              Temps réel
+              {t('map_realtime_tab')}
             </span>
-            {lastUpdate && ` · Maj ${lastUpdate.toLocaleTimeString('fr-FR')}`}
+            {lastUpdate && ` · Maj ${lastUpdate.toLocaleTimeString(undefined)}`}
             {' · '}Auto-refresh 30s
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-            <input className="glass-input" placeholder="Rechercher sur la carte..." value={search}
+            <input className="glass-input" placeholder={t("map_search_placeholder")} value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft: 32, width: 260, fontSize: 13 }} />
           </div>
@@ -491,7 +547,7 @@ const MapPage = () => {
           {loading ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, color: 'var(--text-secondary)' }}>
               <RefreshCw size={32} className="spin" />
-              <span>Chargement des données cartographiques…</span>
+              <span>{t('map_loading')}</span>
             </div>
           ) : (
             <>
@@ -502,7 +558,7 @@ const MapPage = () => {
                 zoomControl={false}
               >
                 <TileLayer
-                  url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
                   attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
                 />
                 <FitBounds points={allPoints} />
@@ -511,7 +567,12 @@ const MapPage = () => {
                 {layers.transporteurs.active && filteredT.map(t => {
                   if (!t.latitude || !t.longitude) return null;
                   return (
-                    <Marker key={`t-${t.id}`} position={[t.latitude, t.longitude]} icon={getTransporteurIcon(t)}>
+                    <Marker
+                      key={`t-${t.id}`}
+                      position={[t.latitude, t.longitude]}
+                      icon={getTransporteurIcon(t)}
+                      eventHandlers={{ click: () => setSelectedItem({ type: 'transporteur', data: t }) }}
+                    >
                       <Popup>
                         <div style={{ minWidth: 200 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -543,7 +604,12 @@ const MapPage = () => {
                 {layers.boutiques.active && filteredB.map(b => {
                   if (!b.latitude || !b.longitude) return null;
                   return (
-                    <Marker key={`b-${b.id}`} position={[b.latitude, b.longitude]} icon={getBoutiqueIcon(b)}>
+                    <Marker
+                      key={`b-${b.id}`}
+                      position={[b.latitude, b.longitude]}
+                      icon={getBoutiqueIcon(b)}
+                      eventHandlers={{ click: () => setSelectedItem({ type: 'boutique', data: b }) }}
+                    >
                       <Popup>
                         <div style={{ minWidth: 200 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>

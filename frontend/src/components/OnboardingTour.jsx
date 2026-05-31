@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * OnboardingTour — Présentation des 3 fonctionnalités clés (1ère connexion)
@@ -10,27 +11,13 @@ import React, { useState, useEffect } from 'react';
  */
 
 const STEPS = [
-  {
-    emoji: '🛒',
-    title: 'Commandez facilement',
-    desc: 'Parcourez les boutiques de votre quartier, ajoutez vos plats préférés au panier et commandez en quelques clics.',
-    color: 'from-orange-400 to-orange-600',
-  },
-  {
-    emoji: '🗺️',
-    title: 'Suivez en temps réel',
-    desc: 'Regardez votre chauffeur sur la carte et recevez une notification quand il est à 5 minutes.',
-    color: 'from-blue-400 to-blue-600',
-  },
-  {
-    emoji: '⭐',
-    title: 'Gagnez des points',
-    desc: 'Chaque commande vous rapporte des points fidélité convertibles en réductions sur vos prochaines commandes.',
-    color: 'from-purple-400 to-purple-600',
-  },
+  { emoji: '🛒', titleKey: 'ob_step1_title', descKey: 'ob_step1_desc', color: 'from-orange-400 to-orange-600' },
+  { emoji: '🗺️', titleKey: 'ob_step2_title', descKey: 'ob_step2_desc', color: 'from-blue-400 to-blue-600' },
+  { emoji: '⭐', titleKey: 'ob_step3_title', descKey: 'ob_step3_desc', color: 'from-purple-400 to-purple-600' },
 ];
 
 const OnboardingTour = ({ onDone }) => {
+  const { t } = useI18n();
   const [current, setCurrent] = useState(0);
   const [exiting, setExiting] = useState(false);
 
@@ -63,8 +50,8 @@ const OnboardingTour = ({ onDone }) => {
           </div>
 
           <div className="p-6">
-            <h2 className="text-xl font-bold text-[var(--color-text)] font-heading mb-2">{step.title}</h2>
-            <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">{step.desc}</p>
+            <h2 className="text-xl font-bold text-[var(--color-text)] font-heading mb-2">{t(step.titleKey)}</h2>
+            <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed">{t(step.descKey)}</p>
 
             {/* Dots */}
             <div className="flex justify-center gap-2 my-5">
@@ -84,13 +71,13 @@ const OnboardingTour = ({ onDone }) => {
                 onClick={finish}
                 className="flex-1 py-2.5 rounded-xl text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] transition-colors"
               >
-                Passer
+                {t('ob_skip')}
               </button>
               <button
                 onClick={next}
                 className="flex-1 py-2.5 rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
               >
-                {current < STEPS.length - 1 ? 'Suivant →' : 'Commencer ! 🎉'}
+                {current < STEPS.length - 1 ? t('ob_next') : t('ob_start')}
               </button>
             </div>
           </div>

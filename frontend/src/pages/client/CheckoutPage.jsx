@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import useCartStore from '../../stores/cartStore';
 import { commandesApi, promotionsApi } from '../../services/api';
 import { mediaUrl } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 
 /* ── Thème ───────────────────────────────────────────────────────────────── */
 const C = {
@@ -27,16 +28,18 @@ const C = {
 const FRAIS_LIVRAISON = 15;
 
 /* ── Étapes du tunnel ─────────────────────────────────────────────────────── */
-const ETAPES = [
-  { id: 'panier',     label: 'Panier',    icon: ShoppingCart },
-  { id: 'adresse',    label: 'Adresse',   icon: MapPin },
-  { id: 'promo',      label: 'Récap',     icon: Tag },
-  { id: 'paiement',   label: 'Paiement',  icon: CreditCard },
-  { id: 'confirmation', label: 'Confirmé', icon: CheckCircle },
+const ETAPES_DEFS = [
+  { id: 'panier',       labelKey: 'ck_step_cart',      icon: ShoppingCart },
+  { id: 'adresse',      labelKey: 'ck_step_address',   icon: MapPin },
+  { id: 'promo',        labelKey: 'ck_step_recap',     icon: Tag },
+  { id: 'paiement',     labelKey: 'ck_step_payment',   icon: CreditCard },
+  { id: 'confirmation', labelKey: 'ck_step_confirmed', icon: CheckCircle },
 ];
 
 /* ── Stepper ─────────────────────────────────────────────────────────────── */
 const Stepper = ({ current }) => {
+  const { t } = useI18n();
+  const ETAPES = ETAPES_DEFS.map(e => ({ ...e, label: t(e.labelKey) }));
   const ci = ETAPES.findIndex(e => e.id === current);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32, overflowX: 'auto', paddingBottom: 4 }}>
@@ -149,9 +152,9 @@ const Input = ({ label, placeholder, value, onChange, type = 'text', required, e
 const RecapMontants = ({ sousTotal, frais, reduction, total }) => (
   <div style={{ background: C.card, borderRadius: 12, padding: '16px 18px', border: `1px solid ${C.border}` }}>
     {[
-      { label: 'Sous-total', val: sousTotal.toFixed(2) },
-      { label: 'Frais de livraison', val: `+${frais.toFixed(2)}` },
-      reduction > 0 && { label: 'Réduction promo', val: `-${reduction.toFixed(2)}`, color: C.success },
+      { label: t('co_subtotal') || 'Sous-total', val: sousTotal.toFixed(2) },
+      { label: t('ck_delivery_fees'), val: `+${frais.toFixed(2)}` },
+      reduction > 0 && { label: t('lbl_promo_discount') || 'Réduction promo', val: `-${reduction.toFixed(2)}`, color: C.success },
     ].filter(Boolean).map(r => (
       <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 13, color: C.text2 }}>{r.label}</span>
@@ -159,7 +162,7 @@ const RecapMontants = ({ sousTotal, frais, reduction, total }) => (
       </div>
     ))}
     <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 12, display: 'flex', justifyContent: 'space-between' }}>
-      <span style={{ fontWeight: 700, fontSize: 15, color: C.text }}>Total</span>
+      <span style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{t('ck_total')}</span>
       <span style={{ fontWeight: 800, fontSize: 18, color: C.primary }}>{total.toFixed(2)} MAD</span>
     </div>
   </div>
@@ -169,6 +172,7 @@ const RecapMontants = ({ sousTotal, frais, reduction, total }) => (
    Page principale
 ══════════════════════════════════════════════════════════════════════════ */
 export default function CheckoutPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { items, fondateurs, updateQuantite, removeItem, clearCart, codesPromos, appliquerCodePromo, retirerCodePromo } = useCartStore();
 
@@ -218,7 +222,7 @@ export default function CheckoutPage() {
       appliquerCodePromo(fondateurId, codePromo, montantReduc);
       setPromoMsg({ type: 'success', text: `Code appliqué ! Réduction de ${montantReduc.toFixed(2)} MAD` });
     } catch {
-      setPromoMsg({ type: 'error', text: 'Code promo invalide ou expiré.' });
+      setPromoMsg({ type: 'error', text: t('ck_promo_invalid') });
     } finally {
       setPromoLoading(false);
     }
@@ -256,7 +260,7 @@ export default function CheckoutPage() {
       setCommandeCreee(results[0].data);
       setEtape('confirmation');
     } catch (err) {
-      setSubmitError(err.response?.data?.detail || 'Une erreur est survenue. Veuillez réessayer.');
+      setSubmitError(err.response?.data?.detail || t('ck_error_generic'));
     } finally {
       setSubmitting(false);
     }
@@ -266,8 +270,8 @@ export default function CheckoutPage() {
     return (
       <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, color: C.text }}>
         <ShoppingCart size={64} style={{ opacity: 0.3, marginBottom: 16 }} />
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Votre panier est vide</div>
-        <div style={{ fontSize: 14, color: C.text2, marginBottom: 24 }}>Ajoutez des produits pour passer commande.</div>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{t('ck_empty_cart')}</div>
+        <div style={{ fontSize: 14, color: C.text2, marginBottom: 24 }}>{t('ck_empty_sub')}</div>
         <button onClick={() => navigate('/client')}
           style={{ background: C.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
           Explorer les boutiques
@@ -325,7 +329,7 @@ export default function CheckoutPage() {
                 justifyContent: 'center', gap: 8,
                 boxShadow: `0 8px 24px ${C.primary}44`,
               }}>
-              Continuer — Adresse de livraison <ChevronRight size={18} />
+              {t('common_continue')} — {t('ck_step_address')} <ChevronRight size={18} />
             </button>
           </>
         )}
@@ -337,16 +341,16 @@ export default function CheckoutPage() {
               <MapPin size={18} color={C.primary} /> Adresse de livraison
             </div>
 
-            <Input label="Rue / N° adresse" placeholder="Ex : 12 Rue Hassan II" value={adresse.rue}
+            <Input label={t('lbl_street')} placeholder={t('ck_address_ph1')} value={adresse.rue}
               onChange={v => setAdresse(a => ({ ...a, rue: v }))} required error={adresseErrors.rue} />
-            <Input label="Quartier" placeholder="Ex : Maarif" value={adresse.quartier}
+            <Input label={t('lbl_district')} placeholder={t('ck_address_ph3')} value={adresse.quartier}
               onChange={v => setAdresse(a => ({ ...a, quartier: v }))} />
-            <Input label="Ville" placeholder="Ex : Casablanca" value={adresse.ville}
+            <Input label={t('lbl_city')} placeholder={t('ck_address_ph2')} value={adresse.ville}
               onChange={v => setAdresse(a => ({ ...a, ville: v }))} required error={adresseErrors.ville} />
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.text2, marginBottom: 6 }}>Informations complémentaires</label>
               <textarea value={adresse.details} onChange={e => setAdresse(a => ({ ...a, details: e.target.value }))}
-                placeholder="Étage, code d'accès, instructions particulières…"
+                placeholder={t('ck_address_ph4')}
                 rows={3}
                 style={{ width: '100%', padding: '10px 14px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
               />
@@ -354,7 +358,7 @@ export default function CheckoutPage() {
 
             <button onClick={() => { if (validerAdresse()) setEtape('promo'); }}
               style={{ width: '100%', marginTop: 8, background: C.primary, color: '#fff', border: 'none', borderRadius: 14, padding: '16px 0', fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              Continuer — Récapitulatif <ChevronRight size={18} />
+              {t('common_continue')} — {t('ck_step_recap')} <ChevronRight size={18} />
             </button>
           </>
         )}
@@ -413,14 +417,14 @@ export default function CheckoutPage() {
             <div style={{ background: `${C.primary}15`, border: `1px solid ${C.primary}40`, borderRadius: 12, padding: '12px 16px', marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
               <Truck size={18} color={C.primary} />
               <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>Livraison estimée : 30–45 min</div>
-                <div style={{ fontSize: 11, color: C.text2 }}>Selon la disponibilité des livreurs</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{t('ck_delivery_estimate')}</div>
+                <div style={{ fontSize: 11, color: C.text2 }}>{t('ck_delivery_time')}</div>
               </div>
             </div>
 
             <button onClick={() => setEtape('paiement')}
               style={{ width: '100%', marginTop: 20, background: C.primary, color: '#fff', border: 'none', borderRadius: 14, padding: '16px 0', fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              Continuer — Paiement <ChevronRight size={18} />
+              {t('common_continue')} — {t('ck_step_payment')} <ChevronRight size={18} />
             </button>
           </>
         )}
@@ -433,8 +437,8 @@ export default function CheckoutPage() {
             </div>
 
             {[
-              { id: 'CARTE', icon: '💳', label: 'Carte bancaire', desc: 'Paiement sécurisé en ligne' },
-              { id: 'CASH',  icon: '💵', label: 'Espèces à la livraison', desc: 'Payez au livreur à la réception' },
+              { id: 'CARTE', icon: '💳', label: t('ck_card_label'), desc: t('ck_card_desc') },
+              { id: 'CASH',  icon: '💵', label: t('ck_cash_label'), desc: t('ck_cash_desc') },
             ].map(m => (
               <div key={m.id} onClick={() => setModePaiement(m.id)}
                 style={{
@@ -462,13 +466,13 @@ export default function CheckoutPage() {
 
             {modePaiement === 'CARTE' && (
               <div style={{ background: C.card, borderRadius: 14, padding: 18, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-                <Input label="Numéro de carte" placeholder="1234 5678 9012 3456" value="" onChange={() => {}} />
+                <Input label={t('ck_card_number')} placeholder="1234 5678 9012 3456" value="" onChange={() => {}} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Input label="Date d'expiration" placeholder="MM/AA" value="" onChange={() => {}} />
+                  <Input label={t('ck_expiry')} placeholder="MM/AA" value="" onChange={() => {}} />
                   <Input label="CVV" placeholder="123" value="" onChange={() => {}} type="password" />
                 </div>
                 <div style={{ fontSize: 12, color: C.text2, textAlign: 'center', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  🔒 Paiement simulé — aucune donnée réelle traitée
+                  {t('ck_simulated')}
                 </div>
               </div>
             )}
@@ -492,7 +496,7 @@ export default function CheckoutPage() {
               }}>
               {submitting
                 ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Traitement en cours…</>
-                : <><CheckCircle size={18} /> Confirmer la commande — {total.toFixed(2)} MAD</>
+                : <><CheckCircle size={18} /> {t('action_confirm')} — {total.toFixed(2)} MAD</>
               }
             </button>
           </>
@@ -509,7 +513,7 @@ export default function CheckoutPage() {
             }}>
               <CheckCircle size={52} color={C.success} />
             </div>
-            <div style={{ fontWeight: 800, fontSize: 24, marginBottom: 8 }}>Commande confirmée !</div>
+            <div style={{ fontWeight: 800, fontSize: 24, marginBottom: 8 }}>{t('ck_confirm_title')}</div>
             {commandeCreee && (
               <div style={{ fontSize: 14, color: C.text2, marginBottom: 24 }}>
                 Référence : <strong style={{ color: C.text }}>#{commandeCreee.reference || commandeCreee.id}</strong>
@@ -517,10 +521,10 @@ export default function CheckoutPage() {
             )}
             <div style={{ background: C.surface, borderRadius: 16, padding: '18px 20px', marginBottom: 28, textAlign: 'left', border: `1px solid ${C.border}` }}>
               {[
-                { icon: '📦', label: 'Votre commande est enregistrée' },
-                { icon: '✅', label: 'La boutique va la valider sous peu' },
-                { icon: '🚚', label: 'Un livreur sera assigné automatiquement' },
-                { icon: '🔔', label: 'Vous serez notifié à chaque étape' },
+                { icon: '📦', label: t('ck_order_registered') },
+                { icon: '✅', label: t('ck_store_validate') },
+                { icon: '🚚', label: t('ck_driver_assigned') },
+                { icon: '🔔', label: t('ck_notified') },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                   <span style={{ fontSize: 20 }}>{s.icon}</span>
@@ -538,7 +542,7 @@ export default function CheckoutPage() {
               )}
               <button onClick={() => navigate('/client')}
                 style={{ background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 0', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
-                Retour à l'accueil
+                {t('ot_back_home')}
               </button>
             </div>
           </div>

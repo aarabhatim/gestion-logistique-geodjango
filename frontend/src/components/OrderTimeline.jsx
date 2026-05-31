@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 /**
  * OrderTimeline — Timeline visuelle des étapes commande
@@ -24,6 +25,7 @@ const STEPS = [
 const ORDER = ['EN_ATTENTE', 'VALIDEE', 'EN_PREPARATION', 'EN_ROUTE', 'LIVREE'];
 
 const OrderTimeline = ({ statut, eta, compact = false }) => {
+  const { t, tStatus } = useI18n();
   const currentIndex = ORDER.indexOf(statut);
   const cancelled = statut === 'ANNULEE';
 
@@ -32,8 +34,8 @@ const OrderTimeline = ({ statut, eta, compact = false }) => {
       <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-danger-10)] border border-[var(--color-danger)] border-opacity-20">
         <span className="text-2xl">❌</span>
         <div>
-          <p className="font-semibold text-[var(--color-danger)]">Commande annulée</p>
-          <p className="text-xs text-[var(--color-danger)] opacity-70">Cette commande a été annulée</p>
+          <p className="font-semibold text-[var(--color-danger)]">{t('status_ANNULEE')}</p>
+          <p className="text-xs text-[var(--color-danger)] opacity-70">{t('status_ANNULEE')}</p>
         </div>
       </div>
     );
@@ -78,7 +80,7 @@ const OrderTimeline = ({ statut, eta, compact = false }) => {
           <span className="text-xl">⏱️</span>
           <div>
             <p className="font-semibold text-[var(--color-primary)]">{eta}</p>
-            <p className="text-xs text-[var(--color-text-secondary)]">Estimation en temps réel</p>
+            <p className="text-xs text-[var(--color-text-secondary)]">{t('common_loading')}</p>
           </div>
         </div>
       )}
@@ -125,16 +127,16 @@ const OrderTimeline = ({ statut, eta, compact = false }) => {
                       'text-[var(--color-text-muted)]'
                     }`}
                   >
-                    {step.label}
+                    {tStatus(step.key)}
                   </p>
                   {active && (
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] animate-pulse" />
-                      En cours…
+                      {t('drv_in_progress')}
                     </p>
                   )}
                   {done && (
-                    <p className="text-xs text-[var(--color-success)] mt-0.5">Terminé</p>
+                    <p className="text-xs text-[var(--color-success)] mt-0.5">{t('adm_resolved')}</p>
                   )}
                 </div>
 

@@ -164,7 +164,7 @@ export default function TransporteurLayout({ children, pageTitle, pageIcon }) {
           <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
           <NavItem icon={BarChart3} label="Finances"     active={location.pathname === '/chauffeur/finances'}     onClick={() => navigate('/chauffeur/finances')}     collapsed={!sidebarOpen} />
           <NavItem icon={Award}     label="Gamification" active={location.pathname === '/chauffeur/gamification'} onClick={() => navigate('/chauffeur/gamification')} collapsed={!sidebarOpen} />
-          <NavItem icon={Settings}  label="Paramètres"   active={false} onClick={() => {}} collapsed={!sidebarOpen} />
+          <NavItem icon={Settings}  label="Paramètres"   active={location.pathname === '/chauffeur/parametres'} onClick={() => navigate('/chauffeur/parametres')} collapsed={!sidebarOpen} />
         </nav>
 
         {/* Status */}

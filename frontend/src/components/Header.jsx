@@ -22,7 +22,6 @@ const TYPE_COLORS = {
 const getColor = (n) =>
   TYPE_COLORS[n.type_notif] || TYPE_COLORS[n.type] || 'var(--accent-primary)';
 
-/** Groupe les notifications par date */
 const groupByDate = (notifications) => {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -39,7 +38,7 @@ const groupByDate = (notifications) => {
   return groups;
 };
 
-const NotifItem = ({ n, onMarkRead, onDelete }) => {
+const NotifItem = ({ n, onMarkRead, onDelete, deleteLabel }) => {
   const color = getColor(n);
   return (
     <div
@@ -55,7 +54,6 @@ const NotifItem = ({ n, onMarkRead, onDelete }) => {
       onMouseEnter={e => { if (!n.lue) e.currentTarget.style.background = 'rgba(79,140,255,0.08)'; }}
       onMouseLeave={e => { e.currentTarget.style.background = n.lue ? 'transparent' : 'rgba(79,140,255,0.04)'; }}
     >
-      {/* Dot coloré */}
       <div style={{
         width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
         background: n.lue ? 'var(--text-secondary)' : color, marginTop: 5,
@@ -74,7 +72,7 @@ const NotifItem = ({ n, onMarkRead, onDelete }) => {
       </div>
       <button
         onClick={e => { e.stopPropagation(); onDelete(n.id); }}
-        title="Supprimer"
+        title={deleteLabel}
         style={{
           background: 'transparent', border: 'none', cursor: 'pointer',
           color: 'var(--text-secondary)', padding: 4, borderRadius: 6,
@@ -106,7 +104,6 @@ const GroupLabel = ({ label, count }) => (
 const Header = () => {
   const { t, langue, setLangue } = useI18n();
 
-  // Use global NotificationContext (connected to WebSocket)
   const {
     notifications,
     unreadCount,
@@ -127,7 +124,6 @@ const Header = () => {
   const dropdownRef = useRef(null);
   const langRef = useRef(null);
 
-  // Fetch notifications when dropdown opens or filter changes
   useEffect(() => {
     if (showDropdown) {
       fetchNotifications(true, showAll);
@@ -147,6 +143,11 @@ const Header = () => {
 
   const groups = groupByDate(notifications);
   const currentLang = LANGS.find(l => l.code === langue) || LANGS[0];
+
+  const TABS = [
+    { label: t('notif_unread'), val: false },
+    { label: t('notif_all_tab'), val: true },
+  ];
 
   return (
     <header className="top-header glass-card">
@@ -200,7 +201,6 @@ const Header = () => {
                 justifyContent: 'center', fontWeight: 'bold',
               }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
             )}
-            {/* WebSocket connection indicator */}
             <span style={{
               position: 'absolute', bottom: -2, right: -2,
               width: 7, height: 7, borderRadius: '50%',
@@ -242,13 +242,13 @@ const Header = () => {
                 <div style={{ display: 'flex', gap: 6 }}>
                   {unreadCount > 0 && (
                     <button className="btn btn-sm" onClick={toutLire} disabled={loading}
-                      title="Tout marquer comme lu"
+                      title={t('notif_mark_all_read')}
                       style={{ background: 'transparent', color: 'var(--accent-primary)', fontSize: 12, padding: '4px 8px', border: '1px solid var(--accent-primary)30' }}>
-                      <CheckCheck size={13} style={{ marginRight: 3 }} /> Tout lire
+                      <CheckCheck size={13} style={{ marginRight: 3 }} /> {t('mark_all_read')}
                     </button>
                   )}
                   <button className="btn btn-sm" onClick={supprimerLues} disabled={loading}
-                    title="Supprimer les notifications lues"
+                    title={t('notif_delete_read')}
                     style={{ background: 'transparent', color: '#ef4444', fontSize: 12, padding: '4px 8px', border: '1px solid #ef444430' }}>
                     <Trash2 size={13} />
                   </button>
@@ -264,7 +264,7 @@ const Header = () => {
                 display: 'flex', gap: 0, borderBottom: '1px solid var(--glass-border)',
                 flexShrink: 0,
               }}>
-                {[{ label: 'Non lues', val: false }, { label: 'Toutes', val: true }].map(opt => (
+                {TABS.map(opt => (
                   <button key={String(opt.val)} onClick={() => setShowAll(opt.val)}
                     style={{
                       flex: 1, padding: '8px 0', border: 'none', fontSize: 12, fontWeight: 600,
@@ -289,30 +289,29 @@ const Header = () => {
                   <>
                     {groups.today.length > 0 && (
                       <>
-                        <GroupLabel label="Aujourd'hui" count={groups.today.length} />
+                        <GroupLabel label={t('notif_today')} count={groups.today.length} />
                         {groups.today.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} deleteLabel={t('action_delete')} />
                         ))}
                       </>
                     )}
                     {groups.week.length > 0 && (
                       <>
-                        <GroupLabel label="Cette semaine" count={groups.week.length} />
+                        <GroupLabel label={t('notif_this_week')} count={groups.week.length} />
                         {groups.week.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} deleteLabel={t('action_delete')} />
                         ))}
                       </>
                     )}
                     {groups.older.length > 0 && (
                       <>
-                        <GroupLabel label="Plus ancien" count={groups.older.length} />
+                        <GroupLabel label={t('notif_older')} count={groups.older.length} />
                         {groups.older.map(n => (
-                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} />
+                          <NotifItem key={n.id} n={n} onMarkRead={marquerLue} onDelete={supprimer} deleteLabel={t('action_delete')} />
                         ))}
                       </>
                     )}
 
-                    {/* Charger plus — pagination */}
                     {showAll && hasMore && (
                       <div style={{
                         padding: '10px 14px', textAlign: 'center',
@@ -333,7 +332,9 @@ const Header = () => {
                           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                         >
-                          {loading ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Chargement...</> : 'Charger plus'}
+                          {loading
+                            ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> {t('notif_loading')}</>
+                            : t('notif_load_more')}
                         </button>
                       </div>
                     )}

@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import useNotificationSocket from '../hooks/useNotificationSocket';
 
 import { notificationsApi } from '../services/api';
+import { useI18n } from './I18nContext';
 
 const NotificationContext = createContext(null);
 
@@ -21,6 +22,7 @@ const TYPE_STYLE = {
 
 // ─── Composant Toast ─────────────────────────────────────────────────────────
 const ToastItem = ({ notif, onDismiss }) => {
+  const { t } = useI18n();
   const style = TYPE_STYLE[notif.type_notif] || TYPE_STYLE.INFO;
   const Icon = style.Icon;
   const timeoutRef = useRef(null);
@@ -73,7 +75,7 @@ const ToastItem = ({ notif, onDismiss }) => {
           color: 'var(--text-secondary)', padding: 4, borderRadius: 6,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-        title="Fermer">
+        title={t('action_close_lbl')}>
           <X size={14} />
       </button>
     </div>

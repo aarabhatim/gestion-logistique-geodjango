@@ -302,19 +302,19 @@ const HeatmapPage = () => {
             <LayersControl position="topright">
               <BaseLayer name="Streets (MapTiler)">
                 <TileLayer
-                  url="https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  url={`https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
                   attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
                 />
               </BaseLayer>
               <BaseLayer name="Satellite (MapTiler)">
                 <TileLayer
-                  url="https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=5d2tALzIlgsl0ucJYKZL"
+                  url={`https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${import.meta.env.VITE_MAPTILER_KEY}`}
                   attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
                 />
               </BaseLayer>
               <BaseLayer checked name="Sombre (MapTiler)">
                 <TileLayer
-                  url="https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=5d2tALzIlgsl0ucJYKZL"
+                  url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
                   attribution="&copy; MapTiler &copy; OpenStreetMap contributors"
                 />
               </BaseLayer>

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, Package } from 'lucide-react';
 import { commandesApi } from '../../services/api';
 import '../../styles/marjane.css';
+import { useI18n } from '../../contexts/I18nContext';
 
-const StoreOrders = () => {
+const Orders = () => {
+  const { t, tStatus } = useI18n();
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,34 +40,37 @@ const StoreOrders = () => {
 
   const COLUMNS = [
     {
-      title: 'En attente',
+      titleKey: 'status_EN_ATTENTE',
       status: 'EN_ATTENTE',
       icon: Clock,
       color: '#D97706',
       bg: 'rgba(245,158,11,0.06)',
       border: 'rgba(245,158,11,0.2)',
       nextStatus: 'EN_PREPARATION',
-      nextLabel: '✅ Accepter & Préparer',
+      nextLabelKey: 'ord_accept_btn',
+      nextLabelEmoji: '✅',
     },
     {
-      title: 'En préparation',
+      titleKey: 'status_EN_PREPARATION',
       status: 'EN_PREPARATION',
       icon: Package,
       color: '#E30613',
       bg: 'rgba(227,6,19,0.04)',
       border: 'rgba(227,6,19,0.15)',
       nextStatus: 'VALIDEE',
-      nextLabel: '📦 Marquer comme Prête',
+      nextLabelKey: 'ord_ready_btn',
+      nextLabelEmoji: '📦',
     },
     {
-      title: 'Prête / En attente livreur',
+      titleKey: 'ord_col_ready',
       status: 'VALIDEE',
       icon: CheckCircle,
       color: '#22C55E',
       bg: 'rgba(34,197,94,0.04)',
       border: 'rgba(34,197,94,0.15)',
       nextStatus: null,
-      nextLabel: null,
+      nextLabelKey: null,
+      nextLabelEmoji: null,
     },
   ];
 
@@ -92,7 +97,7 @@ const StoreOrders = () => {
             width: 28, height: 28,
             border: '3px solid var(--mj-border)', borderTopColor: 'var(--mj-red)', borderRadius: '50%',
           }} />
-          <span style={{ color: 'var(--mj-text-3)' }}>Chargement des commandes…</span>
+          <span style={{ color: 'var(--mj-text-3)' }}>{t('ord_loading')}</span>
         </div>
       ) : (
         <div style={{
@@ -124,10 +129,10 @@ const StoreOrders = () => {
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--mj-text)', fontFamily: 'var(--mj-font)' }}>
-                      {col.title}
+                      {t(col.titleKey)}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--mj-text-3)' }}>
-                      {columnOrders.length} commande{columnOrders.length !== 1 ? 's' : ''}
+                      {columnOrders.length}
                     </div>
                   </div>
                 </div>
@@ -148,14 +153,14 @@ const StoreOrders = () => {
                           Cmd #{order.reference || order.id}
                         </span>
                         <span style={{ color: 'var(--mj-text-3)', fontSize: 12 }}>
-                          {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(order.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
 
                       <div style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 13, color: 'var(--mj-text-3)' }}>
-                            {order.produits_commande?.length || 0} article{(order.produits_commande?.length || 0) !== 1 ? 's' : ''}
+                            {order.produits_commande?.length || 0} {(order.produits_commande?.length || 0) !== 1 ? t('ord_articles') : t('ord_article')}
                           </span>
                           <span style={{ fontWeight: 700, fontSize: 15, color: '#22C55E' }}>
                             {parseFloat(order.total_price || 0).toFixed(0)} MAD
@@ -174,7 +179,7 @@ const StoreOrders = () => {
                           style={{ fontSize: 13 }}
                           onClick={() => updateStatus(order.id, col.nextStatus)}
                         >
-                          {col.nextLabel}
+                          {col.nextLabelEmoji} {t(col.nextLabelKey)}
                         </button>
                       )}
                     </div>
@@ -189,4 +194,4 @@ const StoreOrders = () => {
   );
 };
 
-export default StoreOrders;
+export default Orders;

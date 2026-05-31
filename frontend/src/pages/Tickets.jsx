@@ -6,23 +6,25 @@ import {
 } from 'lucide-react';
 import { ticketsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../contexts/I18nContext';
 import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const PRIORITE_CONFIG = {
-  urgent: { label: 'Urgent',  class: 'badge-danger',   color: '#ef4444' },
-  moyen:  { label: 'Moyen',   class: 'badge-warning',  color: '#f59e0b' },
-  faible: { label: 'Faible',  class: 'badge-secondary', color: '#64748b' },
+  urgent: { key: 'ticket_urgent',  class: 'badge-danger',   color: '#ef4444' },
+  moyen:  { key: 'ticket_medium',  class: 'badge-warning',  color: '#f59e0b' },
+  faible: { key: 'ticket_low',  class: 'badge-secondary', color: '#64748b' },
 };
 
 const STATUT_CONFIG = {
-  ouvert:      { label: 'Ouvert',      class: 'badge-primary'  },
-  en_cours:    { label: 'En cours',    class: 'badge-warning'  },
-  en_attente:  { label: 'En attente',  class: 'badge-secondary'},
-  resolu:      { label: 'Résolu',      class: 'badge-success'  },
-  ferme:       { label: 'Fermé',       class: 'badge-secondary'},
+  ouvert:      { key: 'status_OUVERT',      class: 'badge-primary'  },
+  en_cours:    { key: 'status_EN_COURS',    class: 'badge-warning'  },
+  en_attente:  { key: 'status_EN_ATTENTE',  class: 'badge-secondary'},
+  resolu:      { key: 'status_RESOLU',      class: 'badge-success'  },
+  ferme:       { key: 'status_FERME',       class: 'badge-secondary'},
 };
 
 const Tickets = () => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const [tickets, setTickets] = useState([]);
@@ -72,7 +74,7 @@ const Tickets = () => {
             <MessageSquare size={24} /> {isAdmin ? 'File de tickets' : 'Mes tickets'}
           </h2>
           <p className="page-subtitle">
-            {isAdmin ? 'Gérez les demandes de support de la plateforme.' : 'Créez et suivez vos demandes de support.'}
+            {isAdmin ? t('tkt_subtitle_admin') : t('tkt_subtitle_user')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -103,7 +105,7 @@ const Tickets = () => {
           </select>
           <select className="glass-input" value={filtrePriorite} onChange={e => setFiltrePriorite(e.target.value)}
             style={{ width: 140, padding: '5px 10px', fontSize: 12 }}>
-            <option value="">Toutes priorités</option>
+            <option value="">{t('tkt_all_priorities')}</option>
             {Object.entries(PRIORITE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           {(filtreStatut || filtrePriorite) && (
@@ -135,50 +137,50 @@ const Tickets = () => {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Sujet</th>
+                  <th>{t('tkt_subject_col')}</th>
                   {isAdmin && <th>Demandeur</th>}
-                  <th>Priorité</th>
+                  <th>{t('tkt_priority_col')}</th>
                   <th>Statut</th>
-                  <th>Date</th>
+                  <th>{t('tkt_date_col')}</th>
                   <th>SLA</th>
                 </tr>
               </thead>
               <tbody>
-                {tickets.map(t => {
-                  const pCfg = PRIORITE_CONFIG[t.priorite] || {};
-                  const sCfg = STATUT_CONFIG[t.statut] || {};
-                  const slaOk = !t.sla_depasse;
-                  const isActive = selected?.id === t.id;
+                {tickets.map(tkt => {
+                  const pCfg = PRIORITE_CONFIG[tkt.priorite] || {};
+                  const sCfg = STATUT_CONFIG[tkt.statut] || {};
+                  const slaOk = !tkt.sla_depasse;
+                  const isActive = selected?.id === tkt.id;
                   return (
-                    <tr key={t.id} onClick={() => openTicket(t)}
+                    <tr key={tkt.id} onClick={() => openTicket(tkt)}
                       style={{ cursor: 'pointer', background: isActive ? 'rgba(99,102,241,0.1)' : '' }}>
-                      <td style={{ fontWeight: 600, fontSize: 12 }}>#{t.id}</td>
+                      <td style={{ fontWeight: 600, fontSize: 12 }}>#{tkt.id}</td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{t.sujet}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.categorie}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{tkt.sujet}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{tkt.categorie}</div>
                       </td>
                       {isAdmin && (
                         <td style={{ fontSize: 12 }}>
-                          {t.demandeur_nom || t.demandeur || '-'}
+                          {tkt.demandeur_nom || tkt.demandeur || '-'}
                         </td>
                       )}
                       <td>
                         <span className={`badge ${pCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
-                          {pCfg.label || t.priorite}
+                          {t(pCfg.key) || tkt.priorite}
                         </span>
                       </td>
                       <td>
                         <span className={`badge ${sCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
-                          {sCfg.label || t.statut}
+                          {t(sCfg.key) || tkt.statut}
                         </span>
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        {new Date(t.created_at).toLocaleDateString('fr-FR')}
+                        {new Date(tkt.created_at).toLocaleDateString(undefined)}
                       </td>
                       <td>
                         <span style={{ fontSize: 10, color: slaOk ? '#10b981' : '#ef4444',
                           display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <Clock size={9} /> {slaOk ? 'OK' : 'Dépassé'}
+                          <Clock size={9} /> {slaOk ? 'OK' : t('tkt_sla_exceeded')}
                         </span>
                       </td>
                     </tr>
@@ -260,8 +262,8 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
         <div>
           <div style={{ fontWeight: 700, fontSize: 13 }}>#{ticket.id} — {ticket.sujet}</div>
           <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-            <span className={`badge ${pCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>{pCfg.label}</span>
-            <span className={`badge ${sCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>{sCfg.label}</span>
+            <span className={`badge ${pCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>{t(pCfg.key)}</span>
+            <span className={`badge ${sCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>{t(sCfg.key)}</span>
           </div>
         </div>
         <button onClick={onClose}
@@ -302,7 +304,7 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
         {messages.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12, padding: '1rem' }}>
             <AlertCircle size={16} style={{ opacity: 0.4, marginBottom: 6 }} />
-            <div>Aucune réponse pour l&apos;instant.</div>
+            <div>{t('tkt_no_replies')}</div>
           </div>
         ) : (
           messages.map((msg, i) => {
@@ -315,7 +317,7 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
               }}>
                 <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginBottom: 3,
                   textAlign: isMe ? 'right' : 'left' }}>
-                  {msg.auteur_nom || msg.auteur} · {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  {msg.auteur_nom || msg.auteur} · {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                   {msg.is_note_interne && <span style={{ color: '#f59e0b' }}> · Note interne</span>}
                 </div>
                 <div style={{
@@ -338,7 +340,7 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
         <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <textarea value={reponse} onChange={e => setReponse(e.target.value)}
-              placeholder="Répondre au ticket..."
+              placeholder={t("tk_reply_placeholder")}
               onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend(); }}
               className="glass-input"
               style={{ flex: 1, minHeight: 56, maxHeight: 120, resize: 'vertical', fontSize: 12 }}
@@ -349,7 +351,7 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
               <Send size={14} />
             </button>
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 3 }}>Ctrl+Entrée pour envoyer</div>
+          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 3 }}>{t('tkt_ctrl_enter')}</div>
         </div>
       )}
     </div>
@@ -357,6 +359,7 @@ const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh,
 };
 
 function CreateTicketModal({ onClose, onCreated }) {
+  const { t } = useI18n();
   const [sujet, setSujet] = useState('');
   const [description, setDescription] = useState('');
   const [categorie, setCategorie] = useState('livraison');
@@ -375,7 +378,7 @@ function CreateTicketModal({ onClose, onCreated }) {
       await ticketsApi.create({ titre: sujet, description, categorie, priorite });
       onCreated();
     } catch (err) {
-      setErrCreate(err.response?.data?.detail || 'Erreur lors de la création.');
+      setErrCreate(err.response?.data?.detail || t('tkt_error_create'));
     } finally {
       setSubmitting(false);
     }
@@ -407,13 +410,13 @@ function CreateTicketModal({ onClose, onCreated }) {
               Sujet <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input className="glass-input" value={sujet} onChange={e => setSujet(e.target.value)}
-              placeholder="Résumez votre problème..."
+              placeholder={t("tk_summary_placeholder")}
               style={{ width: '100%', padding: '8px 12px', fontSize: 13 }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Catégorie</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>{t('tkt_category_label')}</label>
               <select className="glass-input" value={categorie} onChange={e => setCategorie(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', fontSize: 13 }}>
                 <option value="livraison">Livraison</option>
@@ -424,7 +427,7 @@ function CreateTicketModal({ onClose, onCreated }) {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Priorité</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>{t('tkt_priority_label')}</label>
               <select className="glass-input" value={priorite} onChange={e => setPriorite(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', fontSize: 13 }}>
                 <option value="urgent">Urgent (4h)</option>
@@ -440,7 +443,7 @@ function CreateTicketModal({ onClose, onCreated }) {
             </label>
             <textarea className="glass-input" value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Décrivez votre problème en détail..."
+              placeholder={t("tk_detail_placeholder")}
               style={{ width: '100%', minHeight: 100, resize: 'vertical', fontSize: 13 }} />
           </div>
 

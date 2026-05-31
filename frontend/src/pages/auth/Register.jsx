@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Truck, Package, ChevronRight, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useI18n } from '../../contexts/I18nContext';
+import { sendWelcomeEmail } from '../../services/emailService';
 import './Auth.css';
 
 const VEHICULE_TYPES = [
@@ -13,6 +15,7 @@ const VEHICULE_TYPES = [
 
 const Register = () => {
   const { register } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState('');
@@ -57,6 +60,16 @@ const Register = () => {
 
       const user = await register(payload);
       setSuccess(true);
+
+      // Envoi de l'email de bienvenue (non bloquant)
+      sendWelcomeEmail({
+        first_name: form.first_name,
+        last_name:  form.last_name,
+        email:      form.email,
+        username:   form.username,
+        role:       user.role,
+      });
+
       setTimeout(() => {
         if (user.role === 'CLIENT') navigate('/client');
         else if (user.role === 'TRANSPORTEUR') navigate('/chauffeur');
@@ -68,7 +81,7 @@ const Register = () => {
         const msgs = Object.entries(errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`);
         setError(msgs.join(' · '));
       } else {
-        setError("Erreur lors de l'inscription. Vérifiez vos informations.");
+        setError(t('reg_error_generic'));
       }
     } finally {
       setLoading(false);
@@ -80,8 +93,8 @@ const Register = () => {
       <div className="auth-page">
         <div className="auth-container animate-fade-in" style={{ maxWidth: 480, textAlign: 'center' }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-          <h2 className="auth-title text-gradient">Compte créé !</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>Redirection en cours...</p>
+          <h2 className="auth-title text-gradient">{t('reg_account_created')}</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>{t('reg_redirecting')}</p>
         </div>
       </div>
     );
@@ -99,7 +112,7 @@ const Register = () => {
         {step === 0 && (
           <div className="role-selection">
             <h2 className="auth-title">Bienvenue !</h2>
-            <p className="auth-subtitle">Choisissez votre profil pour créer votre compte</p>
+            <p className="auth-subtitle">{t('reg_choose_role')}</p>
 
             <div className="role-cards">
               <button className="role-card glass-card" onClick={() => handleRoleSelect('CLIENT')}>
@@ -107,10 +120,10 @@ const Register = () => {
                   <Package size={40} />
                 </div>
                 <h3>Je suis Client</h3>
-                <p>Je commande des produits et suis mes livraisons en temps réel.</p>
+                <p>{t('reg_client_desc')}</p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
-                  {['🛒 Catalogue', '📍 Suivi live', '⭐ Avis'].map(t => (
-                    <span key={t} style={{ fontSize: 11, background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '2px 8px', borderRadius: 20 }}>{t}</span>
+                  {['🛒 Catalogue', '📍 Suivi live', '⭐ Avis'].map(lbl => (
+                    <span key={lbl} style={{ fontSize: 11, background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '2px 8px', borderRadius: 20 }}>{lbl}</span>
                   ))}
                 </div>
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
@@ -121,10 +134,10 @@ const Register = () => {
                   <Truck size={40} />
                 </div>
                 <h3>Je suis Chauffeur</h3>
-                <p>Je gère mes missions de livraison et partage ma position en direct.</p>
+                <p>{t('reg_driver_desc')}</p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
-                  {['🚗 Missions', '💰 Revenus', '🗺️ Navigation'].map(t => (
-                    <span key={t} style={{ fontSize: 11, background: 'rgba(59,130,246,0.12)', color: '#60a5fa', padding: '2px 8px', borderRadius: 20 }}>{t}</span>
+                  {['🚗 Missions', '💰 Revenus', '🗺️ Navigation'].map(lbl => (
+                    <span key={lbl} style={{ fontSize: 11, background: 'rgba(59,130,246,0.12)', color: '#60a5fa', padding: '2px 8px', borderRadius: 20 }}>{lbl}</span>
                   ))}
                 </div>
                 <span className="role-cta">Choisir <ChevronRight size={18} /></span>
@@ -169,19 +182,19 @@ const Register = () => {
               {/* Identité */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Prénom *</label>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_firstname')}</label>
                   <input required className="glass-input" value={form.first_name}
                     onChange={e => set('first_name', e.target.value)} placeholder="Mohamed" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Nom *</label>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_lastname')}</label>
                   <input required className="glass-input" value={form.last_name}
                     onChange={e => set('last_name', e.target.value)} placeholder="El Alami" />
                 </div>
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Nom d'utilisateur *</label>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_username')}</label>
                 <input required className="glass-input" value={form.username}
                   onChange={e => set('username', e.target.value)} placeholder="mohalami" autoComplete="username" />
               </div>
@@ -193,7 +206,7 @@ const Register = () => {
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Mot de passe * (min. 6 caractères)</label>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_password_label')}</label>
                 <div style={{ position: 'relative' }}>
                   <input required type={showPwd ? 'text' : 'password'} className="glass-input"
                     minLength={6} value={form.password}
@@ -208,7 +221,7 @@ const Register = () => {
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Téléphone</label>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_phone_label')}</label>
                 <input className="glass-input" value={form.phone}
                   onChange={e => set('phone', e.target.value)} placeholder="+212 6XX XXX XXX" type="tel" />
               </div>
@@ -217,11 +230,11 @@ const Register = () => {
               {role === 'TRANSPORTEUR' && (
                 <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '1rem', marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginBottom: '0.75rem', letterSpacing: '0.06em' }}>
-                    🚗 INFORMATIONS VÉHICULE
+                    {t('reg_vehicle_info')}
                   </div>
 
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Type de véhicule *</label>
+                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_vehicle_type')}</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                       {VEHICULE_TYPES.map(({ value, label, emoji }) => (
                         <button key={value} type="button" onClick={() => set('vehicule_type', value)}
@@ -239,12 +252,12 @@ const Register = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Plaque d'immatriculation *</label>
+                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_plate_label')}</label>
                       <input required={role === 'TRANSPORTEUR'} className="glass-input" value={form.plaque}
                         onChange={e => set('plaque', e.target.value)} placeholder="12345-A-1" />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>N° permis (optionnel)</label>
+                      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_permit_label')}</label>
                       <input className="glass-input" value={form.permis}
                         onChange={e => set('permis', e.target.value)} placeholder="B-123456" />
                     </div>
@@ -252,7 +265,7 @@ const Register = () => {
 
                   <div style={{ marginTop: '0.75rem', fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <CheckCircle size={12} color="#f59e0b" />
-                    Votre compte sera vérifié par l'admin avant activation
+                    {t('reg_account_pending')}
                   </div>
                 </div>
               )}
@@ -261,7 +274,7 @@ const Register = () => {
                 style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.875rem', fontSize: 15 }}>
                 {loading
                   ? <><span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 8 }} />Création...</>
-                  : `Créer mon compte ${role === 'CLIENT' ? '📦' : '🚗'}`
+                  : `${t('reg_create_account')} ${role === 'CLIENT' ? '📦' : '🚗'}`
                 }
               </button>
 
