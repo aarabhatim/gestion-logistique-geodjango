@@ -1536,6 +1536,7 @@ export const FR = {
   reg_permit_label: 'N° permis (optionnel)',
   reg_account_pending: 'Votre compte sera vérifié par l\'admin avant activation',
   reg_creating: 'Création...',
+  reg_title: 'Inscription',
   reg_create_account: 'Créer mon compte',
   ck_promo_invalid: 'Code promo invalide ou expiré.',
   ck_error_generic: 'Une erreur est survenue. Veuillez réessayer.',

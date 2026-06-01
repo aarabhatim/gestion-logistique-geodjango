@@ -160,17 +160,22 @@ const Header = () => {
         {/* Sélecteur de langue */}
         <div ref={langRef} style={{ position: 'relative' }}>
           <button className="btn btn-icon" onClick={() => setShowLangMenu(s => !s)}
+            aria-label="Changer de langue"
+            aria-expanded={showLangMenu}
+            aria-haspopup="listbox"
             style={{ background: 'transparent', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', minWidth: 'auto' }}>
-            <Globe size={16} />
-            <span style={{ fontSize: 14 }}>{currentLang.flag}</span>
+            <Globe size={16} aria-hidden="true" />
+            <span style={{ fontSize: 14 }} aria-hidden="true">{currentLang.flag}</span>
           </button>
           {showLangMenu && (
-            <div className="glass-card animate-fade-in" style={{
+            <div className="glass-card animate-fade-in" role="listbox" aria-label="Sélectionner une langue" style={{
               position: 'absolute', top: '120%', right: 0, width: 180, padding: 6,
               zIndex: 1000, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
             }}>
               {LANGS.map(l => (
                 <button key={l.code} onClick={() => { setLangue(l.code); setShowLangMenu(false); }}
+                  role="option"
+                  aria-selected={l.code === langue}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                     padding: '8px 10px', borderRadius: 8, border: 'none',
@@ -179,8 +184,8 @@ const Header = () => {
                     cursor: 'pointer', fontSize: 13, fontWeight: l.code === langue ? 700 : 500,
                     textAlign: 'left',
                   }}>
-                  <span style={{ fontSize: 18 }}>{l.flag}</span> {l.label}
-                  {l.code === langue && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                  <span style={{ fontSize: 18 }} aria-hidden="true">{l.flag}</span> {l.label}
+                  {l.code === langue && <Check size={14} style={{ marginLeft: 'auto' }} aria-hidden="true" />}
                 </button>
               ))}
             </div>
@@ -190,10 +195,13 @@ const Header = () => {
         {/* Cloche Notifications */}
         <div className="notifications-wrapper" ref={dropdownRef} style={{ position: 'relative' }}>
           <button className="btn btn-icon" onClick={() => setShowDropdown(!showDropdown)}
+            aria-label={unreadCount > 0 ? `Notifications — ${unreadCount} non lues` : 'Notifications'}
+            aria-expanded={showDropdown}
+            aria-haspopup="dialog"
             style={{ position: 'relative', background: 'transparent', border: '1px solid var(--glass-border)' }}>
-            <Bell size={20} />
+            <Bell size={20} aria-hidden="true" />
             {unreadCount > 0 && (
-              <span className="badge-pulse" style={{
+              <span className="badge-pulse" aria-hidden="true" style={{
                 position: 'absolute', top: '-5px', right: '-5px',
                 background: 'var(--danger-color)', color: 'white',
                 borderRadius: '50%', width: '18px', height: '18px',
@@ -201,7 +209,7 @@ const Header = () => {
                 justifyContent: 'center', fontWeight: 'bold',
               }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
             )}
-            <span style={{
+            <span aria-hidden="true" style={{
               position: 'absolute', bottom: -2, right: -2,
               width: 7, height: 7, borderRadius: '50%',
               background: connected ? '#10b981' : '#6b7280',

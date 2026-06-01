@@ -5,7 +5,7 @@ import {
   DollarSign, Award, AlertTriangle, Map, List, User, Zap,
   ArrowRight, Phone, RefreshCw, MessageSquare, History, Target,
   Send, QrCode, Crosshair, ShieldAlert, Settings, Wallet,
-  BarChart3, Home, ChevronLeft, Menu, Activity, Bike,
+  BarChart3, Home, ChevronLeft, Menu, Activity, Bike, Loader,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useI18n } from '../../contexts/I18nContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { transporteursApi, commandesApi, livraisonsApi, notificationsApi, authApi, chauffeurApi } from '../../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SignalerIncidentPanel } from './SignalerIncident';
@@ -127,10 +128,10 @@ const MiniStat = ({ icon: Icon, label, value, color, sub }) => (
 );
 
 // ─── Mission Card ─────────────────────────────────────────────────────────────
-const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
+const MissionCard = ({ commande, onAccept, onRefuse, proposed, disabled }) => {
   const s = STATUT_STYLE[commande.statut] || STATUT_STYLE.EN_ATTENTE;
   return (
-    <div style={{ background: T.surface, borderRadius: 14, padding: '1rem 1.25rem', borderLeft: `4px solid ${s.color}`, position: 'relative', border: `1px solid ${T.border}`, borderLeft: `4px solid ${s.color}`, marginBottom: 12 }}>
+    <div style={{ background: T.surface, borderRadius: 14, padding: '1rem 1.25rem', borderLeft: `4px solid ${s.color}`, position: 'relative', border: `1px solid ${T.border}`, marginBottom: 12 }}>
       {proposed && (
         <div style={{ position: 'absolute', top: -8, right: 12, background: gradient, color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 20 }}>
           ✨ PROPOSÉE
@@ -150,8 +151,8 @@ const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
         <span style={{ fontSize: 15, fontWeight: 700, color: T.success }}>{Math.round(commande.total_price || 0)} MAD</span>
         {proposed && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.danger}30`, background: `${T.danger}15`, color: T.danger, cursor: 'pointer', fontSize: 12, fontWeight: 600 }} onClick={() => onRefuse(commande.id)}>Refuser</button>
-            <button style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: gradient, color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => onAccept(commande.id)}><CheckCircle size={13} /> Accepter</button>
+            <button disabled={disabled} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.danger}30`, background: `${T.danger}15`, color: T.danger, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, fontSize: 12, fontWeight: 600 }} onClick={() => onRefuse(commande.id)}>Refuser</button>
+            <button disabled={disabled} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: disabled ? 'rgba(255,138,0,0.35)' : gradient, color: 'white', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => onAccept(commande.id)}><CheckCircle size={13} /> {disabled ? 'En cours...' : 'Accepter'}</button>
           </div>
         )}
         {commande.statut === 'EN_ROUTE' && <span style={{ fontSize: 12, color: T.success, fontWeight: 600 }}>🚚 En cours</span>}
@@ -161,7 +162,7 @@ const MissionCard = ({ commande, onAccept, onRefuse, proposed }) => {
 };
 
 // ─── Active Mission Card ──────────────────────────────────────────────────────
-const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel }) => {
+const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel, disabled }) => {
   const [route, setRoute] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const isEnRoute = mission.statut === 'EN_ROUTE';
@@ -187,7 +188,7 @@ const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel }) => {
     : { label: '🚗 En route — Commande prise', color: '#3b82f6', icon: ArrowRight };
 
   return (
-    <div style={{ background: T.surface, borderRadius: 16, padding: '1.25rem', borderLeft: `4px solid ${statusConfig.color}`, border: `1px solid ${T.border}`, borderLeft: `4px solid ${statusConfig.color}` }}>
+    <div style={{ background: T.surface, borderRadius: 16, padding: '1.25rem', borderLeft: `4px solid ${statusConfig.color}`, border: `1px solid ${T.border}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -226,8 +227,8 @@ const ActiveMissionCard = ({ mission, myPosition, onAdvance, onCancel }) => {
         <div style={{ color: T.text2, marginTop: 2 }}>{statusConfig.dest === 'boutique' ? mission.fondateur_detail?.adresse : mission.adresse_livraison}</div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => onAdvance(mission)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: nextAction.color, color: 'white', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 4px 14px ${nextAction.color}40` }}>
-          <nextAction.icon size={15} /> {nextAction.label}
+        <button disabled={disabled} onClick={() => onAdvance(mission)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, background: nextAction.color, color: 'white', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 4px 14px ${nextAction.color}40` }}>
+          {disabled ? <Loader size={15} style={{ animation: 'spin 0.8s linear infinite' }} /> : <nextAction.icon size={15} />} {nextAction.label}
         </button>
         {destination && (
           <a href={`https://www.google.com/maps/dir/${myPosition ? myPosition.join(',') : ''}/${destination.join(',')}`} target="_blank" rel="noreferrer"
@@ -272,7 +273,7 @@ const WorkingHoursCard = ({ profile }) => {
         <h4 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: T.text }}><Clock size={16} color="#a78bfa" /> {wT('chd_working_hours')}</h4>
         {profile?.is_available && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.success, fontWeight: 600 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: T.success, display: 'inline-block' }} />En activité depuis {formatDuration(sessionMin)}</div>}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
         {[
           { label: wT('chd_today_rev'), value: formatDuration(todayMin), color: '#a78bfa', big: true },
           { label: wT('chd_this_week'), value: formatDuration(weekMin), color: '#3b82f6' },
@@ -373,11 +374,19 @@ const ChauffeurDashboard = () => {
   const [profile, setProfile]           = useState(null);
   const [missions, setMissions]         = useState([]);
   const [proposees, setProposees]       = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const {
+    notifications,
+    unreadCount,
+    marquerLue,
+    toutLire,
+  } = useNotifications();
+  const [stats, setStats]               = useState(null);
   const [myPosition, setMyPosition]     = useState(null);
   const [posStatus, setPosStatus]       = useState('idle');
   const [togglingDispo, setTogglingDispo] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
   const [toast, setToast]               = useState(null);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [objectifs, setObjectifs]       = useState(null);
@@ -388,8 +397,12 @@ const ChauffeurDashboard = () => {
   const [chatLoading, setChatLoading]   = useState(false);
   const [sosLoading, setSosLoading]     = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
+  const [sosType, setSosType]           = useState('ACCIDENT');
+  const [sosSent, setSosSent]           = useState(false);
   const [qrInput, setQrInput]           = useState('');
   const [qrMission, setQrMission]       = useState(null);
+  const [notifOpen, setNotifOpen]       = useState(false);
+  const notifRef                        = useRef(null);
   const chatBottomRef = useRef(null);
 
   const showToast = (msg, type = 'success') => {
@@ -398,19 +411,23 @@ const ChauffeurDashboard = () => {
   };
 
   const fetchData = useCallback(async () => {
+    setError(null);
     try {
-      const [profRes, missionRes, propRes, notifRes] = await Promise.all([
+      const [profRes, missionRes, propRes, statsRes] = await Promise.all([
         transporteursApi.monProfil(),
         commandesApi.list(),
         commandesApi.proposees().catch(() => ({ data: [] })),
-        notificationsApi.nonLues().catch(() => ({ data: [] })),
+        transporteursApi.mesStats().catch(() => ({ data: null })),
       ]);
       setProfile(profRes.data);
       const all = missionRes.data.results || missionRes.data || [];
       setMissions(all.filter(c => ['VALIDEE','EN_PREPARATION','EN_ROUTE'].includes(c.statut)));
       setProposees(Array.isArray(propRes.data) ? propRes.data : propRes.data.results || []);
-      setNotifications(Array.isArray(notifRes.data) ? notifRes.data : notifRes.data.results || []);
-    } catch (e) { console.error(e); }
+      if (statsRes && statsRes.data) setStats(statsRes.data);
+    } catch (e) {
+      console.error(e);
+      setError('Impossible de charger les données du tableau de bord.');
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -419,6 +436,16 @@ const ChauffeurDashboard = () => {
     if (navigator.geolocation) navigator.geolocation.getCurrentPosition(pos => setMyPosition([pos.coords.latitude, pos.coords.longitude]), () => {}, { enableHighAccuracy: true, timeout: 8000 });
   }, []);
   useEffect(() => { const id = setInterval(fetchData, 30000); return () => clearInterval(id); }, [fetchData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   useEffect(() => {
     let id;
     if (tab === 'map' && navigator.geolocation) {
@@ -444,19 +471,28 @@ const ChauffeurDashboard = () => {
   };
 
   const handleAccept = async (id) => {
-    try { await commandesApi.transporteurAction(id, 'accepter'); showToast('Mission acceptée ! Bonne route 🚚'); fetchData(); }
+    if (actionLoading) return;
+    setActionLoading(true);
+    try { await commandesApi.transporteurAction(id, 'accepter'); showToast('Mission acceptée ! Bonne route 🚚'); await fetchData(); }
     catch (e) { showToast(e.response?.data?.detail || 'Erreur', 'error'); }
+    finally { setActionLoading(false); }
   };
   const handleRefuse = async (id) => {
-    try { await commandesApi.transporteurAction(id, 'refuser'); showToast('Mission refusée'); fetchData(); }
+    if (actionLoading) return;
+    setActionLoading(true);
+    try { await commandesApi.transporteurAction(id, 'refuser'); showToast('Mission refusée'); await fetchData(); }
     catch { showToast('Erreur', 'error'); }
+    finally { setActionLoading(false); }
   };
   const handleAdvance = async (mission) => {
+    if (actionLoading) return;
+    setActionLoading(true);
     try {
       await commandesApi.avancer(mission.id);
       showToast(mission.statut === 'EN_ROUTE' ? `✅ Livraison confirmée ! +${(parseFloat(mission.frais_livraison || 0) + parseFloat(mission.sous_total || 0) * 0.05).toFixed(0)} MAD` : '🚗 En route !');
-      fetchData();
+      await fetchData();
     } catch (e) { showToast(e.response?.data?.error || 'Erreur', 'error'); }
+    finally { setActionLoading(false); }
   };
 
   const SOS_OPTIONS = [
@@ -468,16 +504,36 @@ const ChauffeurDashboard = () => {
     { id: 'autre',     emoji: '⚠️',   label: 'Autre urgence',              message: 'URGENCE — Situation critique' },
   ];
   const sendSOS = async (option) => {
+    // BUG-08: le bouton modal appelle sendSOS sans argument — on résout le type via sosType
+    const selectedOption = (option && option.message) ? option : (
+      SOS_OPTIONS.find(o => o.id === sosType.toLowerCase()) || { label: sosType, message: `SOS ${sosType}` }
+    );
     setSosModalOpen(false); setSosLoading(true);
     try {
       await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
-          async (pos) => { try { await chauffeurApi.sos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, message: option.message }); resolve(); } catch (e) { reject(e); } },
-          async () => { try { await chauffeurApi.sos({ message: option.message + ' (position inconnue)' }); resolve(); } catch (e) { reject(e); } },
+          async (pos) => {
+            try {
+              // BUG-08: le backend attend `lat` et `lng`, pas `latitude`/`longitude`
+              await chauffeurApi.sos({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                type: selectedOption.id,
+                message: selectedOption.message,
+              });
+              resolve();
+            } catch (e) { reject(e); }
+          },
+          async () => {
+            try {
+              await chauffeurApi.sos({ type: selectedOption.id, message: selectedOption.message + ' (position inconnue)' });
+              resolve();
+            } catch (e) { reject(e); }
+          },
           { timeout: 5000 }
         );
       });
-      showToast(`🚨 SOS "${option.label}" envoyé !`);
+      showToast(`🚨 SOS "${selectedOption.label}" envoyé !`);
     } catch { showToast("Erreur lors de l'envoi SOS", 'error'); }
     finally { setSosLoading(false); }
   };
@@ -509,8 +565,8 @@ const ChauffeurDashboard = () => {
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || 'T';
   const noteColor = !profile?.note_moyenne ? '#64748b' : profile.note_moyenne >= 4.5 ? T.success : profile.note_moyenne >= 3.5 ? T.warning : T.danger;
   const vType = profile?.vehicule_type || profile?.type_vehicule || 'CAMION';
-  const revenueData = buildRevenueData(profile?.revenus_mois, MONTHS);
-  const donutData = [
+  const revenueData = stats?.revenus_par_mois || buildRevenueData(profile?.revenus_mois, MONTHS);
+  const donutData = stats?.donut_data || [
     { name: 'Livrées',   value: profile?.nombre_livraisons || 34, color: T.primary },
     { name: 'En cours',  value: missions.length || 8,             color: T.warning },
     { name: 'En attente',value: proposees.length || 7,            color: T.text2 },
@@ -534,11 +590,19 @@ const ChauffeurDashboard = () => {
   ];
 
   // ── Activity feed (derived from recent data) ──────────────────────────────
-  const recentActivity = [
-    ...(missions.slice(0,2).map(m => ({ icon: Package, color: T.primary, title: `Livraison #${m.reference}`, sub: 'En cours de livraison', time: 'maintenant' }))),
-    ...(proposees.slice(0,1).map(p => ({ icon: Bell, color: T.warning, title: `Nouvelle mission #${p.reference}`, sub: 'Mission proposée', time: 'à l\'instant' }))),
-    { icon: DollarSign, color: T.success, title: `Revenus du jour`, sub: `+${Math.round(profile?.revenus_jour || 0)} MAD`, time: 'aujourd\'hui' },
-  ].slice(0, 4);
+  const recentActivity = stats?.recent_activity?.length > 0
+    ? stats.recent_activity.map(act => ({
+        icon: act.type === 'LIVRAISON' ? Package : act.type === 'REVENUS' ? DollarSign : Bell,
+        color: act.type === 'LIVRAISON' ? T.primary : act.type === 'REVENUS' ? T.success : T.warning,
+        title: act.title,
+        sub: act.sub,
+        time: act.time
+      }))
+    : [
+        ...(missions.slice(0,2).map(m => ({ icon: Package, color: T.primary, title: `Livraison #${m.reference}`, sub: 'En cours de livraison', time: 'maintenant' }))),
+        ...(proposees.slice(0,1).map(p => ({ icon: Bell, color: T.warning, title: `Nouvelle mission #${p.reference}`, sub: 'Mission proposée', time: 'à l\'instant' }))),
+        { icon: DollarSign, color: T.success, title: `Revenus du jour`, sub: `+${Math.round(profile?.revenus_jour || 0)} MAD`, time: 'aujourd\'hui' },
+      ].slice(0, 4);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: "'Inter', -apple-system, sans-serif", color: T.text }}>
@@ -639,9 +703,61 @@ const ChauffeurDashboard = () => {
             <ShieldAlert size={15} /> SOS
           </button>
           {/* Notifications */}
-          <div style={{ position: 'relative', cursor: 'pointer', padding: 6 }} onClick={() => setTab('missions')}>
-            <Bell size={20} color={notifications.length > 0 ? T.warning : T.text2} />
-            {notifications.length > 0 && <span style={{ position: 'absolute', top: 2, right: 2, background: T.danger, color: 'white', borderRadius: 10, fontSize: 9, fontWeight: 800, padding: '1px 4px', minWidth: 14, textAlign: 'center' }}>{notifications.length}</span>}
+          <div style={{ position: 'relative' }} ref={notifRef}>
+            <div style={{ position: 'relative', cursor: 'pointer', padding: 6 }} onClick={() => setNotifOpen(!notifOpen)}>
+              <Bell size={20} color={unreadCount > 0 ? T.warning : T.text2} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2,
+                  background: T.danger, color: 'white',
+                  borderRadius: 10, fontSize: 9, fontWeight: 800,
+                  padding: '1px 4px', minWidth: 14, textAlign: 'center'
+                }}>
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+
+            {notifOpen && (
+              <div style={{
+                position: 'absolute', top: '110%', right: 0, width: 340,
+                background: T.sidebar, border: `1px solid ${T.border}`,
+                borderRadius: 16, boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+                zIndex: 9999, maxHeight: 400, overflowY: 'auto',
+              }}>
+                <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: T.text }}>Notifications</span>
+                  {unreadCount > 0 && (
+                    <button onClick={toutLire} style={{ fontSize: 11, color: T.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                      Tout marquer lu
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: 24, textAlign: 'center', color: T.text2, fontSize: 13 }}>
+                      Aucune notification
+                    </div>
+                  ) : notifications.map(notif => (
+                    <div key={notif.id} onClick={() => { marquerLue(notif.id); setNotifOpen(false); }}
+                      style={{
+                        padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+                        cursor: 'pointer', background: notif.lue ? 'transparent' : 'rgba(255,138,0,0.04)',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = notif.lue ? 'transparent' : 'rgba(255,138,0,0.04)'; }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: notif.lue ? 500 : 700, color: T.text }}>{notif.titre}</div>
+                      <div style={{ fontSize: 12, color: T.text2, marginTop: 3, lineHeight: 1.4 }}>{notif.message}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
+                        {new Date(notif.date_creation).toLocaleString('fr-FR')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {/* Messages */}
           <div style={{ padding: 6, cursor: 'pointer' }} onClick={() => setTab('support')}>
@@ -663,6 +779,19 @@ const ChauffeurDashboard = () => {
 
         {/* ── Content ── */}
         <main style={{ flex: 1, padding: '28px 28px', overflowY: 'auto', background: T.bg }}>
+          {error && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px',
+              background: 'rgba(239,68,68,0.08)', border: `1px solid ${T.danger}40`,
+              borderRadius: 12, marginBottom: 20, color: '#fca5a5', fontSize: 13,
+            }}>
+              <AlertTriangle size={16} style={{ color: T.danger, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{error}</span>
+              <button onClick={fetchData} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'underline' }}>
+                <RefreshCw size={12} /> Réessayer
+              </button>
+            </div>
+          )}
 
           {/* ══ DASHBOARD TAB ══════════════════════════════════════════════ */}
           {tab === 'dashboard' && (
@@ -693,7 +822,7 @@ const ChauffeurDashboard = () => {
               )}
 
               {/* KPI Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                 <KpiCard icon={Package}    label="Livraisons aujourd'hui" value={profile?.nombre_livraisons_jour || 0} trend="+20% vs hier"        color={T.primary} />
                 <KpiCard icon={Truck}      label="En cours"                value={missions.length}                      trend="+2% vs hier"         color={T.warning} />
                 <KpiCard icon={CheckCircle}label="Livrées (total)"         value={profile?.nombre_livraisons || 0}      trend="+18% vs hier"        color={T.success} />
@@ -701,7 +830,7 @@ const ChauffeurDashboard = () => {
               </div>
 
               {/* Charts row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px 260px', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
 
                 {/* Revenue area chart */}
                 <div style={{ background: T.surface, borderRadius: 20, padding: '22px 24px', border: `1px solid ${T.border}` }}>
@@ -788,7 +917,7 @@ const ChauffeurDashboard = () => {
               </div>
 
               {/* Bottom row: Recent deliveries + Map + Activity */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px 280px', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
 
                 {/* Recent deliveries */}
                 <div style={{ background: T.surface, borderRadius: 20, padding: '22px 24px', border: `1px solid ${T.border}` }}>
@@ -928,7 +1057,7 @@ const ChauffeurDashboard = () => {
               {proposees.length > 0 && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: T.warning, letterSpacing: '0.08em', marginBottom: 12 }}>⚡ PROPOSÉES ({proposees.length})</div>
-                  {proposees.map(cmd => <MissionCard key={cmd.id} commande={cmd} proposed onAccept={handleAccept} onRefuse={handleRefuse} />)}
+                  {proposees.map(cmd => <MissionCard key={cmd.id} commande={cmd} proposed onAccept={handleAccept} onRefuse={handleRefuse} disabled={actionLoading} />)}
                 </div>
               )}
               {missions.length > 0 && (
@@ -937,7 +1066,7 @@ const ChauffeurDashboard = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {missions.map(cmd => (
                       <div key={cmd.id}>
-                        <ActiveMissionCard mission={cmd} myPosition={myPosition} onAdvance={handleAdvance} />
+                        <ActiveMissionCard mission={cmd} myPosition={myPosition} onAdvance={handleAdvance} disabled={actionLoading} />
                         {cmd.statut === 'EN_ROUTE' && (
                           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                             <button onClick={() => openChat(cmd)} style={{ flex: 1, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><MessageSquare size={13} /> Chat client</button>
@@ -1032,7 +1161,7 @@ const ChauffeurDashboard = () => {
                 const s = STATUT_STYLE[cmd.statut] || STATUT_STYLE.EN_ATTENTE;
                 const note = cmd.avis?.note;
                 return (
-                  <div key={cmd.id} style={{ background: T.surface, borderRadius: 12, padding: '1rem 1.25rem', borderLeft: `3px solid ${s.color}`, border: `1px solid ${T.border}`, borderLeft: `3px solid ${s.color}` }}>
+                  <div key={cmd.id} style={{ background: T.surface, borderRadius: 12, padding: '1rem 1.25rem', borderLeft: `3px solid ${s.color}`, border: `1px solid ${T.border}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div><div style={{ fontWeight: 700, fontSize: 15 }}>#{cmd.reference}</div><div style={{ fontSize: 12, color: T.text2 }}>{cmd.created_at ? new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div></div>
                       <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 700, color: T.success, fontSize: 15 }}>{Math.round(cmd.frais_livraison || 0)} MAD</div><span style={{ background: s.bg, color: s.color, fontSize: 10, padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>{s.label}</span></div>
@@ -1142,7 +1271,7 @@ const ChauffeurDashboard = () => {
               </div>
 
               {/* KPI row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                 <MiniStat icon={Package}    label="Livraisons totales" value={profile?.nombre_livraisons || 0}                         color="#3b82f6" />
                 <MiniStat icon={Star}       label="Note moyenne"       value={profile?.note_moyenne?.toFixed(1) || '–'}                color={noteColor} sub={`${profile?.nombre_avis || 0} avis`} />
                 <MiniStat icon={DollarSign} label="Revenus totaux"     value={`${Math.round(profile?.revenus_total || 0).toLocaleString()} MAD`} color={T.success} />

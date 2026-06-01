@@ -30,7 +30,7 @@ api.interceptors.request.use((config) => {
       if (state?.accessToken) {
         config.headers.Authorization = `Bearer ${state.accessToken}`;
       }
-    } catch {}
+    } catch { /* ignore */ }
   }
   return config;
 });
@@ -58,6 +58,7 @@ api.interceptors.response.use(
             return api(original);
           }
         } catch {
+          /* ignore */
           localStorage.removeItem('delivermap-auth');
           window.location.href = '/login';
         }
@@ -136,6 +137,7 @@ export const transporteursApi = {
   monProfil: () => api.get('transporteurs/mon-profil/'),
   creerProfil: (data) => api.post('transporteurs/mon-profil/', data),
   toggleDisponibilite: () => api.post('transporteurs/disponibilite/'),
+  mesStats: () => api.get('transporteurs/mes-stats/'),
   disponibles: (params) => api.get('transporteurs/disponibles/', { params }),
   adminListe: (params) => api.get('transporteurs/admin/', { params }),
   adminValider: (id, action) => api.post(`transporteurs/admin/${id}/valider/`, { action }),
@@ -405,6 +407,23 @@ export const chauffeurApi = {
   livraisonMajColis:    (id, d)  => api.patch(`livraisons/${id}/colis/`, d),
   livraisonPhotoPreuve: (id, f)  => { const fd = new FormData(); fd.append('photo_preuve', f); return api.post(`livraisons/${id}/photo-preuve/`, fd); },
   livraisonNotifDepart: (id)     => api.post(`livraisons/${id}/notif-depart/`),
+};
+
+// Tracking GPS positions (BUG-17)
+export const trackingApi = {
+  /** Récupère l'historique de positions GPS d'une commande */
+  getPositions: (commandeId) =>
+    api.get(`tracking/commandes/${commandeId}/positions/`),
+  /** Récupère la dernière position GPS connue pour une commande */
+  getDernierePosition: (commandeId) =>
+    api.get(`tracking/commandes/${commandeId}/position/`),
+  /** Envoie la position GPS actuelle du chauffeur */
+  updatePosition: (data) => api.post('tracking/positions/', data),
+  /** Itinéraire calculé entre deux points */
+  itineraire: (orig, dest) =>
+    api.get('tracking/itineraire/', {
+      params: { orig_lat: orig.lat, orig_lng: orig.lng, dest_lat: dest.lat, dest_lng: dest.lng },
+    }),
 };
 
 export default api;

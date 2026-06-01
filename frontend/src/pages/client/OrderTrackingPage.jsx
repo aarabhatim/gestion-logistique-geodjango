@@ -106,8 +106,10 @@ const Timeline = ({ statut }) => {
 /* ── Carte de suivi ──────────────────────────────────────────────────────── */
 const CarteTracking = ({ commande }) => {
   const { t } = useI18n();
-  const livreurLat = commande?.tracking?.latitude;
-  const livreurLon = commande?.tracking?.longitude;
+  // BUG-17: commande.tracking n'est pas retourné par l'API — on se rabat sur
+  // les coordonnées publiques du transporteur (mises à jour en temps réel).
+  const livreurLat = commande?.tracking?.latitude || commande?.transporteur_detail?.latitude;
+  const livreurLon = commande?.tracking?.longitude || commande?.transporteur_detail?.longitude;
   const hasMap = livreurLat && livreurLon;
 
   if (!hasMap) {

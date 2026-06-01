@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { promotionsApi } from '../../services/api';
 import { Tag, Plus, Trash2, Edit2, BarChart2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const EMPTY = { nom: '', code: '', type_reduction: 'pourcentage', valeur: 10, date_debut: '', date_fin: '', usage_max: '', montant_min_commande: 0, actif: true, description: '' };
 
@@ -14,6 +15,7 @@ export default function PromotionsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [toast, setToast] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -38,10 +40,15 @@ export default function PromotionsPage() {
     } catch (e) { showToast(e.response?.data?.detail || t('toast_error'), 'error'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(t('pr_confirm_delete'))) return;
-    try { await promotionsApi.delete(id); showToast(t('pr_toast_deleted')); fetchAll(); }
-    catch { showToast(t('toast_error'), 'error'); }
+  const handleDelete = (id) => {
+    setConfirmState({
+      open: true,
+      message: t('pr_confirm_delete'),
+      onConfirm: async () => {
+        try { await promotionsApi.delete(id); showToast(t('pr_toast_deleted')); fetchAll(); }
+        catch { showToast(t('toast_error'), 'error'); }
+      }
+    });
   };
 
   const openEdit = (p) => {
@@ -196,6 +203,16 @@ export default function PromotionsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => {
+          confirmState.onConfirm?.();
+          setConfirmState(s => ({ ...s, open: false }));
+        }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 }

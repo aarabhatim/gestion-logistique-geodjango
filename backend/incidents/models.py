@@ -4,6 +4,7 @@ from commandes.models import Commande
 
 class Incident(models.Model):
     TYPE_CHOICES = [
+        ('sos', 'SOS chauffeur'),
         ('accident', 'Accident'),
         ('retard', 'Retard'),
         ('colis_endommage', 'Colis endommagé'),
@@ -20,7 +21,8 @@ class Incident(models.Model):
     ]
 
     commande = models.ForeignKey(
-        Commande, on_delete=models.CASCADE, related_name='incidents'
+        Commande, on_delete=models.CASCADE, related_name='incidents',
+        null=True, blank=True,
     )
     type_incident = models.CharField(max_length=30, choices=TYPE_CHOICES, default='autre')
     description = models.TextField()
@@ -37,7 +39,8 @@ class Incident(models.Model):
         ordering = ['-date_signalement']
 
     def __str__(self):
-        return f"[{self.get_type_incident_display()}] Commande {self.commande.id} — {self.get_statut_display()}"
+        reference = f"Commande {self.commande_id}" if self.commande_id else "Sans commande"
+        return f"[{self.get_type_incident_display()}] {reference} — {self.get_statut_display()}"
 
 
 def incident_photo_path(instance, filename):

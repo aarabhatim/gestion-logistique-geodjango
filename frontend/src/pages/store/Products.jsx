@@ -6,6 +6,7 @@ import {
 import { fondateursApi } from '../../services/api';
 import '../../styles/marjane.css';
 import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const Products = () => {
   const { t } = useI18n();
@@ -17,6 +18,7 @@ const Products = () => {
   const [showCreate, setShowCreate]   = useState(false);
   const [editProd, setEditProd]       = useState(null);
   const [toggling, setToggling]       = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -63,12 +65,17 @@ const Products = () => {
     } catch { alert(t('state_error')); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(t('gal_delete_confirm'))) return;
-    try {
-      await fondateursApi.deleteProduit(id);
-      setProducts(prev => prev.filter(p => p.id !== id));
-    } catch { alert(t('state_error')); }
+  const handleDelete = (id) => {
+    setConfirmState({
+      open: true,
+      message: t('prd_confirm_delete') || t('gal_delete_confirm') || 'Supprimer ce produit ?',
+      onConfirm: async () => {
+        try {
+          await fondateursApi.deleteProduit(id);
+          setProducts(prev => prev.filter(p => p.id !== id));
+        } catch { alert(t('state_error')); }
+      }
+    });
   };
 
   const stockAlerteIds = new Set(alertes.map(a => a.id || a.produit_id));
@@ -325,6 +332,16 @@ const Products = () => {
           onSaved={() => { setShowCreate(false); setEditProd(null); fetchProducts(); }}
         />
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => {
+          confirmState.onConfirm?.();
+          setConfirmState(s => ({ ...s, open: false }));
+        }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 };

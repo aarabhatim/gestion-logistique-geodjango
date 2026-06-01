@@ -87,6 +87,8 @@ const AdminSidebar = () => {
       <div className="group relative flex items-center">
         <Link
           to={item.path}
+          aria-label={badgeCount > 0 ? `${item.label} — ${badgeCount} notification${badgeCount > 1 ? 's' : ''}` : item.label}
+          aria-current={isActive ? 'page' : undefined}
           className={`
             flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium
             transition-all duration-150
@@ -96,23 +98,23 @@ const AdminSidebar = () => {
             }
           `}
         >
-          <span className="text-lg flex-shrink-0">{item.icon}</span>
+          <span className="text-lg flex-shrink-0" aria-hidden="true">{item.icon}</span>
           {!compact && <span className="flex-1 truncate">{item.label}</span>}
           {!compact && badgeCount > 0 && (
-            <span className="ml-auto bg-[var(--color-danger)] text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">
+            <span aria-hidden="true" className="ml-auto bg-[var(--color-danger)] text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
         </Link>
 
         {compact && badgeCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-[var(--color-danger)] text-white text-xs font-bold px-1 rounded-full min-w-4 text-center z-10">
+          <span aria-hidden="true" className="absolute -top-1 -right-1 bg-[var(--color-danger)] text-white text-xs font-bold px-1 rounded-full min-w-4 text-center z-10">
             {badgeCount > 9 ? '9+' : badgeCount}
           </span>
         )}
 
         {compact && (
-          <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-secondary)] text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          <div role="tooltip" className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-secondary)] text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
             {item.label}
           </div>
         )}
@@ -120,12 +122,14 @@ const AdminSidebar = () => {
         {!compact && pinnable && (
           <button
             onClick={(e) => { e.preventDefault(); toggleFavorite(item.key); }}
+            aria-label={favorites.includes(item.key) ? `Désépingler ${item.label}` : `Épingler ${item.label}`}
+            aria-pressed={favorites.includes(item.key)}
             className={`absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded
               ${favorites.includes(item.key) ? 'text-yellow-500 opacity-100' : 'text-[var(--color-text-muted)]'}
             `}
             title={favorites.includes(item.key) ? t('cl_favorites_remove') : t('sidebar_pin')}
           >
-            {favorites.includes(item.key) ? '★' : '☆'}
+            <span aria-hidden="true">{favorites.includes(item.key) ? '★' : '☆'}</span>
           </button>
         )}
       </div>
@@ -172,7 +176,7 @@ const AdminSidebar = () => {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+      <nav aria-label="Navigation principale" className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
         {!search && pinnedItems.length > 0 && (
           <>
             {!compact && (

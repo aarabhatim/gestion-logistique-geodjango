@@ -34,7 +34,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         statut = self.request.query_params.get('statut')
-        type_incident = self.request.query_params.get('type')
+        type_incident = self.request.query_params.get('type_incident') or self.request.query_params.get('type')
         commande_id = self.request.query_params.get('commande')
         if statut:
             qs = qs.filter(statut=statut)

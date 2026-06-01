@@ -146,21 +146,63 @@ class SOSView(APIView):
     def post(self, request):
         from notifications.models import Notification
         from django.contrib.auth import get_user_model
+        from commandes.models import Commande
+        from incidents.models import Incident
+        from utils.ws_broadcast import broadcast_group
         User = get_user_model()
-        lat = request.data.get('lat')
-        lng = request.data.get('lng')
+        lat = request.data.get('lat') or request.data.get('latitude')
+        lng = request.data.get('lng') or request.data.get('longitude')
         message = request.data.get('message', 'SOS - Urgence chauffeur')
-        # Notifier tous les admins
-        admins = User.objects.filter(role='ADMIN')
+        sos_type = request.data.get('type', 'sos')
+        position = None
+        if lat and lng:
+            try:
+                position = Point(float(lng), float(lat), srid=4326)
+                try:
+                    t = request.user.transporteur_profile
+                    t.position_actuelle = position
+                    t.save(update_fields=['position_actuelle'])
+                except Exception:
+                    pass
+            except (TypeError, ValueError):
+                position = None
+
+        commande = (
+            Commande.objects
+            .filter(transporteur=request.user, statut__in=['EN_ROUTE', 'EN_PREPARATION', 'VALIDEE'])
+            .order_by('-created_at')
+            .first()
+        )
         nom_chauffeur = request.user.get_full_name() or request.user.username
+        incident = Incident.objects.create(
+            commande=commande,
+            type_incident='sos',
+            description=f"SOS chauffeur ({sos_type}) declenche par {nom_chauffeur}. {message}",
+            position=position,
+        )
+        # Notifier tous les admins
+        admins = User.objects.filter(role='ADMIN', is_active=True)
+        position_txt = f"{lat},{lng}" if position else "position inconnue"
         for admin in admins:
             Notification.objects.create(
                 destinataire=admin,
                 titre=f"🆘 SOS — {nom_chauffeur}",
-                message=f"Urgence signalée par {nom_chauffeur} — Position: {lat},{lng} — {message}",
+                message=f"Urgence signalée par {nom_chauffeur} — Position: {position_txt} — {message}",
                 type_notif='WARNING',
             )
-        return Response({'status': 'SOS envoye', 'admins_notifies': admins.count()})
+        broadcast_group('admin_incidents', {
+            'event': 'incident_created',
+            'incident_id': incident.pk,
+            'type': incident.type_incident,
+            'commande_id': incident.commande_id,
+            'latitude': float(lat) if position else None,
+            'longitude': float(lng) if position else None,
+        })
+        return Response({
+            'status': 'SOS envoye',
+            'incident_id': incident.pk,
+            'admins_notified': admins.count(),
+        }, status=status.HTTP_201_CREATED)
 
 
 # ─── Chat livraison ───────────────────────────────────────────────────────────
@@ -284,3 +326,129 @@ class MultiLivraisonsView(APIView):
             id__in=ids, statut='VALIDEE', transporteur_assigne__isnull=True
         ).update(transporteur_assigne=t, statut='EN_PREPARATION')
         return Response({'assigned': updated, 'ids': ids})
+
+
+# ─── Export Excel ─────────────────────────────────────────────────────────────
+class ExportTransporteursXLSXView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({'error': 'Accès refusé'}, status=403)
+        from dm_utils.export_excel import export_transporteurs_xlsx
+        from django.http import HttpResponse
+
+        qs = Transporteur.objects.select_related('user').all()
+        data = export_transporteurs_xlsx(qs)
+        response = HttpResponse(
+            data,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="transporteurs.xlsx"'
+        return response
+
+
+# ─── Mes Stats (Chauffeur Dashboard) ──────────────────────────────────────────
+class MesStatsView(APIView):
+    permission_classes = [IsTransporteurRole]
+
+    def get(self, request):
+        try:
+            t = request.user.transporteur_profile
+        except Transporteur.DoesNotExist:
+            return Response({'error': 'Profil transporteur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        from livraisons.models import Livraison
+        from django.db.models import Sum, Count
+        from django.utils import timezone
+        import datetime
+
+        stats_liv = Livraison.objects.filter(transporteur=t).values('statut_livraison').annotate(count=Count('id'))
+        
+        livrees = 0
+        en_route = 0
+        en_attente = 0
+        annulees = 0
+
+        for item in stats_liv:
+            statut = item['statut_livraison']
+            count = item['count']
+            if statut == 'LIVREE':
+                livrees = count
+            elif statut == 'EN_ROUTE':
+                en_route = count
+            elif statut == 'EN_ATTENTE':
+                en_attente = count
+            elif statut == 'ECHEC':
+                annulees = count
+
+        # Pour les revenus par mois des 12 derniers mois
+        today = timezone.now().date()
+        revenus_par_mois = []
+        months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+        
+        for i in range(11, -1, -1):
+            first_day_of_curr_month = today.replace(day=1)
+            target_date = first_day_of_curr_month
+            for _ in range(i):
+                target_date = (target_date - datetime.timedelta(days=1)).replace(day=1)
+            
+            start_date = timezone.make_aware(datetime.datetime(target_date.year, target_date.month, 1))
+            if target_date.month == 12:
+                end_date = timezone.make_aware(datetime.datetime(target_date.year + 1, 1, 1))
+            else:
+                end_date = timezone.make_aware(datetime.datetime(target_date.year, target_date.month + 1, 1))
+            
+            val = Livraison.objects.filter(
+                transporteur=t,
+                statut_livraison='LIVREE',
+                date_livraison__gte=start_date,
+                date_livraison__lt=end_date
+            ).aggregate(total=Sum('gain_transporteur'))['total'] or 0
+            
+            month_name = months[target_date.month - 1]
+            revenus_par_mois.append({
+                'month': month_name,
+                'revenus': float(val)
+            })
+
+        # recent_activity - 3 dernières livraisons (en cours ou récentes)
+        recent_livraisons = Livraison.objects.filter(transporteur=t).order_by('-id')[:3]
+        recent_activity = []
+        for lv in recent_livraisons:
+            if lv.statut_livraison == 'EN_ROUTE':
+                recent_activity.append({
+                    'type': 'LIVRAISON',
+                    'title': f'Livraison #{lv.commande.reference}',
+                    'sub': 'En cours de livraison',
+                    'time': 'En cours'
+                })
+            elif lv.statut_livraison == 'LIVREE':
+                recent_activity.append({
+                    'type': 'REVENUS',
+                    'title': f'Revenus Livraison #{lv.commande.reference}',
+                    'sub': f'+{int(float(lv.gain_transporteur))} MAD',
+                    'time': lv.date_livraison.strftime('%d/%m %H:%M') if lv.date_livraison else 'Récemment'
+                })
+            else:
+                recent_activity.append({
+                    'type': 'INFO',
+                    'title': f'Livraison #{lv.commande.reference}',
+                    'sub': lv.get_statut_livraison_display(),
+                    'time': 'Récemment'
+                })
+
+        return Response({
+            'revenus_mois': float(t.revenus_total),
+            'livraisons_total': t.nombre_livraisons,
+            'livraisons_reussies': livrees,
+            'note_moyenne': float(t.note_moyenne or 0),
+            'donut_data': [
+                { 'name': 'Livrées', 'value': livrees, 'color': '#FF8A00' },
+                { 'name': 'En cours', 'value': en_route, 'color': '#FACC15' },
+                { 'name': 'En attente', 'value': en_attente, 'color': '#A3A3A3' },
+                { 'name': 'Annulées/Échecs', 'value': annulees, 'color': '#EF4444' },
+            ],
+            'revenus_par_mois': revenus_par_mois,
+            'recent_activity': recent_activity
+        })

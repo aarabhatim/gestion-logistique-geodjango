@@ -7,6 +7,7 @@ from .views import (
     SignalerCommandeView,
     AdminAssignerTransporteurView, AdminAnnulerCommandeView, AdminTransporteursDisponiblesView,
     AvisListView, AvisCreateView,
+    ExportCommandesXLSXView,
 )
 
 urlpatterns = [
@@ -24,4 +25,5 @@ urlpatterns = [
     path('avis/', AvisListView.as_view(), name='avis-list'),
     path('calendrier/', CalendrierLivraisonsView.as_view(), name='calendrier'),
     path('avis/<int:avis_id>/reply/', AvisReplyView.as_view(), name='avis-reply'),
+    path('export/xlsx/', ExportCommandesXLSXView.as_view(), name='export-commandes-xlsx'),
 ]

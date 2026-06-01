@@ -33,8 +33,18 @@ if os.name == 'nt':
                 GEOS_LIBRARY_PATH = _geos_dll
                 break
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'delivermap-secret-key-change-in-production-2025')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+_secret = os.environ.get('SECRET_KEY')
+if not _secret:
+    if DEBUG:
+        _secret = 'dev-only-secret-key-not-for-production'
+    else:
+        raise ValueError(
+            "La variable d'environnement SECRET_KEY est obligatoire en production. "
+            "Définissez-la dans backend/.env ou dans les variables d'environnement du serveur."
+        )
+SECRET_KEY = _secret
 
 # En production : fournir une liste explicite via ALLOWED_HOSTS=mon-domaine.com,www.mon-domaine.com
 _allowed = os.environ.get('ALLOWED_HOSTS', '')

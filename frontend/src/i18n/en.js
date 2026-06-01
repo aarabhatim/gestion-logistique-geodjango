@@ -1535,6 +1535,7 @@ export const EN = {
   reg_permit_label: 'License no. (optional)',
   reg_account_pending: 'Your account will be verified by admin before activation',
   reg_creating: 'Creating...',
+  reg_title: 'Registration',
   reg_create_account: 'Create my account',
   ck_promo_invalid: 'Invalid or expired promo code.',
   ck_error_generic: 'An error occurred. Please try again.',

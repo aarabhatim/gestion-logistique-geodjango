@@ -72,6 +72,10 @@ export const SignalerIncidentPanel = ({
     );
   };
 
+  useEffect(() => {
+    getGPS();
+  }, []);
+
   const handlePhotos = (e) => {
     const files = Array.from(e.target.files).slice(0, 4);
     setPhotos(files);

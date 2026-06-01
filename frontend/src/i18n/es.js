@@ -1715,6 +1715,7 @@ export const ES = {
   reg_permit_label: 'N° carnet (opcional)',
   reg_account_pending: 'Tu cuenta será verificada por el administrador antes de activarse',
   reg_creating: 'Creando...',
+  reg_title: 'Registro',
   reg_create_account: 'Crear mi cuenta',
   ck_promo_invalid: 'Código promocional inválido o expirado.',
   ck_error_generic: 'Ocurrió un error. Por favor, inténtalo de nuevo.',

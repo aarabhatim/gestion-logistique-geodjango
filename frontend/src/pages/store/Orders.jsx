@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, Package } from 'lucide-react';
+import { Clock, CheckCircle, Package, AlertCircle, RefreshCw } from 'lucide-react';
 import { commandesApi } from '../../services/api';
 import '../../styles/marjane.css';
 import { useI18n } from '../../contexts/I18nContext';
@@ -8,14 +8,16 @@ const Orders = () => {
   const { t, tStatus } = useI18n();
   const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
   const fetchOrders = async () => {
+    setError(null);
     try {
       const res = await commandesApi.list({ statuts: 'EN_ATTENTE,EN_PREPARATION,VALIDEE', page_size: 100 });
       const items = res.data.results ?? (Array.isArray(res.data) ? res.data : []);
       setOrders(items);
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.detail || 'Impossible de charger les commandes.');
     } finally {
       setLoading(false);
     }
@@ -90,6 +92,20 @@ const Orders = () => {
           Suivi en temps réel — actualisé toutes les 30 secondes
         </p>
       </div>
+
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px',
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          borderRadius: 12, marginBottom: 16, color: '#fca5a5', fontSize: 13,
+        }}>
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{error}</span>
+          <button onClick={fetchOrders} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'underline' }}>
+            <RefreshCw size={12} /> Réessayer
+          </button>
+        </div>
+      )}
 
       {loading && orders.length === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 60 }}>

@@ -85,7 +85,7 @@ const STATUT_LABEL = {
   ANNULEE:         { color: '#ef4444' },
 };
 
-const LiveBadge = ({ connected }) => (
+const LiveBadge = ({ connected, t }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
     <div style={{
       width: 8, height: 8, borderRadius: '50%',
@@ -167,10 +167,10 @@ export default function StoreDash() {
         try {
           const data = JSON.parse(ev.data);
           if (data.type === 'notification' || data.type === 'nouvelle_commande') fetchAll(true);
-        } catch (_) {}
+        } catch (_) { /* ignore */ }
       };
-    } catch (_) {}
-    return () => { try { ws?.close(); } catch (_) {} };
+    } catch (_) { /* ignore */ }
+    return () => { try { ws?.close(); } catch (_) { /* ignore */ } };
   }, []);
 
   if (loading) return (
@@ -200,7 +200,7 @@ export default function StoreDash() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <LiveBadge connected={wsConnected} />
+          <LiveBadge connected={wsConnected} t={t} />
           {newCount > 0 && (
             <div
               onClick={() => setNewCount(0)}

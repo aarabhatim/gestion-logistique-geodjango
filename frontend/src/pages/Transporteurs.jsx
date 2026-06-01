@@ -330,7 +330,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
               {/* Véhicule */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>VÉHICULE</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type</div><div style={{ fontWeight: 600 }}>{t.vehicule_type}</div></div>
                   <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Plaque</div><div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{t.plaque}</div></div>
                   <div><div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{tr('tr_capacity')}</div><div style={{ fontWeight: 600 }}>{t.capacite_kg} kg</div></div>
@@ -338,7 +338,7 @@ const TransporteurDetail = ({ t, onClose, onAction }) => {
               </div>
 
               {/* Stats grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: '1rem' }}>
                 {[
                   { label: tr('drv_card_deliveries'), value: t.nombre_livraisons || 0, color: '#3b82f6', icon: Truck },
                   { label: tr('drv_card_rating'), value: t.note_moyenne?.toFixed(1) || '–', color: '#f59e0b', icon: Star },
@@ -490,6 +490,23 @@ const Transporteurs = () => {
             title="Exporter en CSV"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Download size={15} /> CSV
+          </button>
+          <button className="btn btn-secondary" title="Exporter Excel"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981' }}
+            onClick={() => {
+              const token = localStorage.getItem('access') || sessionStorage.getItem('access');
+              fetch(`${import.meta.env.VITE_API_URL}transporteurs/export/xlsx/`, { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `transporteurs_${new Date().toISOString().split('T')[0]}.xlsx`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                });
+            }}>
+            <Download size={15} /> Excel
           </button>
           <button className="btn btn-secondary" onClick={fetchData}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> {t('common_retry')}

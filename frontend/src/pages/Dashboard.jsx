@@ -236,7 +236,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ── KPI Row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <KpiCard delay={0}    loading={loading} icon={Package}    label="Commandes totales"
           value={(kpis.commandes_total || 0).toLocaleString()}
           sub={`${kpis.commandes_aujourd_hui || 0} aujourd'hui`}

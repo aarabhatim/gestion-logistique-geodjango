@@ -1,4 +1,6 @@
+import secrets
 from django.contrib.gis.geos import Point
+from django.core.cache import cache
 from rest_framework import status, generics, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
@@ -195,3 +197,68 @@ class ImpersonateUserView(APIView):
                 'full_name': target.get_full_name(),
             }
         })
+
+
+# ─── Password Reset ───────────────────────────────────────────────────────────
+
+class PasswordResetRequestView(APIView):
+    """Étape 1 : l'utilisateur soumet son email → on lui envoie un lien."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'Email requis.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = CustomUser.objects.get(email__iexact=email)
+        except CustomUser.DoesNotExist:
+            # Réponse identique pour ne pas révéler si l'email existe
+            return Response({'message': 'Si cet email existe, un lien de réinitialisation a été envoyé.'})
+
+        # Générer un token sécurisé, valable 1 heure
+        token = secrets.token_urlsafe(32)
+        cache.set(f'pwd_reset_{token}', user.pk, timeout=3600)
+
+        # Construire l'URL frontend
+        frontend_origin = request.META.get('HTTP_ORIGIN', 'http://localhost:5173')
+        reset_url = f"{frontend_origin}/reset-password?token={token}"
+
+        try:
+            from utils.emails import email_reset_password
+            email_reset_password(user, reset_url)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Erreur envoi email reset: {e}")
+
+        return Response({'message': 'Si cet email existe, un lien de réinitialisation a été envoyé.'})
+
+
+class PasswordResetConfirmView(APIView):
+    """Étape 2 : l'utilisateur soumet le token + nouveau mot de passe."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token', '').strip()
+        new_password = request.data.get('new_password', '').strip()
+
+        if not token or not new_password:
+            return Response({'error': 'Token et nouveau mot de passe requis.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 6:
+            return Response({'error': 'Le mot de passe doit contenir au moins 6 caractères.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_pk = cache.get(f'pwd_reset_{token}')
+        if not user_pk:
+            return Response({'error': 'Lien invalide ou expiré.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = CustomUser.objects.get(pk=user_pk)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Utilisateur introuvable.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        cache.delete(f'pwd_reset_{token}')
+
+        return Response({'message': 'Mot de passe réinitialisé avec succès.'})

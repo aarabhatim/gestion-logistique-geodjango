@@ -15,7 +15,7 @@
  *     onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
  *   />
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useI18n } from '../contexts/I18nContext';
 
 export default function ConfirmModal({
@@ -29,6 +29,9 @@ export default function ConfirmModal({
   danger = true,
 }) {
   const { t } = useI18n();
+  const confirmBtnRef = useRef(null);
+  const titleId = 'confirm-modal-title';
+  const descId  = 'confirm-modal-desc';
 
   // Close on Escape
   useEffect(() => {
@@ -38,10 +41,17 @@ export default function ConfirmModal({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onCancel]);
 
+  // Focus the confirm button when modal opens (keyboard nav)
+  useEffect(() => {
+    if (open) confirmBtnRef.current?.focus();
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div
+      role="presentation"
+      aria-hidden="false"
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -52,6 +62,10 @@ export default function ConfirmModal({
       onClick={onCancel}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
         onClick={e => e.stopPropagation()}
         style={{
           background: '#1A1A1A',
@@ -64,26 +78,29 @@ export default function ConfirmModal({
         }}
       >
         {/* Icon */}
-        <div style={{
-          width: 52, height: 52, borderRadius: 16,
-          background: danger ? 'rgba(239,68,68,0.12)' : 'rgba(255,138,0,0.12)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26, marginBottom: 20,
-        }}>
+        <div
+          aria-hidden="true"
+          style={{
+            width: 52, height: 52, borderRadius: 16,
+            background: danger ? 'rgba(239,68,68,0.12)' : 'rgba(255,138,0,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 26, marginBottom: 20,
+          }}>
           {danger ? '⚠️' : '❓'}
         </div>
 
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: '#FFFFFF', margin: '0 0 10px' }}>
+        <h2 id={titleId} style={{ fontSize: 18, fontWeight: 800, color: '#FFFFFF', margin: '0 0 10px' }}>
           {title || t('confirm_modal_title') || 'Confirmer l\'action'}
         </h2>
 
-        <p style={{ fontSize: 14, color: '#A3A3A3', lineHeight: 1.6, margin: '0 0 28px' }}>
+        <p id={descId} style={{ fontSize: 14, color: '#A3A3A3', lineHeight: 1.6, margin: '0 0 28px' }}>
           {message}
         </p>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
+            aria-label={cancelLabel || t('confirm_modal_cancel') || 'Annuler'}
             style={{
               padding: '10px 20px', borderRadius: 10,
               border: '1px solid rgba(255,255,255,0.1)',
@@ -98,7 +115,9 @@ export default function ConfirmModal({
             {cancelLabel || t('confirm_modal_cancel') || 'Annuler'}
           </button>
           <button
+            ref={confirmBtnRef}
             onClick={onConfirm}
+            aria-label={confirmLabel || t('confirm_modal_confirm') || 'Confirmer'}
             style={{
               padding: '10px 24px', borderRadius: 10,
               border: 'none',

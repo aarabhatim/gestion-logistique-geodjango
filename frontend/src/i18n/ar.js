@@ -1712,6 +1712,7 @@ export const AR = {
   reg_permit_label: 'رقم الترخيص (اختياري)',
   reg_account_pending: 'سيتم التحقق من حسابك من قِبل المسؤول قبل التفعيل',
   reg_creating: 'جارٍ الإنشاء...',
+  reg_title: 'إنشاء حساب',
   reg_create_account: 'إنشاء حسابي',
   ck_promo_invalid: 'رمز الخصم غير صالح أو منتهي الصلاحية.',
   ck_error_generic: 'حدث خطأ. يرجى المحاولة مجدداً.',

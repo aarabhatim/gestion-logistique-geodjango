@@ -60,6 +60,23 @@ const Clients = () => {
           <button className="btn btn-secondary" onClick={() => exportCsv({ data: clients, columns: CSV_COLUMNS.clients, filename: 'clients' })}>
             <Download size={16} /> {t('cl_export_csv')}
           </button>
+          <button className="btn btn-secondary" title="Exporter Excel"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981' }}
+            onClick={() => {
+              const token = localStorage.getItem('access') || sessionStorage.getItem('access');
+              fetch(`${import.meta.env.VITE_API_URL}clients/export/xlsx/`, { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `clients_${new Date().toISOString().split('T')[0]}.xlsx`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                });
+            }}>
+            <Download size={16} /> Excel
+          </button>
           <button className="btn btn-secondary" onClick={() => fetchClients()}>
             <RefreshCw size={16} /> {t('cl_refresh')}
           </button>

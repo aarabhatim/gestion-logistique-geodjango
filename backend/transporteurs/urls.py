@@ -2,8 +2,9 @@ from django.urls import path
 from .views import (
     SOSView, ChatLivraisonView, ObjectifsView, MultiLivraisonsView,
     MonProfilTransporteurView, ToggleDisponibiliteView,
-    TransporteurDisponiblesView,
+    TransporteurDisponiblesView, MesStatsView,
     AdminTransporteurListView, AdminTransporteurValidateView,
+    ExportTransporteursXLSXView,
 )
 from .views_finances import (
     DashboardFinancierView, HistoriquePaiementsView, ExportRevenusCSVView,
@@ -28,6 +29,7 @@ urlpatterns = [
     # ── Profil & Disponibilité ────────────────────────────────────────────────
     path('mon-profil/', MonProfilTransporteurView.as_view(), name='mon-profil-transporteur'),
     path('disponibilite/', ToggleDisponibiliteView.as_view(), name='toggle-disponibilite'),
+    path('mes-stats/', MesStatsView.as_view(), name='mes-stats-transporteur'),
     path('disponibles/', TransporteurDisponiblesView.as_view(), name='transporteurs-disponibles'),
 
     # ── Admin ─────────────────────────────────────────────────────────────────
@@ -70,4 +72,7 @@ urlpatterns = [
     path('vehicule/alertes/', AlertesVehiculeView.as_view(), name='vehicule-alertes'),
     path('vehicule/documents/', DocumentsVehiculeView.as_view(), name='vehicule-documents'),
     path('vehicule/documents/<int:pk>/', DocumentVehiculeDetailView.as_view(), name='vehicule-document-detail'),
+
+    # ── Export ────────────────────────────────────────────────────────────────
+    path('export/xlsx/', ExportTransporteursXLSXView.as_view(), name='export-transporteurs-xlsx'),
 ]

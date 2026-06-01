@@ -208,7 +208,7 @@ export default function GamificationPage() {
       {/* ── Niveau card ── */}
       {niveau && (
         <div style={{
-          background: T.surface, borderRadius: 20, padding: '24px 28px',
+          borderRadius: 20, padding: '24px 28px',
           border: `1px solid ${nc}25`,
           background: `linear-gradient(135deg, ${T.surface}, ${nc}08)`,
         }}>
@@ -315,7 +315,7 @@ export default function GamificationPage() {
                 const isTop3  = i < 3;
                 return (
                   <motion.div
-                    key={t.id}
+                    key={entry.id}
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
@@ -334,29 +334,29 @@ export default function GamificationPage() {
                       {isTop3 ? (
                         <span style={{ fontSize: 22 }}>{medals[i]}</span>
                       ) : (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text2 }}>{t.rang}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: T.text2 }}>{entry.rang}</span>
                       )}
                     </div>
 
                     {/* Avatar */}
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: isTop3 ? gradient : '#2A2A2A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: 'white', flexShrink: 0 }}>
-                      {(t.nom || '?')[0].toUpperCase()}
+                      {(entry.nom || '?')[0].toUpperCase()}
                     </div>
 
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {t.nom}
+                        {entry.nom}
                       </div>
                       <div style={{ fontSize: 11, color: T.text2, display: 'flex', gap: 10, marginTop: 2 }}>
-                        <span>⭐ {t.note_moyenne?.toFixed(1)}</span>
-                        <span>📦 {t.livraisons_periode} livraisons</span>
+                        <span>⭐ {entry.note_moyenne?.toFixed(1)}</span>
+                        <span>📦 {entry.livraisons_periode} livraisons</span>
                       </div>
                     </div>
 
                     {/* Niveau badge */}
                     <div style={{ fontSize: 11, fontWeight: 700, color: niveauC, background: `${niveauC}15`, border: `1px solid ${niveauC}30`, padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {NIVEAU_EMOJIS[t.niveau] || '🏅'} {t.niveau}
+                      {NIVEAU_EMOJIS[entry.niveau] || '🏅'} {entry.niveau}
                     </div>
                   </motion.div>
                 );

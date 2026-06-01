@@ -503,7 +503,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               <MapPin size={13} style={{ display: 'inline', marginRight: 4, color: 'var(--mj-red)' }} />
               Adresse de livraison *
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6, marginBottom: 10 }}>
               {modeBtn('gps', gpsStatus === 'loading' ? 'Localisation...' : '📍 Position live', gpsStatus === 'loading' ? <RefreshCw size={16} className="mj-spin" /> : <Navigation size={16} />)}
               {modeBtn('quartier', '🏘️ Quartier', <Search size={16} />)}
               {modeBtn('manuel', '✏️ Manuelle', <MapPin size={16} />)}
@@ -534,7 +534,7 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
               <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Zap size={13} /> {t('cd_realtime')}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 {[[t('cl_distance'), `${distance.toFixed(1)} km`, '#3B82F6'], [t('cd_time'), `${tempsEstime} min`, '#F59E0B'], [t('cd_fees_short'), `${fraisCalcules} MAD`, '#22C55E']].map(([l, v, c]) => (
                   <div key={l}><div style={{ fontSize: 10, color: 'var(--mj-text-4)' }}>{l}</div><div style={{ fontWeight: 700, fontSize: 16, color: c }}>{v}</div></div>
                 ))}

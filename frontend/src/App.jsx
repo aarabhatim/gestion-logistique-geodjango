@@ -10,8 +10,10 @@ import { AdminShell } from './components/layout/AdminShell';
 import TransporteurLayout from './layouts/TransporteurLayout';
 
 // Auth
-import Login    from './pages/auth/Login';
-import Register from './pages/auth/Register';
+import Login          from './pages/auth/Login';
+import Register       from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword  from './pages/auth/ResetPassword';
 
 // Admin — existing
 import Dashboard     from './pages/Dashboard';
@@ -123,8 +125,10 @@ function AppRoutes() {
     <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
         {/* Auth */}
-        <Route path="/login"    element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login"           element={<Login />} />
+        <Route path="/register"        element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
 
         {/* Client */}
         <Route path="/client" element={

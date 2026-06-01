@@ -88,3 +88,23 @@ class ClientToggleActifView(APIView):
             'actif': client.actif,
             'detail': 'Client active.' if client.actif else 'Client desactive.',
         })
+
+
+# ─── Export Excel ─────────────────────────────────────────────────────────────
+class ExportClientsXLSXView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({'error': 'Accès refusé'}, status=403)
+        from dm_utils.export_excel import export_clients_xlsx
+        from django.http import HttpResponse
+
+        qs = Client.objects.all()
+        data = export_clients_xlsx(qs)
+        response = HttpResponse(
+            data,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="clients.xlsx"'
+        return response

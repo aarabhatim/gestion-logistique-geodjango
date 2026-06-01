@@ -11,6 +11,7 @@ import { useI18n } from '../contexts/I18nContext';
 import { exportCsv, CSV_COLUMNS } from '../utils/exportCsv';
 
 const TYPE_CONFIG = {
+  sos:             { labelKey: 'SOS chauffeur',            color: '#dc2626', emoji: '🆘' },
   accident:        { labelKey: 'inc_type_ACCIDENT',         color: '#ef4444', emoji: '🚨' },
   panne:           { labelKey: 'inc_type_PANNE',             color: '#f59e0b', emoji: '🔧' },
   vol:             { labelKey: 'inc_type_VOL',               color: '#22c55e', emoji: '🔓' },
@@ -23,7 +24,7 @@ const TYPE_CONFIG = {
 
 const STATUT_CONFIG = {
   ouvert:      { labelKey: 'incident_open',        class: 'badge-danger'  },
-  en_cours:    { labelKey: 'incident_in_progress', class: 'badge-warning' },
+  en_traitement: { labelKey: 'incident_in_progress', class: 'badge-warning' },
   resolu:      { labelKey: 'incident_resolved',    class: 'badge-success' },
 };
 
@@ -89,16 +90,31 @@ const Incidents = () => {
     finally { setResolving(false); }
   };
 
+  // Helper to extract coordinates safely from either GeoJSON or plain format
+  const getCoords = (inc) => {
+    if (inc.geometry?.coordinates) {
+      return inc.geometry.coordinates; // [lon, lat]
+    }
+    if (inc.longitude !== undefined && inc.latitude !== undefined && inc.longitude !== null && inc.latitude !== null) {
+      return [inc.longitude, inc.latitude]; // [lon, lat]
+    }
+    return null;
+  };
+
+  const getProps = (inc) => inc.properties || inc;
+  const getTypeLabel = (cfg) => cfg.labelKey.startsWith('inc_') ? t(cfg.labelKey) : cfg.labelKey;
+  const getStatusLabel = (statut) => {
+    const cfg = STATUT_CONFIG[statut];
+    return cfg ? t(cfg.labelKey) : statut;
+  };
+
   // Incidents with valid coords for map
   const incidentsGeo = useMemo(() => {
     return incidents.filter(inc => {
-      const coords = inc.geometry?.coordinates;
-      return coords && coords.length === 2 && coords[0] !== 0;
+      const coords = getCoords(inc);
+      return coords && coords.length === 2 && coords[0] !== 0 && coords[1] !== 0;
     });
   }, [incidents]);
-
-  const getProps = (inc) => inc.properties || inc;
-  const getCoords = (inc) => inc.geometry?.coordinates; // [lon, lat]
 
   return (
     <div className="dashboard-container">
@@ -125,7 +141,7 @@ const Incidents = () => {
           {[
             { label: t('adm_total'), value: stats.total || 0, color: '#3b82f6' },
             { label: t('incident_open'), value: stats.ouverts || 0, color: '#ef4444' },
-            { label: t('incident_in_progress'), value: stats.en_cours || 0, color: '#f59e0b' },
+            { label: t('incident_in_progress'), value: stats.en_traitement || stats.en_cours || 0, color: '#f59e0b' },
             { label: t('incident_resolved'), value: stats.resolus || 0, color: '#10b981' },
           ].map(k => (
             <div key={k.label} className="glass-card" style={{ padding: '0.85rem 1rem', borderLeft: `3px solid ${k.color}` }}>
@@ -142,12 +158,12 @@ const Incidents = () => {
         <select className="glass-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
           style={{ width: 160, padding: '5px 10px', fontSize: 13 }}>
           <option value="">Tous les statuts</option>
-          {Object.entries(STATUT_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          {Object.entries(STATUT_CONFIG).map(([k, v]) => <option key={k} value={k}>{t(v.labelKey)}</option>)}
         </select>
         <select className="glass-input" value={filtreType} onChange={e => setFiltreType(e.target.value)}
           style={{ width: 180, padding: '5px 10px', fontSize: 13 }}>
           <option value="">Tous les types</option>
-          {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+          {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.emoji} {getTypeLabel(v)}</option>)}
         </select>
         {(filtreStatut || filtreType) && (
           <button onClick={() => { setFiltreStatut(''); setFiltreType(''); }}
@@ -178,7 +194,7 @@ const Incidents = () => {
               return (
                 <CircleMarker key={inc.id || props.id}
                   center={[coords[1], coords[0]]}
-                  radius={props.statut === 'resolu' ? 6 : 10}
+                  radius={props.type_incident === 'sos' ? 14 : props.statut === 'resolu' ? 6 : 10}
                   fillColor={cfg.color}
                   color={props.statut === 'resolu' ? '#64748b' : cfg.color}
                   fillOpacity={props.statut === 'resolu' ? 0.4 : 0.85}
@@ -186,9 +202,9 @@ const Incidents = () => {
                   eventHandlers={{ click: () => { setSelected(inc); setShowDetail(true); } }}>
                   <Popup>
                     <div style={{ minWidth: 180 }}>
-                      <strong>{cfg.emoji} {t(cfg.labelKey)}</strong><br />
-                      <span style={{ fontSize: 11 }}>Commande : {props.commande_reference || props.commande}</span><br />
-                      <span style={{ fontSize: 11 }}>Statut : <b>{STATUT_CONFIG[props.statut]?.label || props.statut}</b></span><br />
+                      <strong>{cfg.emoji} {getTypeLabel(cfg)}</strong><br />
+                      <span style={{ fontSize: 11 }}>Commande : {props.commande_reference || props.commande || 'SOS sans commande'}</span><br />
+                      <span style={{ fontSize: 11 }}>Statut : <b>{getStatusLabel(props.statut)}</b></span><br />
                       <span style={{ fontSize: 11 }}>{props.description?.slice(0, 80)}</span>
                     </div>
                   </Popup>
@@ -237,14 +253,14 @@ const Incidents = () => {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{cfg.emoji} {t(cfg.labelKey)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{cfg.emoji} {getTypeLabel(cfg)}</span>
                         <span className={`badge ${statCfg.class || 'badge-secondary'}`} style={{ fontSize: 10 }}>
-                          {statCfg.label || props.statut}
+                          {statCfg.labelKey ? t(statCfg.labelKey) : props.statut}
                         </span>
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         <Package size={10} style={{ marginRight: 4 }} />
-                        {props.commande_reference || props.commande}
+                        {props.commande_reference || props.commande || 'SOS sans commande'}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                         {props.description?.slice(0, 60)}{props.description?.length > 60 ? '...' : ''}
@@ -275,9 +291,12 @@ const Incidents = () => {
 };
 
 const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResoudre, onPrendreEnCharge, onClose }) => {
+  const { t } = useI18n();
   const props = inc.properties || inc;
   const cfg = TYPE_CONFIG[props.type_incident] || TYPE_CONFIG.autre;
   const statCfg = STATUT_CONFIG[props.statut] || {};
+  const typeLabel = cfg.labelKey.startsWith('inc_') ? t(cfg.labelKey) : cfg.labelKey;
+  const statutLabel = statCfg.labelKey ? t(statCfg.labelKey) : props.statut;
 
   return (
     <div className="glass-card animate-fade-in" style={{ borderLeft: `3px solid ${cfg.color}` }}>
@@ -293,15 +312,15 @@ const IncidentDetail = ({ inc, resolveNotes, setResolveNotes, resolving, onResou
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Type</span>
-          <strong>{cfg.emoji} {t(cfg.labelKey)}</strong>
+          <strong>{cfg.emoji} {typeLabel}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Statut</span>
-          <span className={`badge ${statCfg.class || 'badge-secondary'}`}>{statCfg.label || props.statut}</span>
+          <span className={`badge ${statCfg.class || 'badge-secondary'}`}>{statutLabel}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Commande</span>
-          <strong>{props.commande_reference || props.commande}</strong>
+          <strong>{props.commande_reference || props.commande || 'SOS sans commande'}</strong>
         </div>
         {props.chauffeur_nom && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>

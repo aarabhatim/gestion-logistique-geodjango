@@ -705,6 +705,25 @@ const Commandes = () => {
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Download size={15} /> CSV
           </button>
+          <button className="btn btn-secondary" title="Exporter Excel"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981' }}
+            onClick={() => {
+              const token = localStorage.getItem('access') || sessionStorage.getItem('access');
+              const a = document.createElement('a');
+              a.href = `${import.meta.env.VITE_API_URL}commandes/export/xlsx/`;
+              fetch(a.href, { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `commandes_${new Date().toISOString().split('T')[0]}.xlsx`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                });
+            }}>
+            <Download size={15} /> Excel
+          </button>
           <button className="btn btn-secondary" onClick={() => fetchCommandes()}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> {t('common_retry')}
           </button>
@@ -724,7 +743,7 @@ const Commandes = () => {
               background: filterStatut === key ? `${cfg.dot}20` : 'rgba(255,255,255,0.04)',
               color: filterStatut === key ? cfg.dot : 'var(--text-secondary)', fontSize: 12, padding: '5px 12px',
             }}>
-            {tStatus(statut)}
+            {tStatus(key)}
           </button>
         ))}
         {filterStatut && (

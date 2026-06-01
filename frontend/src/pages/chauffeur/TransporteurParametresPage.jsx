@@ -78,7 +78,7 @@ function SaveBtn({ onClick, loading, label }) {
       {loading
         ? <Loader size={15} style={{ animation: 'spin 0.8s linear infinite' }} />
         : <Save size={15} />}
-      {label || t('tp_save')}
+      {label || 'Enregistrer'}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </button>
   );
@@ -276,7 +276,7 @@ export default function TransporteurParametresPage() {
               )}
 
               <div style={{ marginTop: 28 }}>
-                <SaveBtn onClick={handleSaveProfil} loading={savingProfil} />
+                <SaveBtn onClick={handleSaveProfil} loading={savingProfil} label={t('tp_save')} />
               </div>
             </div>
           )}
@@ -319,7 +319,7 @@ export default function TransporteurParametresPage() {
               { icon: '⭐', titleKey: 'tp_score_card',    descKey: 'tp_score_desc', color: '#60a5fa' },
               { icon: '⏱️', titleKey: 'tp_reactivity', descKey: 'tp_reactivity_desc', color: '#F59E0B' },
             ].map(item => (
-              <div key={item.title} style={{ padding: '20px', borderRadius: 16, background: '#1C1C1C', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div key={item.titleKey} style={{ padding: '20px', borderRadius: 16, background: '#1C1C1C', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ fontSize: 28, marginBottom: 10 }}>{item.icon}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 5 }}>{t(item.titleKey)}</div>
                 <div style={{ fontSize: 12, color: '#888', lineHeight: 1.5 }}>{t(item.descKey)}</div>

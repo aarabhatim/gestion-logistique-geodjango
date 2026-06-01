@@ -178,51 +178,58 @@ const Register = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} aria-label={t('reg_title') || "Formulaire d'inscription"} noValidate>
               {/* Identité */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_firstname')}</label>
-                  <input required className="glass-input" value={form.first_name}
+                  <label htmlFor="reg-firstname" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_firstname')}</label>
+                  <input id="reg-firstname" required className="glass-input" value={form.first_name}
+                    aria-required="true" aria-label={t('reg_firstname')}
                     onChange={e => set('first_name', e.target.value)} placeholder="Mohamed" />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_lastname')}</label>
-                  <input required className="glass-input" value={form.last_name}
+                  <label htmlFor="reg-lastname" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_lastname')}</label>
+                  <input id="reg-lastname" required className="glass-input" value={form.last_name}
+                    aria-required="true" aria-label={t('reg_lastname')}
                     onChange={e => set('last_name', e.target.value)} placeholder="El Alami" />
                 </div>
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_username')}</label>
-                <input required className="glass-input" value={form.username}
+                <label htmlFor="reg-username" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_username')}</label>
+                <input id="reg-username" required className="glass-input" value={form.username}
+                  aria-required="true" aria-label={t('reg_username')}
                   onChange={e => set('username', e.target.value)} placeholder="mohalami" autoComplete="username" />
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Email *</label>
-                <input required type="email" className="glass-input" value={form.email}
+                <label htmlFor="reg-email" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Email *</label>
+                <input id="reg-email" required type="email" className="glass-input" value={form.email}
+                  aria-required="true" aria-label="Adresse email"
                   onChange={e => set('email', e.target.value)} placeholder="m.alami@gmail.com" autoComplete="email" />
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_password_label')}</label>
+                <label htmlFor="reg-password" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_password_label')}</label>
                 <div style={{ position: 'relative' }}>
-                  <input required type={showPwd ? 'text' : 'password'} className="glass-input"
+                  <input id="reg-password" required type={showPwd ? 'text' : 'password'} className="glass-input"
                     minLength={6} value={form.password}
+                    aria-required="true" aria-label={t('reg_password_label')}
                     onChange={e => set('password', e.target.value)}
                     placeholder="••••••••" autoComplete="new-password"
                     style={{ paddingRight: '2.5rem' }} />
                   <button type="button" onClick={() => setShowPwd(v => !v)}
+                    aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPwd ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_phone_label')}</label>
-                <input className="glass-input" value={form.phone}
+                <label htmlFor="reg-phone" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('reg_phone_label')}</label>
+                <input id="reg-phone" className="glass-input" value={form.phone}
+                  aria-label={t('reg_phone_label')}
                   onChange={e => set('phone', e.target.value)} placeholder="+212 6XX XXX XXX" type="tel" />
               </div>
 

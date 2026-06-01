@@ -130,7 +130,7 @@ export default function GaleriePage() {
                 fontFamily: 'var(--mj-font)',
               }}
             >
-              {TYPE_ICONS[t]} {label}
+              {TYPE_ICONS[tp]} {t(labelKey)}
             </button>
           ))}
         </div>

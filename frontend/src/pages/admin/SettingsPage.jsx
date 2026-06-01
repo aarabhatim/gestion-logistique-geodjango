@@ -424,7 +424,7 @@ const SettingsPage = () => {
               </SectionCard>
 
               <SectionCard title={t('sp_performance')} icon={Activity} color="#22c55e">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                   {[
                     { labelKey: 'sp_latency', value: '< 200ms', color: '#22c55e' },
                     { labelKey: 'sp_uptime', value: '99.9%',   color: '#a3e635' },

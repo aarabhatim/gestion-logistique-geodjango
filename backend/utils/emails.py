@@ -184,3 +184,62 @@ def email_ticket_reponse(ticket, message):
     </div>
     """
     return _send(subject, demandeur.email, html)
+
+
+def email_nouvelle_commande_fondateur(commande):
+    """Email au fondateur/commercant quand une nouvelle commande arrive."""
+    try:
+        fondateur_user = commande.fondateur.user
+    except Exception:
+        return False
+    subject = f"[DeliverMap] Nouvelle commande #{commande.reference} !"
+    nb_articles = sum(l.quantite for l in commande.lignes.all())
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:32px;border-radius:12px">
+      <div style="text-align:center;margin-bottom:24px">
+        <h1 style="color:#6366f1;font-size:28px;margin:0">DeliverMap</h1>
+      </div>
+      <h2 style="color:#f8fafc;font-size:20px">Nouvelle commande recue ! 🛒</h2>
+      <p>Bonjour <strong>{fondateur_user.first_name}</strong>,</p>
+      <p>Vous avez recu une nouvelle commande de <strong>{commande.client.get_full_name() or commande.client.username}</strong>.</p>
+      <div style="background:#1e293b;border-radius:8px;padding:16px;margin:20px 0;border-left:4px solid #10b981">
+        <p style="margin:4px 0"><strong>Reference :</strong> <span style="color:#6366f1">{commande.reference}</span></p>
+        <p style="margin:4px 0"><strong>Articles :</strong> {nb_articles} article(s)</p>
+        <p style="margin:4px 0"><strong>Montant :</strong> <span style="color:#10b981;font-size:18px;font-weight:bold">{commande.total_price} MAD</span></p>
+        <p style="margin:4px 0"><strong>Adresse :</strong> {commande.adresse_livraison}</p>
+      </div>
+      <p style="color:#94a3b8;font-size:13px">Connectez-vous sur votre espace boutique pour confirmer ou refuser cette commande.</p>
+      <hr style="border-color:#334155;margin:24px 0">
+      <p style="color:#64748b;font-size:12px;text-align:center">DeliverMap — Livraison rapide au Maroc</p>
+    </div>
+    """
+    return _send(subject, fondateur_user.email, html)
+
+
+def email_mission_acceptee_chauffeur(commande):
+    """Email de confirmation au chauffeur quand il accepte une mission."""
+    chauffeur = commande.transporteur
+    if not chauffeur or not chauffeur.email:
+        return False
+    subject = f"[DeliverMap] Mission acceptee — Commande {commande.reference}"
+    boutique = commande.fondateur.nom_boutique if commande.fondateur else "la boutique"
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:32px;border-radius:12px">
+      <div style="text-align:center;margin-bottom:24px">
+        <h1 style="color:#6366f1;font-size:28px;margin:0">DeliverMap</h1>
+      </div>
+      <h2 style="color:#f8fafc;font-size:20px">Mission confirmee ! 🚗</h2>
+      <p>Bonjour <strong>{chauffeur.first_name}</strong>,</p>
+      <p>Vous avez accepte la mission pour la commande <strong style="color:#6366f1">{commande.reference}</strong>.</p>
+      <div style="background:#1e293b;border-radius:8px;padding:16px;margin:20px 0;border-left:4px solid #3b82f6">
+        <p style="margin:4px 0"><strong>Boutique :</strong> {boutique}</p>
+        <p style="margin:4px 0"><strong>Client :</strong> {commande.client.get_full_name() or commande.client.username}</p>
+        <p style="margin:4px 0"><strong>Adresse de livraison :</strong> {commande.adresse_livraison}</p>
+        <p style="margin:4px 0"><strong>Votre gain :</strong> <span style="color:#10b981;font-weight:bold">{commande.frais_livraison} MAD</span></p>
+      </div>
+      <p style="color:#94a3b8;font-size:13px">Rendez-vous a la boutique pour recuperer la commande, puis livrez-la au client.</p>
+      <hr style="border-color:#334155;margin:24px 0">
+      <p style="color:#64748b;font-size:12px;text-align:center">DeliverMap — Livraison rapide au Maroc</p>
+    </div>
+    """
+    return _send(subject, chauffeur.email, html)

@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { zonesApi, transporteursApi } from '../../services/api';
 import { MapPin, Plus, Trash2, Edit2, Save, X, Users } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function ZonesPage() {
   const { t } = useI18n();
@@ -14,6 +15,7 @@ export default function ZonesPage() {
   const [form, setForm] = useState({ nom: '', description: '', tarif_base: 0, tarif_km_supplementaire: 0, couleur: '#3b82f6', actif: true });
   const [transporteurs, setTransporteurs] = useState([]);
   const [toast, setToast] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -39,10 +41,15 @@ export default function ZonesPage() {
     } catch { showToast(t('zn_error'), 'error'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(t('zn_confirm_delete'))) return;
-    try { await zonesApi.delete(id); showToast(t('zn_toast_deleted')); fetchAll(); }
-    catch { showToast(t('zn_error'), 'error'); }
+  const handleDelete = (id) => {
+    setConfirmState({
+      open: true,
+      message: t('zn_confirm_delete'),
+      onConfirm: async () => {
+        try { await zonesApi.delete(id); showToast(t('zn_toast_deleted')); fetchAll(); }
+        catch { showToast(t('zn_error'), 'error'); }
+      }
+    });
   };
 
   const handleAssign = async (zoneId, tid) => {
@@ -176,6 +183,16 @@ export default function ZonesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => {
+          confirmState.onConfirm?.();
+          setConfirmState(s => ({ ...s, open: false }));
+        }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 }

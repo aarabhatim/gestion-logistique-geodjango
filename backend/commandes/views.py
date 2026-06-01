@@ -42,10 +42,11 @@ class CommandeListCreateView(generics.ListCreateAPIView):
         serializer = CommandeCreateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             commande = serializer.save()
-            # Email de confirmation au client
+            # Email de confirmation au client + alerte au fondateur
             try:
-                from utils.emails import email_confirmation_commande
+                from utils.emails import email_confirmation_commande, email_nouvelle_commande_fondateur
                 email_confirmation_commande(commande)
+                email_nouvelle_commande_fondateur(commande)
             except Exception:
                 pass
             return Response(
@@ -225,6 +226,12 @@ class TransporteurAccepterCommandeView(APIView):
                 pass
             from contrats.services import creer_contrat_pour_commande
             creer_contrat_pour_commande(commande, cree_par=request.user)
+            # Email de confirmation au chauffeur
+            try:
+                from utils.emails import email_mission_acceptee_chauffeur
+                email_mission_acceptee_chauffeur(commande)
+            except Exception:
+                pass
             return Response(CommandeSerializer(commande).data)
         elif action == 'refuser':
             return Response({'message': 'Commande refusée. Prochaine proposition...'})
@@ -439,3 +446,29 @@ class AvisReplyView(APIView):
         avis.reponse_fondateur = reponse
         avis.save()
         return Response({'status': 'ok', 'reponse': reponse})
+
+
+# ─── Export Excel ─────────────────────────────────────────────────────────────
+class ExportCommandesXLSXView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ['ADMIN', 'FONDATEUR']:
+            return Response({'error': 'Accès refusé'}, status=403)
+        from dm_utils.export_excel import export_commandes_xlsx
+        from django.http import HttpResponse
+
+        qs = Commande.objects.select_related('client', 'fondateur', 'transporteur').all()
+        if request.user.role == 'FONDATEUR':
+            try:
+                qs = qs.filter(fondateur=request.user.fondateur_profile)
+            except Exception:
+                qs = Commande.objects.none()
+
+        data = export_commandes_xlsx(qs)
+        response = HttpResponse(
+            data,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="commandes.xlsx"'
+        return response
