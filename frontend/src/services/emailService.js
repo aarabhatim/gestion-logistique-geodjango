@@ -1,94 +1,89 @@
 /**
- * emailService.js — Envoi d'emails transactionnels via EmailJS
+ * emailService.js — Emails via EmailJS REST API
  *
- * Les credentials EmailJS sont intentionnellement côté client —
- * c'est le modèle prévu par EmailJS (clés exposées dans le JS du navigateur).
- *
- * Template variables utilisées :
- *   {{to_name}}        Prénom + Nom
- *   {{to_email}}       Email du destinataire
- *   {{username}}       Identifiant de connexion
- *   {{role_label}}     "Client" ou "Chauffeur partenaire"
- *   {{role_emoji}}     📦 ou 🚗
- *   {{dashboard_url}}  Lien vers le tableau de bord
- *   {{features}}       Description des fonctionnalités
- *   {{year}}           Année en cours
+ * Template EmailJS requis (1 seul template flexible) :
+ *   To Email  -> {{to_email}}    <- OBLIGATOIRE dans les settings du template
+ *   Subject   -> {{subject}}
+ *   Body HTML -> {{message}}
  */
 
-// ── Credentials EmailJS ───────────────────────────────────────────────────────
-const EMAILJS_SERVICE_ID  = 'service_0ocuks5';
-const EMAILJS_TEMPLATE_ID = 'template_of6r6su';
-const EMAILJS_PUBLIC_KEY  = 'bdz0uoCKUmfC4WkEl';
+const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_0ocuks5';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_of6r6su';
+const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'bdz0uoCKUmfC4WkEl';
+const EMAILJS_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 
-// ── Métadonnées par rôle ──────────────────────────────────────────────────────
-const ROLE_META = {
-  CLIENT: {
-    label:         'Client',
-    emoji:         '📦',
-    get dashboard_url() { return `${window.location.origin}/client`; },
-    features:      'commandes en ligne, suivi live de vos livraisons et historique complet.',
-  },
-  TRANSPORTEUR: {
-    label:         'Chauffeur partenaire',
-    emoji:         '🚗',
-    get dashboard_url() { return `${window.location.origin}/chauffeur`; },
-    features:      'missions disponibles, suivi de vos revenus et navigation intégrée.',
-  },
-};
-
-// ── Fonction principale ───────────────────────────────────────────────────────
-/**
- * Envoie l'email de bienvenue après création de compte.
- * Non bloquant — ne stoppe jamais l'inscription en cas d'erreur email.
- *
- * @param {{ first_name: string, last_name: string, email: string, username: string, role: string }} userData
- */
-export async function sendWelcomeEmail(userData) {
-  console.log('[EmailService] Tentative d\'envoi à', userData.email, '| Rôle:', userData.role);
-
-  const meta = ROLE_META[userData.role] ?? ROLE_META.CLIENT;
-
-  const templateParams = {
-    to_name:       (`${userData.first_name || ''} ${userData.last_name || ''}`).trim() || userData.username,
-    to_email:      userData.email,
-    username:      userData.username,
-    role_label:    meta.label,
-    role_emoji:    meta.emoji,
-    dashboard_url: meta.dashboard_url,
-    features:      meta.features,
-    year:          new Date().getFullYear(),
-  };
-
-  console.log('[EmailService] Paramètres template:', templateParams);
-
+// ── Envoi générique ───────────────────────────────────────────────────────────
+async function sendEmail(params) {
   try {
-    const payload = {
-      service_id:      EMAILJS_SERVICE_ID,
-      template_id:     EMAILJS_TEMPLATE_ID,
-      user_id:         EMAILJS_PUBLIC_KEY,
-      template_params: templateParams,
-    };
-
-    console.log('[EmailService] Envoi payload:', payload);
-
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    const res = await fetch(EMAILJS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        service_id:      SERVICE_ID,
+        template_id:     TEMPLATE_ID,
+        user_id:         PUBLIC_KEY,
+        template_params: params,
+      }),
     });
-
-    const responseText = await res.text();
-
     if (res.ok) {
-      console.info('[EmailService] ✅ Email envoyé avec succès à', userData.email);
-    } else {
-      console.error(
-        '[EmailService] ❌ Échec HTTP', res.status,
-        '| Réponse:', responseText,
-        '\n→ Vérifiez : Public Key, Service ID, Template ID dans le dashboard EmailJS'
-      );
+      console.info('[EmailJS] Email envoye a', params.to_email);
+      return true;
     }
+    const txt = await res.text();
+    console.error('[EmailJS] Erreur', res.status, txt);
+    return false;
   } catch (err) {
-    console.error('[EmailService] ❌ Erreur réseau:', err.message);
+    console.error('[EmailJS] Reseau:', err.message);
+    return false;
   }
+}
+
+// ── Base HTML ─────────────────────────────────────────────────────────────────
+function wrap(content) {
+  const yr = new Date().getFullYear();
+  return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:32px;border-radius:12px"><div style="text-align:center;margin-bottom:24px"><h1 style="color:#6366f1;font-size:28px;margin:0">DeliverMap</h1><p style="color:#64748b;font-size:13px;margin:4px 0 0">Livraison rapide au Maroc</p></div>${content}<hr style="border-color:#334155;margin:24px 0"><p style="color:#64748b;font-size:12px;text-align:center">DeliverMap &copy; ${yr}</p></div>`;
+}
+
+// ── Email bienvenue ───────────────────────────────────────────────────────────
+export async function sendWelcomeEmail({ first_name, last_name, email, username, role }) {
+  const name = ((first_name || '') + ' ' + (last_name || '')).trim() || username;
+  const isDriver = role === 'TRANSPORTEUR';
+  const dashUrl = window.location.origin + (isDriver ? '/chauffeur' : '/client');
+  const roleLabel = isDriver ? 'Chauffeur partenaire' : 'Client';
+  const roleEmoji = isDriver ? 'image' : '';
+
+  const message = wrap(`
+    <h2 style="color:#f8fafc;font-size:20px">Bienvenue sur DeliverMap !</h2>
+    <p>Bonjour <strong>${first_name || username}</strong>,</p>
+    <p>Votre compte a ete cree avec succes.</p>
+    <div style="background:#1e293b;border-radius:8px;padding:16px;margin:20px 0">
+      <p style="margin:4px 0"><strong>Identifiant :</strong> ${username}</p>
+      <p style="margin:4px 0"><strong>Role :</strong> ${roleLabel}</p>
+    </div>
+    <div style="text-align:center;margin:28px 0">
+      <a href="${dashUrl}" style="background:#6366f1;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px">
+        Acceder a mon espace
+      </a>
+    </div>
+    <p style="color:#94a3b8;font-size:13px">Si vous n'avez pas cree ce compte, ignorez cet email.</p>
+  `);
+
+  return sendEmail({ to_name: name, to_email: email, subject: 'Bienvenue sur DeliverMap !', message, action_url: dashUrl, action_label: 'Acceder a mon espace' });
+}
+
+// ── Email reset mot de passe ──────────────────────────────────────────────────
+export async function sendPasswordResetEmail({ email, name, resetUrl }) {
+  const message = wrap(`
+    <h2 style="color:#f8fafc;font-size:20px">Reinitialisation du mot de passe</h2>
+    <p>Bonjour <strong>${name || 'utilisateur'}</strong>,</p>
+    <p>Cliquez sur le bouton ci-dessous pour reinitialiser votre mot de passe :</p>
+    <div style="text-align:center;margin:28px 0">
+      <a href="${resetUrl}" style="background:#6366f1;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px">
+        Reinitialiser mon mot de passe
+      </a>
+    </div>
+    <p style="color:#94a3b8;font-size:13px">Ce lien expire dans <strong>1 heure</strong>.</p>
+  `);
+
+  return sendEmail({ to_name: name || 'Utilisateur', to_email: email, subject: '[DeliverMap] Reinitialisation de votre mot de passe', message, action_url: resetUrl, action_label: 'Reinitialiser' });
 }

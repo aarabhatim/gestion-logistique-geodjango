@@ -118,7 +118,7 @@ const MapComponent = () => {
             <Marker position={[lat, lon]} icon={ICONS.delivery}>
               <Popup>
                 <div style={{ minWidth: 160 }}>
-                  <strong>📦 {cmd.reference}</strong><br />
+                  <strong>#{cmd.reference}</strong><br />
                   <span style={{ fontSize: 12, color: '#64748b' }}>{cmd.fondateur_detail?.nom_boutique}</span><br />
                   <span style={{ fontSize: 12 }}>{cmd.adresse_livraison}</span><br />
                   <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>{Math.round(cmd.total_price || 0)} MAD</span>

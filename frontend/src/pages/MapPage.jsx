@@ -86,7 +86,9 @@ const KPIRow = ({ stats }) => (
 );
 
 // ─── Legend ───────────────────────────────────────────────────────────────────
-const Legend = () => (
+const Legend = () => {
+  const { t } = useI18n();
+  return (
   <div style={{
     position: 'absolute', bottom: 16, right: 16, zIndex: 1000,
     background: 'rgba(15,23,42,0.95)', backdropFilter: 'blur(14px)',
@@ -104,11 +106,11 @@ const Legend = () => (
         { color: '#f59e0b', emoji: '🚚', labelKey: 'map_delivering' },
         { color: '#475569', emoji: '🚙', labelKey: 'tr_offline' },
         { color: '#ef4444', emoji: '⚠️', labelKey: 'tr_pending' },
-      ].map(({ color, emoji, label }) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
+      ].map(({ color, emoji, labelKey }) => (
+        <div key={labelKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
           <span style={{ fontSize: 13 }}>{emoji}</span>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-          <span style={{ color: '#cbd5e1' }}>{label}</span>
+          <span style={{ color: '#cbd5e1' }}>{t(labelKey)}</span>
         </div>
       ))}
     </div>
@@ -119,11 +121,11 @@ const Legend = () => (
         { color: '#3b82f6', emoji: '🏪', labelKey: 'map_open' },
         { color: '#64748b', emoji: '🏪', labelKey: 'map_closed' },
         { color: '#f59e0b', emoji: '🏪', labelKey: 'tr_pending' },
-      ].map(({ color, emoji, label }) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
+      ].map(({ color, emoji, labelKey }) => (
+        <div key={labelKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
           <span style={{ fontSize: 13 }}>{emoji}</span>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-          <span style={{ color: '#cbd5e1' }}>{label}</span>
+          <span style={{ color: '#cbd5e1' }}>{t(labelKey)}</span>
         </div>
       ))}
     </div>
@@ -137,7 +139,8 @@ const Legend = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ─── Layer Toggle ─────────────────────────────────────────────────────────────
 const LayerToggle = ({ layers, onToggle }) => (
@@ -290,7 +293,7 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
       {livraisons.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#ec4899', letterSpacing: '0.05em', marginBottom: 6 }}>
-            🚚 EN COURS ({livraisons.length})
+            EN COURS ({livraisons.length})
           </div>
           <div style={{ maxHeight: 130, overflowY: 'auto' }}>
             {livraisons.slice(0, 5).map(cmd => (
@@ -540,7 +543,7 @@ const MapPage = () => {
       </div>
 
       {/* Main grid: map + side panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1rem', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
         {/* MAP */}
         <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden', position: 'relative', borderRadius: 16, minHeight: 500 }}>
@@ -576,7 +579,7 @@ const MapPage = () => {
                       <Popup>
                         <div style={{ minWidth: 200 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <strong>🚗 {t.nom_complet}</strong>
+                            <strong>{t.nom_complet}</strong>
                             {t.is_verified && <span style={{ background: '#10b98120', color: '#10b981', fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 700 }}>✔ VÉRIFIÉ</span>}
                           </div>
                           <div style={{ fontSize: 12, color: '#64748b' }}>{t.vehicule_type} · {t.plaque}</div>
@@ -649,7 +652,7 @@ const MapPage = () => {
                       <Marker position={[lat, lon]} icon={ICONS.delivery_active}>
                         <Popup>
                           <div style={{ minWidth: 200 }}>
-                            <strong>📦 {cmd.reference}</strong>
+                            <strong>#{cmd.reference}</strong>
                             <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
                               {cmd.fondateur_detail?.nom_boutique || 'Boutique'}
                             </div>
@@ -677,14 +680,6 @@ const MapPage = () => {
               <KPIRow stats={kpiStats} />
             </>
           )}
-        </div>
-
-        {/* Side panel placeholder */}
-        {/* Side panel placeholder */}
-        <div className="glass-card" style={{ overflowY: 'auto', padding: 16 }}>
-          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            Sélectionnez un élément sur la carte pour voir les détails.
-          </div>
         </div>
       </div>
     </div>

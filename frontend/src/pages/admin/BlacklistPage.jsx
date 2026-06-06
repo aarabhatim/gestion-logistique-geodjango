@@ -87,7 +87,7 @@ export default function BlacklistPage() {
           width: 46, height: 46, borderRadius: 12,
           background: 'linear-gradient(135deg,#ef4444,#b91c1c)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
-        }}>🚫</div>
+        }}>✗</div>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>
             {t('bl_title')}
@@ -113,7 +113,7 @@ export default function BlacklistPage() {
         <div style={{
           background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
           color: '#86efac', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 14
-        }}>✅ {success}</div>
+        }}>{success}</div>
       )}
 
       {/* Add form */}

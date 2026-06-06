@@ -11,6 +11,7 @@ import { useI18n } from '../contexts/I18nContext';
  */
 
 const GroupOrderModal = ({ boutiqueId, onClose, onOrder }) => {
+  const { t } = useI18n();
   const [step, setStep] = useState('menu'); // menu | waiting | ready
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(false);

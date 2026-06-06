@@ -69,8 +69,8 @@ const OrderCard = ({ o }) => (
       <span style={{ fontSize: 11, fontWeight: 700, color: STATUT_COLOR[o.statut] || '#4f8cff' }}>{o.statut_label || o.statut}</span>
     </div>
     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 6, lineHeight: 1.7 }}>
-      {o.boutique && <div>🏪 {o.boutique}</div>}
-      {o.adresse_livraison && <div>📍 {o.adresse_livraison}</div>}
+      {o.boutique && <div>{o.boutique}</div>}
+      {o.adresse_livraison && <div>{o.adresse_livraison}</div>}
       {o.total_price && <div>💰 {o.total_price} MAD · {o.mode_paiement}</div>}
       {o.transporteur && <div>🛵 {o.transporteur}</div>}
     </div>

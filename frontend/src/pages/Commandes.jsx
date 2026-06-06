@@ -310,6 +310,7 @@ const BTN_DANGER = {
 
 // ─── Modal Nouvelle Expédition ────────────────────────────────────────────────
 const ModalNouvelleExpedition = ({ onClose, onSuccess }) => {
+  const { t } = useI18n();
   const [step, setStep] = useState(1);           // 1=boutique, 2=produits, 3=livraison
   const [boutiques, setBoutiques] = useState([]);
   const [produits, setProduits]   = useState([]);
@@ -572,6 +573,7 @@ const Commandes = () => {
   const [toast, setToast] = useState(null);
   const [viewMode, setViewMode] = useState('liste'); // 'liste' | 'kanban'
   const [showCreate, setShowCreate] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
 
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
@@ -642,22 +644,9 @@ const Commandes = () => {
     }
     };
 
-  const handleAnnuler = useCallback(async (cmd) => {
+  const handleAnnuler = (cmd) => {
     setConfirmState({ open: true, message: `${t('action_cancel')} #${cmd.reference} ?`, onConfirm: () => doAnnuler(cmd) });
-    return;
-    if (pendingIds.has(cmd.id)) return;
-    setPendingIds(s => new Set(s).add(cmd.id));
-    setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: 'ANNULEE' } : c));
-    try {
-      await commandesApi.adminAnnuler(cmd.id);
-      showToast(t('co_cancelled'));
-    } catch (e) {
-      setCommandes(prev => prev.map(c => c.id === cmd.id ? { ...c, statut: cmd.statut } : c));
-      showToast(e.response?.data?.error || 'Erreur annulation', 'error');
-    } finally {
-      setPendingIds(s => { const n = new Set(s); n.delete(cmd.id); return n; });
-    }
-  }, [pendingIds, showToast]);
+  };
 
   const totalPages = Math.ceil(count / 20);
   const changePage = useCallback((np) => { setPage(np); fetchCommandes(filterStatut, search, np); }, [filterStatut, search, fetchCommandes]);
@@ -918,6 +907,12 @@ const Commandes = () => {
           onSuccess={(msg) => { showToast(msg); setShowCreate(false); fetchCommandes(); }}
         />
       )}
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
     </div>
   );
 };

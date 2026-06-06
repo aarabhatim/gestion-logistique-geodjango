@@ -149,7 +149,9 @@ const Input = ({ label, placeholder, value, onChange, type = 'text', required, e
 );
 
 /* ── Récapitulatif commande (montants) ───────────────────────────────────── */
-const RecapMontants = ({ sousTotal, frais, reduction, total }) => (
+const RecapMontants = ({ sousTotal, frais, reduction, total }) => {
+  const { t } = useI18n();
+  return (
   <div style={{ background: C.card, borderRadius: 12, padding: '16px 18px', border: `1px solid ${C.border}` }}>
     {[
       { label: t('co_subtotal') || 'Sous-total', val: sousTotal.toFixed(2) },
@@ -166,7 +168,8 @@ const RecapMontants = ({ sousTotal, frais, reduction, total }) => (
       <span style={{ fontWeight: 800, fontSize: 18, color: C.primary }}>{total.toFixed(2)} MAD</span>
     </div>
   </div>
-);
+  );
+};
 
 /* ══════════════════════════════════════════════════════════════════════════
    Page principale
@@ -186,6 +189,7 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [commandeCreee, setCommandeCreee] = useState(null);
+  const etapes = ETAPES_DEFS.map(e => ({ ...e, label: t(e.labelKey) }));
 
   /* Grouper par boutique */
   const groupsBoutique = Object.keys(fondateurs).map(fid => ({
@@ -284,7 +288,7 @@ export default function CheckoutPage() {
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Inter', sans-serif" }}>
       {/* Header */}
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }}>
-        <button onClick={() => etape === 'panier' ? navigate('/client') : setEtape(ETAPES[ETAPES.findIndex(e => e.id === etape) - 1]?.id || 'panier')}
+        <button onClick={() => etape === 'panier' ? navigate('/client') : setEtape(etapes[etapes.findIndex(e => e.id === etape) - 1]?.id || 'panier')}
           style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '6px 10px', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
           <ArrowLeft size={16} />
         </button>

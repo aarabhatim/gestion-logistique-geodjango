@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, LayersControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  Activity, MapPin, Layers, RefreshCw, Store, Package, Target,
+  Activity, MapPin, Layers, RefreshCw, Store, Package, Target, Users,
   TrendingUp, AlertCircle, Eye, EyeOff, Download,
   Clock, DollarSign, AlertTriangle, Truck,
 } from 'lucide-react';
@@ -51,12 +51,13 @@ const normalizeGeoPoint = (p) => {
   return { ...p, lat, lon, weight: p.weight ?? p.count ?? 1 };
 };
 
-const heatColor = (intensity, baseColor) => {
+const heatColor = (intensity) => {
   const t = Math.max(0, Math.min(1, intensity));
-  if (t < 0.25) return '#3b82f6';
-  if (t < 0.5)  return '#10b981';
-  if (t < 0.75) return '#f59e0b';
-  return '#ef4444';
+  if (t < 0.2)  return '#60a5fa';   // cold  - blue
+  if (t < 0.4)  return '#34d399';   // low   - teal
+  if (t < 0.6)  return '#fbbf24';   // mid   - amber
+  if (t < 0.8)  return '#f97316';   // high  - orange
+  return '#ef4444';                  // hot   - red
 };
 
 const aggregateGrid = (points, gridSize = 0.02) => {
@@ -323,10 +324,11 @@ const HeatmapPage = () => {
             {/* Cellules heatmap */}
             {showHeatmap && heatGrid.map((cell, i) => (
               <CircleMarker key={`h-${i}`} center={[cell.lat, cell.lon]}
-                radius={5 + cell.intensity * 18}
-                fillColor={heatColor(cell.intensity, currentTypeCfg?.color)}
-                color={heatColor(cell.intensity, currentTypeCfg?.color)}
-                fillOpacity={0.45} stroke={false}>
+                radius={8 + cell.intensity * 28}
+                fillColor={heatColor(cell.intensity)}
+                color={heatColor(cell.intensity)}
+                weight={1}
+                fillOpacity={0.65 + cell.intensity * 0.25}>
                 <Popup>
                   <strong>Zone {currentTypeCfg?.label}</strong><br />
                   {cell.count} point{cell.count > 1 ? 's' : ''}<br />
@@ -404,15 +406,15 @@ const HeatmapPage = () => {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                       onMouseLeave={e => e.currentTarget.style.background = filtreVille === v.ville ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)'}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <strong style={{ fontSize: 13 }}>📍 {v.ville || 'Autre'}</strong>
+                        <strong style={{ fontSize: 13 }}>📌 {v.ville || 'Autre'}</strong>
                         <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: `${scoreColor}22`, padding: '2px 8px', borderRadius: 6 }}>
                           {score}%
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <span>🏪 {v.nb_boutiques}</span>
-                        <span>📦 {v.nb_commandes || 0}</span>
-                        <span>👥 {v.nb_clients || 0}</span>
+                        <span style={{display:'flex',alignItems:'center',gap:3}}><Store size={10}/> {v.nb_boutiques}</span>
+                        <span style={{display:'flex',alignItems:'center',gap:3}}><Package size={10}/> {v.nb_commandes || 0}</span>
+                        <span style={{display:'flex',alignItems:'center',gap:3}}><Users size={10}/> {v.nb_clients || 0}</span>
                       </div>
                       <div style={{ marginTop: 5, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ width: `${score}%`, height: '100%', background: `linear-gradient(90deg, ${scoreColor}99, ${scoreColor})`, transition: 'width 0.4s' }} />

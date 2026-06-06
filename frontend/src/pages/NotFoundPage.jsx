@@ -94,7 +94,7 @@ export default function NotFoundPage() {
           onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          🏠 {t('not_found_home') || 'Tableau de bord'}
+          {t('not_found_home') || 'Tableau de bord'}
         </button>
       </div>
     </div>

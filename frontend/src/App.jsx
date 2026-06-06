@@ -21,7 +21,7 @@ import Commandes     from './pages/Commandes';
 import Clients       from './pages/Clients';
 import Transporteurs from './pages/Transporteurs';
 import Boutiques     from './pages/Boutiques';
-import MapPage       from './pages/MapPage';
+import AdminMapPage  from './pages/admin/MapPage';
 import Rapports      from './pages/Rapports';
 import Incidents     from './pages/Incidents';
 import Scoring       from './pages/Scoring';
@@ -33,7 +33,7 @@ import HeatmapPage   from './pages/admin/HeatmapPage';
 // Admin — nouvelles pages
 import LiveDashboard    from './pages/admin/LiveDashboard';
 import CalendrierPage   from './pages/admin/CalendrierPage';
-import ZonesPage        from './pages/admin/ZonesPage';
+// ZonesPage removed — zones de livraison supprimées de l'admin
 import PromotionsPage   from './pages/admin/PromotionsPage';
 import PrevisionsPage   from './pages/admin/PrevisionsPage';
 import ImpersonationPage from './pages/admin/ImpersonationPage';
@@ -212,7 +212,7 @@ function AppRoutes() {
 
         {/* Admin — existant */}
         <Route path="/"             element={<ProtectedRoute allowedRoles={ADMIN_FOND}><AdminShell><Dashboard /></AdminShell></ProtectedRoute>} />
-        <Route path="/map"          element={<ProtectedRoute allowedRoles={ADMIN_FOND}><AdminShell fullBleed><MapPage /></AdminShell></ProtectedRoute>} />
+        <Route path="/map"          element={<ProtectedRoute allowedRoles={ADMIN_FOND}><AdminShell fullBleed><AdminMapPage /></AdminShell></ProtectedRoute>} />
         <Route path="/commandes"    element={<ProtectedRoute allowedRoles={ADMIN_FOND}><AdminShell><Commandes /></AdminShell></ProtectedRoute>} />
         <Route path="/boutiques"    element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><Boutiques /></AdminShell></ProtectedRoute>} />
         <Route path="/incidents"    element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><Incidents /></AdminShell></ProtectedRoute>} />
@@ -228,7 +228,7 @@ function AppRoutes() {
         {/* Admin — nouvelles pages */}
         <Route path="/live"           element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><LiveDashboard /></AdminShell></ProtectedRoute>} />
         <Route path="/calendrier"     element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><CalendrierPage /></AdminShell></ProtectedRoute>} />
-        <Route path="/zones"          element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><ZonesPage /></AdminShell></ProtectedRoute>} />
+        {/* /zones route removed — zones de livraison supprimées */}
         <Route path="/promotions"     element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><PromotionsPage /></AdminShell></ProtectedRoute>} />
         <Route path="/previsions"     element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><PrevisionsPage /></AdminShell></ProtectedRoute>} />
         <Route path="/impersonation"  element={<ProtectedRoute allowedRoles={ADMIN}><AdminShell><ImpersonationPage /></AdminShell></ProtectedRoute>} />

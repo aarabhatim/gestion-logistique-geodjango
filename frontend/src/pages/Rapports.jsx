@@ -216,7 +216,7 @@ const Rapports = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            📊 {t('reports')}
+            {t('reports')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
             {t('reports_subtitle')}
@@ -226,11 +226,11 @@ const Rapports = () => {
           <button onClick={() => setShowExportMenu(v => !v)} style={{
             padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)',
             background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
-          }}>⬇️ {t('export')}</button>
+          }}><Download size={14} style={{marginRight:5}}/>{t('export')}</button>
           <button onClick={handlePrint} style={{
             padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)',
             background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
-          }}>🖨️ {t('print')}</button>
+          }}><Printer size={14} style={{marginRight:5}}/>{t('print')}</button>
           {showExportMenu && (
             <div style={{
               position: 'absolute', top: '110%', right: 0, background: 'var(--bg-elevated,rgba(20,26,42,0.98))',
@@ -256,26 +256,27 @@ const Rapports = () => {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))', gap: 16, marginBottom: 28 }}>
         {[
-          { label: t('rp_total_orders'),  value: kpis.total_commandes ?? 0, icon: '📦' },
-          { label: t('rp_total_revenue'), value: `${(kpis.ca_total ?? 0).toLocaleString()}`, icon: '💰' },
-          { label: t('rp_delivery_rate'), value: `${kpis.taux_livraison ?? 0}%`, icon: '✅' },
-          { label: t('rp_active_stores'), value: kpis.boutiques_actives ?? 0, icon: '🏪' },
-        ].map(k => (
-          <div key={k.label} style={{
+          { label: t('rp_total_orders'),  value: kpis.commandes_total ?? 0,                      Icon: Package,   color: '#3b82f6' },
+          { label: t('rp_total_revenue'), value: `${(kpis.ca_total ?? 0).toLocaleString()} MAD`, Icon: TrendingUp, color: '#10b981' },
+          { label: t('rp_delivery_rate'), value: `${kpis.taux_livraison ?? 0}%`,                 Icon: CheckCircle,color: '#22c55e' },
+          { label: t('rp_active_stores'), value: kpis.fondateurs_actifs ?? 0,                     Icon: Store,     color: '#f59e0b' },
+          { label: t('transporteurs'),    value: kpis.transporteurs_actifs ?? 0,                  Icon: Truck,     color: '#8b5cf6' },
+          { label: 'CA ce mois',          value: `${(kpis.ca_mois ?? 0).toLocaleString()} MAD`,  Icon: BarChart2,  color: '#06b6d4' },
+        ].map(({ label, value, Icon, color }) => (
+          <div key={label} style={{
             background: 'var(--bg-card,rgba(255,255,255,0.04))', borderRadius: 14,
-            padding: '18px 20px', border: '1px solid rgba(255,255,255,0.08)',
+            padding: '18px 20px', border: `1px solid ${color}25`,
+            borderLeft: `4px solid ${color}`,
           }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{k.icon}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>{k.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{k.label}</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <Icon size={18} color={color} />
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>{label}</div>
           </div>
         ))}
-      </div>
-
-      <div style={{ color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center', padding: 40 }}>
-        {t('rp_data_loaded')}
       </div>
     </div>
   );

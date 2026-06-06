@@ -300,7 +300,7 @@ export default function ModeLivraison({ commandeId: propCommandeId }) {
     );
   }
 
-  const etapeActuelle = ETAPES[etape];
+  const etapeActuelle = ETAPES_DEFS[etape] || ETAPES_DEFS[0];
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>

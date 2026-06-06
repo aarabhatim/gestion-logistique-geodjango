@@ -163,7 +163,7 @@ export default function BannieresPage() {
                       <span style={{
                         background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)',
                         color: '#22c55e', borderRadius: 6, padding: '2px 8px', fontSize: 11
-                      }}>🎯 {b.role_cible}</span>
+                      }}>{b.role_cible}</span>
                       {b.dismissible && (
                         <span style={{
                           background: 'rgba(71,85,105,0.3)', color: '#94a3b8',

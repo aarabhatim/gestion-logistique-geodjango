@@ -416,14 +416,14 @@ class CalendrierLivraisonsView(APIView):
             ).exclude(statut='ANNULEE')
 
         events = []
-        for cmd in qs.select_related('client', 'transporteur_assigne'):
+        for cmd in qs.select_related('client', 'transporteur'):
             events.append({
                 'id': cmd.id,
                 'reference': cmd.reference,
                 'date': cmd.created_at.strftime('%Y-%m-%d'),
                 'statut': cmd.statut,
                 'client': str(cmd.client) if cmd.client else '',
-                'transporteur': str(cmd.transporteur_assigne) if cmd.transporteur_assigne else None,
+                'transporteur': str(cmd.transporteur) if cmd.transporteur else None,
                 'adresse_livraison': cmd.adresse_livraison if hasattr(cmd, 'adresse_livraison') else '',
             })
 

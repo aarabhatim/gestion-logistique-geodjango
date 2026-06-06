@@ -1615,6 +1615,7 @@ export const EN = {
   prd_title: "Product Catalogue",
   prd_subtitle: "Manage your products, stock and availability.",
   prd_empty: "No products. Create your first product!",
+  prd_confirm_delete: "Delete this product?",
   prd_edit_title: "Edit product",
   prd_new_title: "New product",
   prd_saving: "Saving…",
@@ -1663,4 +1664,22 @@ export const EN = {
   'confirm_modal_title': 'Confirm action',
   'confirm_modal_cancel': 'Cancel',
   'confirm_modal_confirm': 'Confirm',
+
+  // Transporteurs card
+  drv_card_verified: 'Verified',
+  drv_card_deliveries: 'Deliveries',
+  drv_card_rating: 'Rating',
+  drv_card_reviews: 'Reviews',
+  drv_card_revenue: 'Revenue',
+  drv_card_available: 'Available',
+
+  // Heatmap
+  hm_tab_orders: 'Orders',
+  hm_tab_delays: 'Delays',
+  hm_tab_incidents: 'Incidents',
+  hm_tab_profits: 'Revenue',
+  hm_tab_traffic: 'Traffic',
+  hm_7_days: '7 days',
+  hm_30_days: '30 days',
+  hm_90_days: '90 days',
 };

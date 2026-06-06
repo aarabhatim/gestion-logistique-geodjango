@@ -27,6 +27,7 @@ const LocationPicker = ({ position, setPosition }) => {
 };
 
 const CommandeFormModal = ({ onClose, onSuccess }) => {
+  const { t } = useI18n();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   

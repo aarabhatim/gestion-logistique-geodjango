@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Truck, Package, Map as MapIcon,
   Settings, BarChart2, AlertTriangle, LogOut, Store, Activity,
-  Award, MessageSquare, FileText, Radio, CalendarDays, MapPinned,
+  Award, MessageSquare, FileText, Radio, CalendarDays,
   Tag, TrendingUp, UserCog, Megaphone, Ban, Image, Star,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -238,7 +238,6 @@ export function AppSidebar() {
             <NavItem to="/commandes"  icon={Package}       label={t('commandes')}    collapsed={collapsed} />
             <NavItem to="/boutiques"  icon={Store}         label={t('boutiques')}    collapsed={collapsed} />
             <NavItem to="/incidents"  icon={AlertTriangle} label={t('incidents')}    collapsed={collapsed} />
-            <NavItem to="/zones"      icon={MapPinned}     label={t('sb_zones')}   collapsed={collapsed} />
             <NavItem to="/promotions" icon={Tag}           label={t('sb_promotions')}        collapsed={collapsed} />
 
             <SectionHeader title={t('sb_gestion')} collapsed={collapsed} />

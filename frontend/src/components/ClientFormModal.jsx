@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useI18n } from '../contexts/I18nContext';
 
 const ClientFormModal = ({ onClose, onSuccess }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     nom: '',
     prenom: '',

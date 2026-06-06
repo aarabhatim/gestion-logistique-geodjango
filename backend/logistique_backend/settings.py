@@ -46,10 +46,9 @@ if not _secret:
         )
 SECRET_KEY = _secret
 
-# En production : fournir une liste explicite via ALLOWED_HOSTS=mon-domaine.com,www.mon-domaine.com
 _allowed = os.environ.get('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()] if _allowed else (
-    ['localhost', '127.0.0.1'] if DEBUG else []
+    ['*'] if DEBUG else []
 )
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
@@ -137,6 +136,24 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
+
+# --- Cache (utilisé pour les tokens de réinitialisation de mot de passe) -----
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379'),
+    }
+}
+# Fallback en mémoire si Redis indisponible (dev sans Redis)
+try:
+    import redis as _redis_test
+    _redis_test.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379')).ping()
+except Exception:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 # --- Channels / Redis --------------------------------------------------------
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
@@ -293,5 +310,3 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

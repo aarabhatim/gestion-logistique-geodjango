@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_item_commande.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/item_commande.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_activity_register.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/activity_register.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_activity_login.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/activity_login.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/menu_menu_admin.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/menu/menu_admin.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_activity_admin_dashboard.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/activity_admin_dashboard.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/menu_menu_client.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/menu/menu_client.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/drawable_ic_store.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/drawable/ic_store.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_nav_header.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/nav_header.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_activity_client_dashboard.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/activity_client_dashboard.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_activity_splash.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/activity_splash.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_item_user.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/item_user.xml"
+    },
+    {
+        "merged": "com.delivermap.mobile.app-merged_res-4:/layout_item_boutique.xml.flat",
+        "source": "com.delivermap.mobile.app-main-6:/layout/item_boutique.xml"
+    }
+]

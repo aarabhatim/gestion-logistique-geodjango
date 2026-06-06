@@ -136,7 +136,7 @@ function CommandeCard({ commande, onAvancer, onDetail }) {
 }
 
 export function KanbanCommandes({ commandes = [], onAvancer, onDetail, loading = false }) {
-  const { tStatus } = useI18n();
+  const { t, tStatus } = useI18n();
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {COLONNES.map((col) => {

@@ -56,7 +56,7 @@ const CartSlideover = ({ open, onClose, onCheckout }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <h2 className="font-bold text-[var(--color-text)] text-lg font-heading">
-            🛒 Mon panier ({items.length})
+            Mon panier ({items.length})
           </h2>
           <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-xl transition-colors">✕</button>
         </div>

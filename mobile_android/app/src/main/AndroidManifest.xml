@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_store"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_store"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DeliverMap"
+        android:usesCleartextTraffic="true">
+
+        <!-- Splash / routage vers login ou dashboard -->
+        <activity
+            android:name=".ui.SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.DeliverMap.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Auth -->
+        <activity android:name=".ui.auth.LoginActivity" android:exported="false" />
+        <activity android:name=".ui.auth.RegisterActivity" android:exported="false" />
+
+        <!-- Admin -->
+        <activity android:name=".ui.admin.AdminDashboardActivity" android:exported="false" />
+
+        <!-- Client -->
+        <activity android:name=".ui.client.ClientDashboardActivity" android:exported="false" />
+
+    </application>
+
+</manifest>

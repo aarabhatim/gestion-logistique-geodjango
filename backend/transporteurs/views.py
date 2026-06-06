@@ -153,7 +153,14 @@ class SOSView(APIView):
         lat = request.data.get('lat') or request.data.get('latitude')
         lng = request.data.get('lng') or request.data.get('longitude')
         message = request.data.get('message', 'SOS - Urgence chauffeur')
-        sos_type = request.data.get('type', 'sos')
+        raw_type = request.data.get('type', 'sos').lower()
+        # Map frontend types to valid Incident model choices
+        TYPE_MAP = {
+            'agression': 'sos', 'medical': 'sos', 'perdu': 'autre',
+            'accident': 'accident', 'panne': 'panne', 'autre': 'autre',
+            'sos': 'sos', 'retard': 'retard', 'vol': 'vol',
+        }
+        sos_type = TYPE_MAP.get(raw_type, 'sos')
         position = None
         if lat and lng:
             try:

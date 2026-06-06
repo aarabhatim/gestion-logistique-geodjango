@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { transporteursApi, fondateursApi, commandesApi } from '../services/api';
-import { useI18n } from '../contexts/I18nContext';
+import { transporteursApi, fondateursApi, commandesApi } from '../../services/api';
+import { useI18n } from '../../contexts/I18nContext';
 import {
   Truck, Store, Package, RefreshCw, Layers, Users, Eye, EyeOff,
   Navigation, AlertCircle, CheckCircle, Clock, TrendingUp, Shield,
@@ -34,14 +34,14 @@ const makeIcon = (color, emoji, size = 36, pulse = false) => L.divIcon({
 });
 
 const ICONS = {
-  transporteur_available: makeIcon('#10b981', '🚗'),
+  transporteur_available:  makeIcon('#10b981', '🚗'),
   transporteur_delivering: makeIcon('#f59e0b', '🚚', 36, true),
-  transporteur_offline:   makeIcon('#475569', '🚙'),
+  transporteur_offline:    makeIcon('#475569', '🚙'),
   transporteur_unverified: makeIcon('#ef4444', '⚠️', 34),
-  boutique_open:          makeIcon('#3b82f6', '🏪', 34),
-  boutique_closed:        makeIcon('#64748b', '🏪', 32),
-  boutique_unverified:    makeIcon('#f59e0b', '🏪', 34),
-  delivery_active:        makeIcon('#ec4899', '📦', 34, true),
+  boutique_open:           makeIcon('#3b82f6', '🏪', 34),
+  boutique_closed:         makeIcon('#64748b', '🏪', 32),
+  boutique_unverified:     makeIcon('#f59e0b', '🏪', 34),
+  delivery_active:         makeIcon('#ec4899', '📦', 34, true),
 };
 
 const CATEGORIE_ICONS = {
@@ -156,7 +156,7 @@ const LayerToggle = ({ layers, onToggle }) => {
     minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
   }}>
     <div style={{ fontWeight: 800, fontSize: 11, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
-      <Eye size={11} /> {t('mp_legend')}
+      <Eye size={11} /> Couches
     </div>
     {Object.entries(layers).map(([key, { labelKey, color, active, count }]) => (
       <div key={key} style={{
@@ -186,7 +186,7 @@ const LayerToggle = ({ layers, onToggle }) => {
 };
 
 // ─── Side panel: Boutiques supervision ────────────────────────────────────────
-const BoutiqueSupervisionPanel = ({ boutiques, onValider, loading }) => {
+const BoutiqueSupervisionPanel = ({ boutiques, onValider }) => {
   const { t } = useI18n();
   const nonVerifiees = boutiques.filter(b => !b.is_verified);
   const closed = boutiques.filter(b => b.is_verified && !b.is_open);
@@ -201,7 +201,6 @@ const BoutiqueSupervisionPanel = ({ boutiques, onValider, loading }) => {
         <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{boutiques.length} total</span>
       </div>
 
-      {/* Alertes */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {nonVerifiees.length > 0 && (
           <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '10px 12px' }}>
@@ -227,7 +226,7 @@ const BoutiqueSupervisionPanel = ({ boutiques, onValider, loading }) => {
         {closed.length > 0 && (
           <div style={{ background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.15)', borderRadius: 10, padding: '8px 12px' }}>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Store size={11} /> <strong>{closed.length}</strong> {closed.length > 1 ? t('mp_stores_closed_pl') : t('mp_stores_closed')} {closed.length > 1 ? t('mp_stores_closed_fl') : t('mp_stores_closed_f')}
+              <Store size={11} /> <strong>{closed.length}</strong> boutique{closed.length > 1 ? 's' : ''} fermée{closed.length > 1 ? 's' : ''}
             </div>
           </div>
         )}
@@ -243,7 +242,7 @@ const BoutiqueSupervisionPanel = ({ boutiques, onValider, loading }) => {
         {nonVerifiees.length === 0 && closed.length === 0 && lowRated.length === 0 && (
           <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-secondary)', fontSize: 12 }}>
             <CheckCircle size={20} color="#10b981" style={{ marginBottom: 4 }} />
-            <div>{t('mp_boutiques')} ✓</div>
+            <div>Toutes les boutiques sont OK ✓</div>
           </div>
         )}
       </div>
@@ -282,7 +281,7 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
   };
 
   const topActifs = [...transporteurs]
-    .filter(t => t.minutes_travaillees_aujourd_hui > 0 || t.is_available)
+    .filter(tr => tr.minutes_travaillees_aujourd_hui > 0 || tr.is_available)
     .sort((a, b) => {
       const aMin = (a.minutes_travaillees_aujourd_hui || 0) + (a.is_available ? (a.minutes_session_courante || 0) : 0);
       const bMin = (b.minutes_travaillees_aujourd_hui || 0) + (b.is_available ? (b.minutes_session_courante || 0) : 0);
@@ -327,15 +326,15 @@ const ActivityPanel = ({ transporteurs, livraisons }) => {
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
             Aucun chauffeur actif
           </div>
-        ) : topActifs.map((t, i) => {
-          const min = (t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0);
+        ) : topActifs.map((tr, i) => {
+          const min = (tr.minutes_travaillees_aujourd_hui || 0) + (tr.is_available ? (tr.minutes_session_courante || 0) : 0);
           return (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 11 }}>
+            <div key={tr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 11 }}>
               <span style={{ width: 16, fontWeight: 700, color: i === 0 ? '#f59e0b' : '#64748b' }}>{i + 1}</span>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {t.nom_complet || t.user_email}
+                {tr.nom_complet || tr.user_email}
               </span>
-              {t.is_available && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />}
+              {tr.is_available && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />}
               <span style={{ fontWeight: 700, color: '#a78bfa', minWidth: 50, textAlign: 'right' }}>
                 {formatDuration(min)}
               </span>
@@ -358,8 +357,8 @@ const MapPage = () => {
   const [search, setSearch] = useState('');
   const [layers, setLayers] = useState({
     transporteurs: { labelKey: 'nav_transporteurs', color: '#10b981', active: true, count: 0 },
-    boutiques:     { labelKey: 'nav_stores',           color: '#3b82f6', active: true, count: 0 },
-    livraisons:    { labelKey: 'nav_orders',            color: '#ec4899', active: true, count: 0 },
+    boutiques:     { labelKey: 'nav_stores',         color: '#3b82f6', active: true, count: 0 },
+    livraisons:    { labelKey: 'nav_orders',          color: '#ec4899', active: true, count: 0 },
   });
   const intervalRef = useRef(null);
 
@@ -412,8 +411,8 @@ const MapPage = () => {
     return fields.some(f => f?.toLowerCase().includes(search.toLowerCase()));
   };
 
-  const filteredT = transporteurs.filter(t =>
-    filterSearch(t, [t.nom_complet, t.user_email, t.plaque, t.vehicule_type])
+  const filteredT = transporteurs.filter(tr =>
+    filterSearch(tr, [tr.nom_complet, tr.user_email, tr.plaque, tr.vehicule_type])
   );
   const filteredB = boutiques.filter(b =>
     filterSearch(b, [b.nom_boutique, b.ville, b.categorie, b.adresse])
@@ -424,31 +423,43 @@ const MapPage = () => {
 
   // Points for fit-bounds
   const allPoints = [];
-  filteredT.forEach(t => { if (t.latitude && t.longitude) allPoints.push([t.latitude, t.longitude]); });
-  filteredB.forEach(b => { if (b.latitude && b.longitude) allPoints.push([b.latitude, b.longitude]); });
-  filteredL.forEach(c => { if (c.latitude_livraison && c.longitude_livraison) allPoints.push([c.latitude_livraison, c.longitude_livraison]); });
+  filteredT.forEach(tr => {
+    const lat = parseFloat(tr.latitude);
+    const lon = parseFloat(tr.longitude);
+    if (!isNaN(lat) && !isNaN(lon)) allPoints.push([lat, lon]);
+  });
+  filteredB.forEach(b => {
+    const lat = parseFloat(b.latitude);
+    const lon = parseFloat(b.longitude);
+    if (!isNaN(lat) && !isNaN(lon)) allPoints.push([lat, lon]);
+  });
+  filteredL.forEach(c => {
+    const lat = parseFloat(c.latitude_livraison);
+    const lon = parseFloat(c.longitude_livraison);
+    if (!isNaN(lat) && !isNaN(lon)) allPoints.push([lat, lon]);
+  });
 
   // KPIs
-  const disponibles    = transporteurs.filter(t => t.is_available && !t.is_on_delivery).length;
-  const enLivraison    = transporteurs.filter(t => t.is_on_delivery).length;
-  const boutiquesOpen  = boutiques.filter(b => b.is_open && b.is_verified).length;
+  const disponibles      = transporteurs.filter(tr => tr.is_available && !tr.is_on_delivery).length;
+  const enLivraison      = transporteurs.filter(tr => tr.is_on_delivery).length;
+  const boutiquesOpen    = boutiques.filter(b => b.is_open && b.is_verified).length;
   const boutiquesAttente = boutiques.filter(b => !b.is_verified).length;
-  const totalTempsActif = transporteurs.reduce((s, t) =>
-    s + (t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0), 0);
+  const totalTempsActif  = transporteurs.reduce((s, tr) =>
+    s + (tr.minutes_travaillees_aujourd_hui || 0) + (tr.is_available ? (tr.minutes_session_courante || 0) : 0), 0);
   const heuresFlotte = Math.floor(totalTempsActif / 60);
 
   const kpiStats = [
-    { icon: CheckCircle, labelKey: 'mp_available',  value: disponibles,    color: '#10b981' },
-    { icon: Truck,       labelKey: 'mp_delivering', value: enLivraison,    color: '#f59e0b' },
-    { icon: Package,     labelKey: 'dash_actives',  value: livraisons.length, color: '#ec4899' },
-    { icon: Store,       labelKey: 'mp_open',       value: boutiquesOpen,  color: '#3b82f6', sub: `${boutiquesAttente} ${t('mp_pending_verif')}` },
+    { icon: CheckCircle, labelKey: 'mp_available',   value: disponibles,       color: '#10b981' },
+    { icon: Truck,       labelKey: 'mp_delivering',  value: enLivraison,       color: '#f59e0b' },
+    { icon: Package,     labelKey: 'dash_actives',   value: livraisons.length, color: '#ec4899' },
+    { icon: Store,       labelKey: 'mp_open',        value: boutiquesOpen,     color: '#3b82f6', sub: `${boutiquesAttente} ${t('mp_pending_verif')}` },
     { icon: Clock,       labelKey: 'chd_active_since', value: `${heuresFlotte}h`, color: '#a78bfa', sub: t('dash_today') },
   ];
 
-  const getTransporteurIcon = (t) => {
-    if (!t.is_verified) return ICONS.transporteur_unverified;
-    if (t.is_on_delivery) return ICONS.transporteur_delivering;
-    if (t.is_available)   return ICONS.transporteur_available;
+  const getTransporteurIcon = (tr) => {
+    if (!tr.is_verified) return ICONS.transporteur_unverified;
+    if (tr.is_on_delivery) return ICONS.transporteur_delivering;
+    if (tr.is_available)   return ICONS.transporteur_available;
     return ICONS.transporteur_offline;
   };
 
@@ -495,10 +506,10 @@ const MapPage = () => {
       </div>
 
       {/* Main grid: map + side panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1rem', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1rem', flex: 1, minHeight: 500, height: '100%' }}>
 
         {/* MAP */}
-        <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden', position: 'relative', borderRadius: 16, minHeight: 500 }}>
+        <div className="glass-card animate-fade-in" style={{ padding: 0, overflow: 'hidden', position: 'relative', borderRadius: 16, height: '100%', minHeight: 500 }}>
           {loading ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, color: 'var(--text-secondary)' }}>
               <RefreshCw size={32} className="spin" />
@@ -521,13 +532,14 @@ const MapPage = () => {
                 {/* Transporteurs */}
                 {layers.transporteurs.active && filteredT.map(tr => {
                   if (!tr.latitude || !tr.longitude) return null;
+                  const workedMin = (tr.minutes_travaillees_aujourd_hui || 0) + (tr.is_available ? (tr.minutes_session_courante || 0) : 0);
                   return (
                     <Marker key={`t-${tr.id}`} position={[tr.latitude, tr.longitude]} icon={getTransporteurIcon(tr)}>
                       <Popup>
                         <div style={{ minWidth: 200 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                             <strong>🚗 {tr.nom_complet}</strong>
-                            {tr.is_verified && <span style={{ background: '#10b98120', color: '#10b981', fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 700 }}>✔ {t('mp_unverified').replace('Non ', '')}</span>}
+                            {tr.is_verified && <span style={{ background: '#10b98120', color: '#10b981', fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 700 }}>✔ Vérifié</span>}
                           </div>
                           <div style={{ fontSize: 12, color: '#64748b' }}>{tr.vehicule_type} · {tr.plaque}</div>
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
@@ -542,7 +554,7 @@ const MapPage = () => {
                             ⭐ {tr.note_moyenne?.toFixed(1) || '–'} · {tr.nombre_livraisons || 0} livraisons
                           </div>
                           <div style={{ fontSize: 11, marginTop: 4, color: '#a78bfa' }}>
-                            🕐 Travail aujourd'hui : <strong>{Math.floor(((t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0)) / 60)}h{String(((t.minutes_travaillees_aujourd_hui || 0) + (t.is_available ? (t.minutes_session_courante || 0) : 0)) % 60).padStart(2, '0')}</strong>
+                            🕐 Travail aujourd'hui : <strong>{Math.floor(workedMin / 60)}h{String(workedMin % 60).padStart(2, '0')}</strong>
                           </div>
                         </div>
                       </Popup>
@@ -620,20 +632,20 @@ const MapPage = () => {
 
               {/* Overlays */}
               <KPIRow stats={kpiStats} />
+              <LayerToggle layers={layers} onToggle={toggleLayer} />
+              <Legend />
             </>
           )}
         </div>
 
-        {/* Side panel placeholder */}
-        {/* Side panel placeholder */}
-        <div className="glass-card" style={{ overflowY: 'auto', padding: 16 }}>
-          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            {t('mp_select_hint')}
-          </div>
+        {/* Side panels */}
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <ActivityPanel transporteurs={transporteurs} livraisons={livraisons} />
+          <BoutiqueSupervisionPanel boutiques={boutiques} onValider={handleValiderBoutique} />
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default MapPage;

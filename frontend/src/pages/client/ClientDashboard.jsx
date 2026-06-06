@@ -4,6 +4,7 @@ import {
   Trash2, MapPin, Clock, CheckCircle, Truck, Tag, X, Search, ChevronRight,
   Heart, Zap, ArrowLeft, CreditCard, Gift, RefreshCw, Navigation, TicketIcon,
   AlertCircle, MessageSquare, Send, SlidersHorizontal, Filter, Globe, Check,
+  Shield, Store, ChefHat, Bike,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useI18n } from '../../contexts/I18nContext';
@@ -37,6 +38,26 @@ const iconRed    = _pin('#ef4444', '📍');
 /* ── Constantes ───────────────────────────────────────────────────────────── */
 // `i18nKey` est résolu via t() lors du rendu pour permettre le changement de
 // langue à chaud. On garde `label` comme fallback français.
+// Category images using reliable public CDN images
+const CAT_IMAGES = {
+  '':            'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=80&h=80&fit=crop&auto=format',
+  'RESTAURATION':'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=80&h=80&fit=crop&auto=format',
+  'SUPERMARCHE': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=80&h=80&fit=crop&auto=format',
+  'PHARMACIE':   'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=80&h=80&fit=crop&auto=format',
+  'ELECTRONIQUE':'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=80&h=80&fit=crop&auto=format',
+  'BOUTIQUE':    'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=80&h=80&fit=crop&auto=format',
+};
+
+// Category colors used as fallback
+const CAT_COLORS = {
+  '':            '#6366f1',
+  'RESTAURATION':'#ef4444',
+  'SUPERMARCHE': '#22c55e',
+  'PHARMACIE':   '#3b82f6',
+  'ELECTRONIQUE':'#8b5cf6',
+  'BOUTIQUE':    '#ec4899',
+};
+
 const CATEGORIES = [
   { key: '',             i18nKey: 'cl_cat_all',         label: 'Tout',         icon: '🏪' },
   { key: 'RESTAURATION', i18nKey: 'cl_cat_restaurant',  label: 'Restauration', icon: '🍽️' },
@@ -45,6 +66,17 @@ const CATEGORIES = [
   { key: 'ELECTRONIQUE', i18nKey: 'cl_cat_electronics', label: 'Électronique', icon: '📱' },
   { key: 'BOUTIQUE',     i18nKey: 'cl_cat_fashion',     label: 'Mode',         icon: '👗' },
 ];
+
+// Product category images (real photos for placeholders)
+const PRODUCT_CAT_IMAGES = {
+  ALIMENTAIRE:  'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=200&h=200&fit=crop&auto=format',
+  BOISSONS:     'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=200&h=200&fit=crop&auto=format',
+  HYGIENE:      'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&h=200&fit=crop&auto=format',
+  MEDICAMENTS:  'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=200&h=200&fit=crop&auto=format',
+  ELECTRONIQUE: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&h=200&fit=crop&auto=format',
+  VETEMENTS:    'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=200&h=200&fit=crop&auto=format',
+  AUTRE:        'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=200&h=200&fit=crop&auto=format',
+};
 
 const PRODUCT_GRADIENTS = {
   ALIMENTAIRE:  ['#f59e0b','#ef4444'],
@@ -157,10 +189,10 @@ const Stars = ({ note, size = 12 }) => (
 const ProductImage = ({ produit, height = 140 }) => {
   const cat = produit.categorie || 'AUTRE';
   const [g1, g2] = PRODUCT_GRADIENTS[cat] || PRODUCT_GRADIENTS.AUTRE;
-  const emoji = getProductEmoji(cat, produit.id);
   const [imgError, setImgError] = useState(false);
-  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
+  const [catImgError, setCatImgError] = useState(false);
   const src = mediaUrl(produit.image_principale || produit.image);
+  const catImgSrc = PRODUCT_CAT_IMAGES[cat] || PRODUCT_CAT_IMAGES.AUTRE;
 
   if (src && !imgError) {
     return (
@@ -171,28 +203,34 @@ const ProductImage = ({ produit, height = 140 }) => {
           onError={() => setImgError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
-        {/* Subtle dark overlay at the bottom for text readability */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(transparent, rgba(0,0,0,0.5))' }} />
       </div>
     );
   }
 
-  /* Fallback — emoji gradient */
+  /* Fallback — real category photo */
+  if (!catImgError) {
+    return (
+      <div style={{ width: '100%', height, position: 'relative', overflow: 'hidden', background: '#1A1A1A' }}>
+        <img
+          src={catImgSrc}
+          alt={cat}
+          onError={() => setCatImgError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'brightness(0.75)' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${g1}55, ${g2}55)` }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(transparent, rgba(0,0,0,0.55))' }} />
+      </div>
+    );
+  }
+
+  /* Last fallback — gradient */
   return (
     <div style={{
       width: '100%', height, background: `linear-gradient(135deg, ${g1}, ${g2})`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
     }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 60%)' }} />
-      <span style={{ fontSize: 52, filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.35))', position: 'relative', zIndex: 1 }}>
-        {emoji}
-      </span>
-      <ConfirmModal
-        open={confirmState.open}
-        message={confirmState.message}
-        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
-        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
-      />
     </div>
   );
 };
@@ -421,6 +459,7 @@ const CartSidebar = ({ onClose, onOrder }) => {
 
 /* ── CheckoutModal ────────────────────────────────────────────────────────── */
 const CheckoutModal = ({ onClose, onSuccess }) => {
+  const { t } = useI18n();
   const { items, fondateur, clearCart } = useCartStore();
   const { points, redeemPoints, addPoints } = useLoyaltyStore();
   const [adresse, setAdresse] = useState('');
@@ -616,13 +655,15 @@ const CheckoutModal = ({ onClose, onSuccess }) => {
 const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
   const { t } = useI18n();
   const [logoErr, setLogoErr] = useState(false);
-  const catIcon = CATEGORIES.find(c => c.key === b.categorie)?.icon || '🏪';
+  const [catCoverErr, setCatCoverErr] = useState(false);
   const logoSrc = mediaUrl(b.logo);
   const hasLogo = !!logoSrc && !logoErr;
+  const catImgSrc = CAT_IMAGES[b.categorie] || CAT_IMAGES[''];
+  const catColor = CAT_COLORS[b.categorie] || '#6366f1';
 
   return (
     <div className="mj-boutique-card mj-fade-in" onClick={onSelect}>
-      {/* Cover — bannière ou dégradé avec emoji */}
+      {/* Cover — logo réel, photo catégorie, ou dégradé */}
       <div className="mj-boutique-cover">
         {hasLogo ? (
           <img
@@ -631,24 +672,27 @@ const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
             onError={() => setLogoErr(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
-        ) : (
+        ) : !catCoverErr ? (
           <>
+            <img
+              src={catImgSrc}
+              alt={b.categorie || 'boutique'}
+              onError={() => setCatCoverErr(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'brightness(0.6)' }}
+            />
             <div style={{
               position: 'absolute', inset: 0,
-              background: `linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 56, opacity: 0.3,
-            }}>
-              {catIcon}
-            </div>
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse at 60% 40%, rgba(249,115,22,0.12) 0%, transparent 70%)',
+              background: `linear-gradient(135deg, ${catColor}33 0%, transparent 70%)`,
             }} />
           </>
+        ) : (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: `linear-gradient(135deg, ${catColor}44 0%, #1A1A1A 100%)`,
+          }} />
         )}
         {/* Dark gradient overlay bottom */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 50, background: 'linear-gradient(transparent, rgba(0,0,0,0.65))' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 50, background: 'linear-gradient(transparent, rgba(0,0,0,0.75))' }} />
 
         {/* Open/closed badge */}
         <div style={{
@@ -678,16 +722,21 @@ const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
       {/* Info */}
       <div className="mj-boutique-info">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          {/* Mini logo ou icône */}
+          {/* Mini logo ou image catégorie */}
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0, overflow: 'hidden',
-            background: hasLogo ? 'transparent' : 'linear-gradient(135deg, var(--mj-red), #ea580c)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-            border: '1px solid #2D2D2D',
+            border: '1px solid #2D2D2D', background: '#1a1a1a',
           }}>
             {hasLogo ? (
               <img src={logoSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : catIcon}
+            ) : (
+              <img
+                src={catImgSrc}
+                alt={b.categorie || ''}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.8)' }}
+                onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.style.background = catColor; }}
+              />
+            )}
           </div>
           <div className="mj-boutique-name">{b.nom_boutique}</div>
         </div>
@@ -697,7 +746,10 @@ const BoutiqueCard = ({ b, onSelect, isFav, onFav }) => {
           <span className="mj-boutique-rating">★ {b.note_moyenne?.toFixed(1) || '—'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B' }}>
-          <span>🚚 {b.frais_livraison_base} MAD · min {b.commande_minimum} MAD</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Truck size={11} />
+            {b.frais_livraison_base} MAD · min {b.commande_minimum} MAD
+          </span>
           <ChevronRight size={13} style={{ color: 'var(--mj-red)' }} />
         </div>
       </div>
@@ -711,16 +763,33 @@ const CategorySidebar = ({ categorie, setCategorie }) => {
   return (
     <aside className="mj-cat-sidebar">
       <div className="mj-cat-sidebar-title">{t('cl_categories')}</div>
-      {CATEGORIES.map(c => (
-        <div
-          key={c.key}
-          className={`mj-cat-sidebar-item${categorie === c.key ? ' active' : ''}`}
-          onClick={() => setCategorie(c.key)}
-        >
-          <span style={{ fontSize: 18 }}>{c.icon}</span>
-          <span>{t(c.i18nKey)}</span>
-        </div>
-      ))}
+      {CATEGORIES.map(c => {
+        const isActive = categorie === c.key;
+        const imgSrc = CAT_IMAGES[c.key];
+        const color = CAT_COLORS[c.key] || '#6366f1';
+        return (
+          <div
+            key={c.key}
+            className={`mj-cat-sidebar-item${isActive ? ' active' : ''}`}
+            onClick={() => setCategorie(c.key)}
+          >
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
+              border: `2px solid ${isActive ? color : 'rgba(255,255,255,0.08)'}`,
+              background: '#1a1a1a',
+              transition: 'border-color 0.2s',
+            }}>
+              <img
+                src={imgSrc}
+                alt={c.label}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.style.background = color; }}
+              />
+            </div>
+            <span>{t(c.i18nKey)}</span>
+          </div>
+        );
+      })}
     </aside>
   );
 };
@@ -785,11 +854,16 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       </button>
 
       <div className="mj-boutique-header-bar">
-        {/* Logo réel ou avatar emoji */}
+        {/* Logo réel ou image catégorie */}
         <div className="mj-boutique-avatar-lg" style={{ overflow: 'hidden', padding: 0 }}>
           {mediaUrl(selectedBoutique.logo)
             ? <img src={mediaUrl(selectedBoutique.logo)} alt={selectedBoutique.nom_boutique} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} />
-            : <span style={{ fontSize: 28 }}>{CATEGORIES.find(c => c.key === selectedBoutique.categorie)?.icon || '🏪'}</span>
+            : <img
+                src={CAT_IMAGES[selectedBoutique.categorie] || CAT_IMAGES['']}
+                alt={selectedBoutique.categorie || 'boutique'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16, filter: 'brightness(0.8)' }}
+                onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.style.background = CAT_COLORS[selectedBoutique.categorie] || '#6366f1'; }}
+              />
           }
         </div>
         <div style={{ flex: 1 }}>
@@ -921,13 +995,15 @@ const CatalogueTab = ({ onCartOpen, categorie, groupCode, setGroupCode, groupMem
       {/* Features strip */}
       <div className="mj-features-strip" style={{ marginBottom: 28 }}>
         {[
-          { icon: '🚚', label: t('cl_feature_fast_delivery'),    sub: t('cl_feature_fast_delivery_desc') },
-          { icon: '🔒', label: t('cl_feature_secure_payment'),   sub: t('cl_feature_secure_payment_desc') },
-          { icon: '⭐', label: t('cl_feature_verified_stores'),  sub: t('cl_feature_verified_stores_desc') },
-          { icon: '📍', label: t('cl_feature_gps'),              sub: t('cl_feature_gps_desc') },
+          { IconComp: Truck,      color: '#E30613', bg: 'rgba(227,6,19,0.12)',  label: t('cl_feature_fast_delivery'),   sub: t('cl_feature_fast_delivery_desc') },
+          { IconComp: Shield,     color: '#22C55E', bg: 'rgba(34,197,94,0.12)', label: t('cl_feature_secure_payment'),  sub: t('cl_feature_secure_payment_desc') },
+          { IconComp: Star,       color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',label: t('cl_feature_verified_stores'), sub: t('cl_feature_verified_stores_desc') },
+          { IconComp: Navigation, color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',label: t('cl_feature_gps'),             sub: t('cl_feature_gps_desc') },
         ].map((f, i) => (
           <div key={i} className="mj-feature-item">
-            <div className="mj-feature-icon">{f.icon}</div>
+            <div className="mj-feature-icon" style={{ background: f.bg, borderRadius: 14, width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <f.IconComp size={22} color={f.color} strokeWidth={2.2} />
+            </div>
             <div className="mj-feature-label">{f.label}</div>
             <div className="mj-feature-sub">{f.sub}</div>
           </div>
@@ -1038,6 +1114,7 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   const [expanded, setExpanded] = useState(null);
   const [cancelling, setCancelling] = useState(null);
   const [toast, setToast] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
 
@@ -1059,11 +1136,6 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
 
   const handleCancel = async (cmd) => {
     setConfirmState({ open: true, message: `${t('cd_confirm_cancel')} ${cmd.reference} ?`, onConfirm: () => doCancel(cmd) });
-    return;
-    setCancelling(cmd.id);
-    try { await commandesApi.annuler(cmd.id); showToast(t('cd_order_cancelled')); fetchCommandes(); }
-    catch (e) { showToast(e.response?.data?.error || t('cd_cancel_error'), 'error'); }
-    finally { setCancelling(null); }
   };
 
   const ProgressBar = ({ statut }) => {
@@ -1104,6 +1176,12 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {toast && <div className={`mj-toast ${toast.type === 'error' ? 'mj-toast-error' : 'mj-toast-success'}`}>{toast.type === 'error' ? '❌' : '✅'} {toast.msg}</div>}
+      <ConfirmModal
+        open={confirmState.open}
+        message={confirmState.message}
+        onConfirm={() => { confirmState.onConfirm?.(); setConfirmState(s => ({ ...s, open: false })); }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+      />
       {commandes.map(cmd => {
         const isExpanded = expanded === cmd.id;
         const canCancel = !['LIVREE', 'ANNULEE'].includes(cmd.statut);
@@ -1114,8 +1192,8 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <div>
                 <div style={{ fontWeight: 800, fontFamily: 'monospace', fontSize: 14, color: 'var(--mj-red)' }}>{cmd.reference}</div>
-                <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2 }}>
-                  🏪 {cmd.fondateur_detail?.nom_boutique} · {new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Store size={11} style={{ flexShrink: 0 }} />{cmd.fondateur_detail?.nom_boutique} · {new Date(cmd.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -1135,7 +1213,9 @@ const CommandesTab = ({ onNavigateSuivi, onOpenChat }) => {
             {cmd.transporteur_detail && cmd.statut === 'EN_ROUTE' && (
               <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--mj-red-light)', border: '1px solid #FECACA', borderRadius: 10, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 20 }}>🛵</span>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--mj-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Bike size={18} color="white" />
+                  </div>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--mj-red)' }}>{cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</div>
                     <div style={{ fontSize: 10, color: 'var(--mj-text-3)' }}>Votre livreur en route</div>
@@ -1328,8 +1408,8 @@ const SuiviTab = ({ user, onOpenChat }) => {
             return (
               <div key={cmd.id} className="mj-order-card mj-fade-in" style={{ borderLeft: `4px solid ${isEnRoute ? 'var(--mj-red)' : '#8B5CF6'}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 50, height: 50, background: isEnRoute ? 'var(--mj-red-light)' : '#F3E8FF', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
-                    {isEnRoute ? '🛵' : '👨‍🍳'}
+                  <div style={{ width: 50, height: 50, background: isEnRoute ? 'var(--mj-red)' : '#7C3AED', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {isEnRoute ? <Bike size={24} color="white" /> : <ChefHat size={24} color="white" />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1338,10 +1418,10 @@ const SuiviTab = ({ user, onOpenChat }) => {
                         {isEnRoute ? t('cd_en_route') : t('cd_preparing')}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🏪 {cmd.fondateur_detail?.nom_boutique}</div>
+                    <div style={{ fontSize: 12, color: 'var(--mj-text-3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}><Store size={11} style={{ flexShrink: 0 }} />{cmd.fondateur_detail?.nom_boutique}</div>
                     {cmd.transporteur_detail && (
                       <div style={{ fontSize: 11, color: 'var(--mj-text-3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>👤 {cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={10} />{cmd.transporteur_detail.first_name} {cmd.transporteur_detail.last_name}</span>
                         <button onClick={() => onOpenChat(cmd)} className="mj-btn mj-btn-sm" style={{ background: 'var(--mj-red-light)', border: '1px solid #FECACA', color: 'var(--mj-red)', padding: '2px 10px', fontSize: 10, height: 'auto' }}>
                           <MessageSquare size={10} /> Chat
                         </button>
@@ -1506,7 +1586,12 @@ const ClientDashboard = () => {
 
       {/* ── Dark Header ── */}
       <header className="mj-client-header">
-        <div className="mj-client-logo">🚀 DeliverMap</div>
+        <div className="mj-client-logo" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--mj-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Truck size={16} color="white" />
+          </div>
+          DeliverMap
+        </div>
 
         <div className="mj-header-search-wrap">
           <input
@@ -1573,7 +1658,10 @@ const ClientDashboard = () => {
       {/* ── Content ── */}
       {tab === 'catalogue' ? (
         <div className="mj-catalogue-layout">
-          <CategorySidebar categorie={categorie} setCategorie={setCategorie} />
+          <CategorySidebar
+            categorie={categorie}
+            setCategorie={(key) => { setCategorie(key); setSelectedBoutique(null); }}
+          />
           <div className="mj-catalogue-main">
             <CatalogueTab
               onCartOpen={() => setCartOpen(true)}
@@ -1592,7 +1680,9 @@ const ClientDashboard = () => {
           {tab === 'suivi'     && <SuiviTab user={user} onOpenChat={setActiveChatCommande} />}
           {tab === 'favoris'   && (
             <div className="mj-empty">
-              <div className="mj-empty-icon">❤️</div>
+              <div className="mj-empty-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Heart size={48} color="var(--mj-red)" fill="var(--mj-red)" />
+              </div>
               <div className="mj-empty-title">Mes favoris</div>
               <div className="mj-empty-desc">
                 <a href="/client/favoris" style={{ color: 'var(--mj-red)', fontWeight: 600 }}>Voir mes favoris →</a>

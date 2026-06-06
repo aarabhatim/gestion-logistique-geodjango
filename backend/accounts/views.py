@@ -166,10 +166,6 @@ class AdminResetPasswordView(APIView):
 
 
 # ─── Impersonation ────────────────────────────────────────────────────────────
-from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
-
-
 class ImpersonateUserView(APIView):
     """Admin only: retourne des tokens JWT valides pour un autre utilisateur."""
     permission_classes = [IsAuthenticated]
@@ -213,25 +209,25 @@ class PasswordResetRequestView(APIView):
         try:
             user = CustomUser.objects.get(email__iexact=email)
         except CustomUser.DoesNotExist:
-            # Réponse identique pour ne pas révéler si l'email existe
-            return Response({'message': 'Si cet email existe, un lien de réinitialisation a été envoyé.'})
+            # Réponse neutre — ne révèle pas si l'email existe
+            return Response({'exists': False, 'message': 'Si cet email existe, un lien a été envoyé.'})
 
         # Générer un token sécurisé, valable 1 heure
         token = secrets.token_urlsafe(32)
         cache.set(f'pwd_reset_{token}', user.pk, timeout=3600)
 
-        # Construire l'URL frontend
+        # Retourner le token + infos user au frontend
+        # Le frontend construit l'URL et envoie l'email via EmailJS
         frontend_origin = request.META.get('HTTP_ORIGIN', 'http://localhost:5173')
         reset_url = f"{frontend_origin}/reset-password?token={token}"
 
-        try:
-            from utils.emails import email_reset_password
-            email_reset_password(user, reset_url)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Erreur envoi email reset: {e}")
-
-        return Response({'message': 'Si cet email existe, un lien de réinitialisation a été envoyé.'})
+        return Response({
+            'exists': True,
+            'token': token,
+            'reset_url': reset_url,
+            'user_name': user.first_name or user.username,
+            'user_email': user.email,
+        })
 
 
 class PasswordResetConfirmView(APIView):

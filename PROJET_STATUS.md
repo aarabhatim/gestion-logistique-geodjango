@@ -1,163 +1,130 @@
 # DeliverMap — État du projet
 
-> Dernière mise à jour : Mai 2026
+> Dernière mise à jour : Juin 2026
 
 ---
 
 ## ✅ Fonctionnalités terminées
 
 ### 🔐 Phase 1 — Sécurité & Configuration
-- [x] Variables sensibles déplacées dans `backend/.env` (clé secrète Django, DB, etc.)
+- [x] Variables sensibles dans `backend/.env` (clé secrète Django, DB, etc.)
 - [x] `DEBUG=True` conditionnel, `ALLOWED_HOSTS` configuré
-- [x] Données mock supprimées de toutes les pages (remplacement par appels API réels)
-- [x] Clé MapTiler déplacée dans `frontend/.env` (`VITE_MAPTILER_KEY`)
-- [x] Variables EmailJS ajoutées dans `frontend/.env`
+- [x] Données mock supprimées — appels API réels partout
+- [x] Clé MapTiler dans `frontend/.env`
 
 ### 🗺️ Cartes MapTiler
-- [x] **Bug critique corrigé** : toutes les URLs de tuiles utilisaient des guillemets droits JSX (`url="..."`) au lieu de template literals (`url={`...`}`) — la clé API n'était jamais injectée
-- [x] **11 fichiers corrigés** : `ChauffeurDashboard`, `ClientDashboard`, `DrivingMode`, `MapComponent`, `CommandeFormModal`, `HeatmapPage`, `LiveDashboard`, `MapPage` (admin + main), `ZonesPage`, `Incidents`
-- [x] Les cartes affichent correctement les tuiles MapTiler
+- [x] Bug critique corrigé : 11 fichiers (template literals dans URLs de tuiles)
+- [x] Cartes affichent correctement les tuiles MapTiler
 
-### 🌍 Internationalisation (i18n) — Complet
+### 🌍 Internationalisation (i18n)
 - [x] 4 langues : Français, Anglais, Arabe, Espagnol
-- [x] Dictionnaires séparés dans `frontend/src/i18n/fr.js / en.js / ar.js / es.js`
-- [x] Contexte `I18nContext` + hook `useI18n()` sur toutes les pages
-- [x] Script `npm run i18n:check` → 0 clé manquante
-- [x] Remplacement de tous les textes hardcodés français dans 50+ fichiers
-- [x] `LanguageSwitcher` unifié dans `AppHeader`
-- [x] Formats de date localisés (plus de `fr-FR` forcé)
-- [x] Statuts et enums backend traduits
+- [x] Dictionnaires dans `frontend/src/i18n/fr.js / en.js / ar.js / es.js`
+- [x] `useI18n()` sur toutes les pages — 0 texte hardcodé
+- [x] `npm run i18n:check` → 0 clé manquante
 
 ### 📱 Parcours Utilisateur
-- [x] **Client** : catalogue boutiques, tunnel de commande complet, suivi live (timeline), historique
-- [x] **Chauffeur** : acceptation/refus missions, navigation intégrée, confirmation livraison, mode livraison
-- [x] **Admin** : tableau de bord, gestion utilisateurs, exports CSV/PDF, centre de notifications, heatmap, zones, incidents
-
-### 🚗 Dashboard Chauffeur — Bugs corrigés
-- [x] Import `useI18n` manquant → ajouté
-- [x] `const { t } = useI18n()` ajouté dans le composant principal
-- [x] Alias `wT` dans `WorkingHoursCard` pour éviter conflit avec `setTick(t => t+1)`
-- [x] Fichier tronqué (fin de fichier manquante) → restauré
-- [x] Octet nul `\x00` parasite en fin de fichier → supprimé
-- [x] 7 routes chauffeur manquantes câblées dans `App.jsx`
+- [x] Client : catalogue, commande, suivi live, historique
+- [x] Chauffeur : missions, navigation, livraison
+- [x] Admin : dashboard, gestion, exports, notifications, heatmap, zones
 
 ### 🏗️ Composants & Pages
-- [x] **Page 404** dédiée (`NotFoundPage.jsx`) avec illustration SVG et bouton retour intelligent selon le rôle
-- [x] **ConfirmModal** remplace tous les `window.confirm()` natifs (6 pages concernées)
-- [x] **8 composants** avec `export default` manquant corrigés
-- [x] `SettingsPage`, `Orders`, `Products` — noms de composants internes corrigés
-- [x] `ClientDashboard` — fichier tronqué restauré + export default ajouté
-- [x] Babel parse complet : **0 erreur de syntaxe** sur tous les fichiers `src/**/*.{jsx,js}`
+- [x] Page 404 dédiée avec retour intelligent selon le rôle
+- [x] ConfirmModal remplace tous les window.confirm()
+- [x] Babel parse : 0 erreur de syntaxe
 
 ### 📧 Email à la création de compte
-- [x] Service backend Django SMTP (`accounts/email_service.py`)
-- [x] `RegisterView` appelle `send_welcome_email(user)` après inscription réussie
-- [x] Template HTML professionnel inline (dark theme, badge rôle, info compte, CTA, footer)
-- [x] Non bloquant — une erreur email ne stoppe jamais l'inscription
-- [x] Config Gmail SMTP dans `backend/.env` (`EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`)
-- [x] Fallback texte brut inclus
+- [x] Django SMTP via Gmail App Password
+- [x] Template HTML professionnel (dark theme, badge rôle, CTA)
+- [x] Non bloquant — erreur email n'arrête pas l'inscription
 
-### 🔧 Qualité code
-- [x] `api.js` — base URL corrigée (`/api/` suffix dans VITE_API_URL)
-- [x] Scan global de tous les imports `App.jsx` (43 imports vérifiés)
-- [x] Babel parse systématique après chaque session de corrections
+### 🔑 Réinitialisation de mot de passe
+- [x] ForgotPassword.jsx — envoi lien par email
+- [x] ResetPassword.jsx — saisie nouveau mot de passe via token URL
+- [x] Backend : PasswordResetRequestView + PasswordResetConfirmView
+- [x] Token sécurisé (secrets.token_urlsafe) stocké en cache Django 1h
+- [x] Routes dans App.jsx + lien "Mot de passe oublié ?" sur Login
+
+### 📊 Export Excel (.xlsx)
+- [x] openpyxl ajouté dans requirements.txt
+- [x] backend/dm_utils/export_excel.py — export Commandes, Transporteurs, Clients
+- [x] 3 endpoints : GET /api/commandes/export/xlsx/, /transporteurs/export/xlsx/, /clients/export/xlsx/
+- [x] Bouton "Excel" dans Commandes.jsx, Transporteurs.jsx, Clients.jsx
+- [x] Fichiers stylisés : thème sombre, en-têtes colorés, couleurs conditionnelles
+
+### 🔔 Notifications email
+- [x] 9 fonctions d'email dans backend/utils/emails.py
+- [x] email_nouvelle_commande_fondateur() — à chaque nouvelle commande
+- [x] email_mission_acceptee_chauffeur() — confirmation mission au chauffeur
+- [x] email_confirmation_commande() — confirmation au client
+
+### ♿ Accessibilité (ARIA)
+- [x] ConfirmModal : role="dialog", aria-modal, aria-labelledby, aria-describedby, focus auto, Escape pour fermer
+- [x] Header.jsx : aria-label/expanded/haspopup sur langue et cloche, role="listbox", aria-selected
+- [x] AdminSidebar.jsx : aria-current="page", aria-pressed sur épingle, role="tooltip", aria-label sur nav
+- [x] Login.jsx : htmlFor/id sur labels/inputs, aria-required, role="alert", aria-busy
+- [x] Register.jsx : tous les inputs liés par id, aria-required, aria-label, aria-busy
 
 ---
 
 ## 🔴 Non terminé / À faire
 
-### 📧 Email — Tests à valider
-- [ ] **Tester la réception** après redémarrage du serveur Django avec les nouvelles variables `.env`
-- [ ] Vérifier les logs Django : `[Email] ✅ Email de bienvenue envoyé à ...`
-- [ ] Si erreur `SMTPAuthenticationError` → vérifier que la vérification 2 étapes est active sur `hatimaaarab1123@gmail.com`
-
-### 🔑 Authentification avancée
-- [ ] **Réinitialisation de mot de passe** par email (lien sécurisé avec token)
-- [ ] **Vérification d'email** à l'inscription (confirmer l'adresse avant activation)
-- [ ] **Connexion Google / OAuth** (optionnel)
-
-### 📲 Notifications
-- [ ] Notifications email pour les nouvelles commandes (vers le commerçant)
-- [ ] Notification email au client quand sa commande est livrée
-- [ ] Notification email au chauffeur quand une mission lui est assignée
-- [ ] Push notifications navigateur (PWA)
-
-### 🏪 Espace Boutique / Fondateur
-- [ ] Vérifier que toutes les pages boutique sont fonctionnelles en conditions réelles (avec données API)
-- [ ] Gestion des images produits / galerie
-
 ### 🚀 Production & Déploiement
-- [ ] Changer `SECRET_KEY` Django pour une clé sécurisée en production
-- [ ] Passer `DEBUG=False` en production
-- [ ] Configurer `ALLOWED_HOSTS` avec le vrai domaine
+- [ ] SECRET_KEY Django sécurisée en production
+- [ ] DEBUG=False en production
+- [ ] ALLOWED_HOSTS avec vrai domaine
 - [ ] Serveur HTTPS (certificat SSL)
-- [ ] Déploiement backend (ex: VPS, Railway, Render)
-- [ ] Déploiement frontend (ex: Vercel, Netlify)
-- [ ] Variables `.env` de production séparées
-- [ ] Configuration `CORS_ALLOWED_ORIGINS` pour le domaine de production
+- [ ] Déploiement backend (VPS, Railway, Render…)
+- [ ] Déploiement frontend (Vercel, Netlify…)
+- [ ] CORS_ALLOWED_ORIGINS pour le domaine de production
 
 ### 🧪 Tests
-- [ ] Tests unitaires backend (pytest — structure existe dans `tests/`)
-- [ ] Tests d'intégration API
-- [ ] Tests end-to-end frontend (Cypress / Playwright)
+- [ ] Tests unitaires backend (pytest — structure dans tests/)
+- [ ] Tests end-to-end (Playwright ou Cypress)
 
-### ♿ Accessibilité & UX
-- [ ] Attributs `aria-*` sur les composants interactifs
-- [ ] Navigation clavier complète
-- [ ] Mode sombre/clair (actuellement toujours dark)
+### 🔐 Auth avancée (optionnel)
+- [ ] Vérification email à l'inscription
+- [ ] Connexion Google / OAuth
 
-### 📊 Analytics & Admin
-- [ ] Rapports exportables au format Excel (`.xlsx`) en plus du CSV
-- [ ] Graphiques de prévisions plus précis (données réelles vs mock)
-- [ ] Tableau de bord admin mobile-friendly
+### 📲 Notifications avancées (optionnel)
+- [ ] Push notifications navigateur (PWA)
 
 ---
 
-## 🗂️ Structure des fichiers clés
+## 🗂️ Fichiers clés
 
 ```
 projet dev/
 ├── backend/
-│   ├── .env                          ✅ DB + Gmail SMTP configurés
-│   ├── accounts/
-│   │   ├── views.py                  ✅ RegisterView envoie l'email
-│   │   └── email_service.py          ✅ Service email Django
-│   └── logistique_backend/
-│       └── settings.py               ✅ Config SMTP lue depuis .env
+│   ├── .env                          ✅ DB + Gmail SMTP
+│   ├── accounts/views.py             ✅ Register + PasswordReset
+│   ├── accounts/email_service.py     ✅ Service email Django SMTP
+│   ├── commandes/views.py            ✅ Export XLSX + emails
+│   ├── transporteurs/views.py        ✅ Export XLSX
+│   ├── clients/views.py              ✅ Export XLSX
+│   ├── dm_utils/export_excel.py      ✅ openpyxl (3 exports)
+│   └── utils/emails.py               ✅ 9 templates email HTML
 │
-├── frontend/
-│   ├── .env                          ✅ API URL + MapTiler + EmailJS
-│   ├── src/
-│   │   ├── services/
-│   │   │   ├── api.js                ✅ Base URL corrigée
-│   │   │   └── emailService.js       ⚠️  EmailJS (backup, pas utilisé)
-│   │   ├── pages/
-│   │   │   ├── auth/Register.jsx     ✅ Appel email après inscription
-│   │   │   └── NotFoundPage.jsx      ✅ Page 404 créée
-│   │   ├── components/
-│   │   │   └── ConfirmModal.jsx      ✅ Remplace window.confirm()
-│   │   ├── i18n/
-│   │   │   ├── fr.js / en.js         ✅ ~1900 clés chacun
-│   │   │   ├── ar.js / es.js         ✅ Alignés sur FR
-│   │   └── contexts/
-│   │       └── I18nContext.jsx       ✅ Hook useI18n() global
-│
-└── emailjs_template.html             ✅ Template HTML email (référence)
+└── frontend/src/
+    ├── pages/auth/Login.jsx           ✅ Aria + mot de passe oublié
+    ├── pages/auth/Register.jsx        ✅ Aria + email welcome
+    ├── pages/auth/ForgotPassword.jsx  ✅ Reset par email
+    ├── pages/auth/ResetPassword.jsx   ✅ Nouveau mot de passe
+    ├── pages/Commandes.jsx            ✅ Export Excel
+    ├── pages/Transporteurs.jsx        ✅ Export Excel
+    ├── pages/Clients.jsx              ✅ Export Excel
+    ├── components/ConfirmModal.jsx    ✅ Aria dialog complet
+    ├── components/Header.jsx          ✅ Aria notifications
+    └── components/AdminSidebar.jsx    ✅ Aria nav
 ```
-
----
 
 ## 📋 Commandes utiles
 
 ```bash
 # Frontend
-cd frontend
-npm run dev          # Démarrer Vite
-npm run i18n:check   # Vérifier les clés i18n manquantes
-npm run build        # Build production
+cd frontend && npm run dev
+cd frontend && npm run i18n:check
 
 # Backend
-cd backend
-python manage.py runserver    # Démarrer Django
-python manage.py migrate      # Appliquer les migrations
+cd backend && pip install -r requirements.txt   # inclut openpyxl
+cd backend && python manage.py runserver
 ```

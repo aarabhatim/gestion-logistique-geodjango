@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DeliverMap</string>
+    <string name="nav_open">Ouvrir le menu</string>
+    <string name="nav_close">Fermer le menu</string>
+</resources>

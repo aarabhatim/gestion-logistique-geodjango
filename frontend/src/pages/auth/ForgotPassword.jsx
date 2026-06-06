@@ -2,20 +2,36 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Truck, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { sendPasswordResetEmail } from '../../services/emailService';
 import './Auth.css';
 
 const ForgotPassword = () => {
-  const [email, setEmail]       = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [sent, setSent]         = useState(false);
-  const [error, setError]       = useState('');
+  const [email, setEmail]     = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}auth/password-reset/`, { email });
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}auth/password-reset/`,
+        { email }
+      );
+
+      // Si l'email existe, le backend retourne le token + url
+      // On envoie l'email via EmailJS depuis le frontend
+      if (res.data.exists && res.data.reset_url) {
+        await sendPasswordResetEmail({
+          email:    res.data.user_email,
+          name:     res.data.user_name,
+          resetUrl: res.data.reset_url,
+        });
+      }
+
+      // Dans tous les cas on affiche "email envoyé" (sécurité)
       setSent(true);
     } catch {
       setError('Une erreur est survenue. Veuillez réessayer.');
@@ -49,8 +65,6 @@ const ForgotPassword = () => {
   return (
     <div className="auth-page">
       <div className="auth-container animate-fade-in" style={{ maxWidth: 460 }}>
-
-        {/* Logo */}
         <div className="auth-logo">
           <div className="logo-icon"><Truck size={28} color="white" /></div>
           <h1 className="logo-text text-gradient">DeliverMap</h1>
@@ -65,7 +79,7 @@ const ForgotPassword = () => {
             <div style={{ fontSize: 40, marginBottom: 8 }}>🔑</div>
             <h2 className="auth-title" style={{ fontSize: '1.4rem' }}>Mot de passe oublié</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 6 }}>
-              Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+              Entrez votre email et nous vous enverrons un lien de réinitialisation.
             </p>
           </div>
 
@@ -78,12 +92,13 @@ const ForgotPassword = () => {
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              <label htmlFor="forgot-email" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Adresse email
               </label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 <input
+                  id="forgot-email"
                   required
                   type="email"
                   className="glass-input"

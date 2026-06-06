@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard, Map, Package, Users, Truck, AlertTriangle, Ticket,
+  FileText, Globe, Tag, Image, Ban, Thermometer, Calendar, TrendingUp,
+  Theater, Settings, ShoppingBag, Store, Radio, BarChart3,
+} from 'lucide-react';
 import api from '../services/api';
 import { useI18n } from '../contexts/I18nContext';
 
@@ -12,23 +17,22 @@ import { useI18n } from '../contexts/I18nContext';
  */
 
 const getNavItems = (t) => [
-  { key: 'dashboard',     label: t('dashboard'),          icon: '📊', path: '/admin',               badge: null },
-  { key: 'live',          label: t('sb_live'),             icon: '🗺️', path: '/admin/live',          badge: null },
-  { key: 'commandes',     label: t('commandes'),           icon: '📦', path: '/admin/commandes',     badge: null },
-  { key: 'clients',       label: t('clients'),             icon: '👤', path: '/admin/clients',       badge: null },
-  { key: 'transporteurs', label: t('transporteurs'),       icon: '🚗', path: '/admin/transporteurs', badge: null },
-  { key: 'incidents',     label: t('incidents'),           icon: '⚠️', path: '/admin/incidents',     badge: 'incidents' },
-  { key: 'tickets',       label: t('tickets'),             icon: '🎫', path: '/admin/tickets',       badge: 'tickets' },
-  { key: 'contrats',      label: t('contrats'),            icon: '📋', path: '/admin/contrats',      badge: null },
-  { key: 'zones',         label: t('sb_zones'),            icon: '🗾', path: '/admin/zones',         badge: null },
-  { key: 'promotions',    label: t('sb_promotions'),       icon: '🏷️', path: '/admin/promotions',    badge: null },
-  { key: 'bannieres',     label: t('sb_bannieres'),        icon: '🖼️', path: '/admin/bannieres',     badge: null },
-  { key: 'blacklist',     label: t('sb_blacklist'),        icon: '🚫', path: '/admin/blacklist',     badge: null },
-  { key: 'heatmap',       label: t('heatmap'),             icon: '🌡️', path: '/admin/heatmap',       badge: null },
-  { key: 'calendrier',    label: t('sb_calendrier'),       icon: '📅', path: '/admin/calendrier',    badge: null },
-  { key: 'previsions',    label: t('sb_previsions'),       icon: '📈', path: '/admin/previsions',    badge: null },
-  { key: 'impersonation', label: t('sb_impersonation'),    icon: '🎭', path: '/admin/impersonation', badge: null },
-  { key: 'settings',      label: t('settings'),            icon: '⚙️', path: '/admin/settings',      badge: null },
+  { key: 'dashboard',     label: t('dashboard'),          icon: LayoutDashboard, path: '/admin',               badge: null },
+  { key: 'live',          label: t('sb_live'),             icon: Map, path: '/admin/live',          badge: null },
+  { key: 'commandes',     label: t('commandes'),           icon: Package, path: '/admin/commandes',     badge: null },
+  { key: 'clients',       label: t('clients'),             icon: Users, path: '/admin/clients',       badge: null },
+  { key: 'transporteurs', label: t('transporteurs'),       icon: Truck, path: '/admin/transporteurs', badge: null },
+  { key: 'incidents',     label: t('incidents'),           icon: AlertTriangle, path: '/admin/incidents',     badge: 'incidents' },
+  { key: 'tickets',       label: t('tickets'),             icon: Ticket, path: '/admin/tickets',       badge: 'tickets' },
+  { key: 'contrats',      label: t('contrats'),            icon: FileText, path: '/admin/contrats',      badge: null },
+  { key: 'promotions',    label: t('sb_promotions'),       icon: Tag, path: '/admin/promotions',    badge: null },
+  { key: 'bannieres',     label: t('sb_bannieres'),        icon: Image, path: '/admin/bannieres',     badge: null },
+  { key: 'blacklist',     label: t('sb_blacklist'),        icon: Ban, path: '/admin/blacklist',     badge: null },
+  { key: 'heatmap',       label: t('heatmap'),             icon: Thermometer, path: '/admin/heatmap',       badge: null },
+  { key: 'calendrier',    label: t('sb_calendrier'),       icon: Calendar, path: '/admin/calendrier',    badge: null },
+  { key: 'previsions',    label: t('sb_previsions'),       icon: TrendingUp, path: '/admin/previsions',    badge: null },
+  { key: 'impersonation', label: t('sb_impersonation'),    icon: Theater, path: '/admin/impersonation', badge: null },
+  { key: 'settings',      label: t('settings'),            icon: Settings, path: '/admin/settings',      badge: null },
 ];
 
 const STORAGE_KEY = 'delivermap_sidebar_favorites';
@@ -98,7 +102,9 @@ const AdminSidebar = () => {
             }
           `}
         >
-          <span className="text-lg flex-shrink-0" aria-hidden="true">{item.icon}</span>
+          <span className="flex-shrink-0" aria-hidden="true" style={{width:18,height:18,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {typeof item.icon === 'string' ? item.icon : React.createElement(item.icon, {size:17})}
+          </span>
           {!compact && <span className="flex-1 truncate">{item.label}</span>}
           {!compact && badgeCount > 0 && (
             <span aria-hidden="true" className="ml-auto bg-[var(--color-danger)] text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">

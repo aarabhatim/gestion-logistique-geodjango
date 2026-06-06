@@ -10,7 +10,7 @@ import { useI18n } from '../../contexts/I18nContext';
  * Route : /client/favoris
  */
 
-const HeartIcon = ({ filled, onClick }) => (
+const HeartIcon = ({ filled, onClick, title }) => (
   <button
     onClick={e => { e.stopPropagation(); onClick(); }}
     style={{
@@ -29,7 +29,7 @@ const HeartIcon = ({ filled, onClick }) => (
     }}
     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-    title={t('fav_remove')}
+    title={title}
   >
     <svg viewBox="0 0 24 24" width="16" height="16"
       fill={filled ? '#E30613' : 'none'}
@@ -262,7 +262,7 @@ const FavoritesPage = () => {
                       )}
                       {/* Heart button */}
                       <div style={{ position: 'absolute', top: 10, right: 10 }}>
-                        <HeartIcon filled onClick={() => toggleBoutique(fav.boutique_id)} />
+                        <HeartIcon filled title={t('fav_remove')} onClick={() => toggleBoutique(fav.boutique_id)} />
                       </div>
                       {/* Category badge */}
                       {boutique.categorie && (
@@ -385,7 +385,7 @@ const FavoritesPage = () => {
                       )}
                       {/* Heart remove */}
                       <div style={{ position: 'absolute', top: 8, right: 8 }}>
-                        <HeartIcon filled onClick={() => toggleProduit(fav.produit_id)} />
+                        <HeartIcon filled title={t('fav_remove')} onClick={() => toggleProduit(fav.produit_id)} />
                       </div>
                     </div>
 

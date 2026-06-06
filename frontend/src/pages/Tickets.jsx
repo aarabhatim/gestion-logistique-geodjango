@@ -231,6 +231,7 @@ const Tickets = () => {
 };
 
 const TicketThread = ({ ticket, isAdmin, user, threadEndRef, onClose, onRefresh, onStatusChange }) => {
+  const { t } = useI18n();
   const [reponse, setReponse] = useState('');
   const [sending, setSending] = useState(false);
   const messages = ticket.messages || [];
